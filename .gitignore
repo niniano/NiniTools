@@ -1,0 +1,10 @@
+# 개인 데이터 · 비밀값은 절대 올리지 않음
+.env
+*.env
+data/
+WTF/
+SavedVariables/
+*.bak
+__pycache__/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,25 @@
+NiniTools 2.5.4
+
+[글꼴 통일]
+- 모든 NiniTools 글자를 글꼴 하나로 고릅니다 (Core.lua NT:ResolveFont).
+  - 본문: SharedMedia의 NaowhKR → Naowh KR → NaowhAsia 순서로 찾습니다.
+  - 숫자 (적 수 카운트, 차단 아이콘 숫자, 전투 타이머): GothamNarrowUltraKR → GothamNarrowUltraAsia → GothamNarrowUltra 순서로 찾습니다. 없으면 본문 글꼴을 씁니다.
+  - 둘 다 없으면 지금처럼 EllesmereUI 글꼴 → 게임 기본 글꼴(STANDARD_TEXT_FONT)을 씁니다.
+- 바뀐 곳: 메인 창(UI:Font), 차단 모듈(themeFontPath), 적 수 카운트(글꼴을 따로 고르지 않았을 때만), 네비 채팅(Expressway 대신 본문 글꼴).
+- 글꼴은 그릴 때 찾습니다. SharedMedia 팩이 NiniTools보다 늦게 로드돼도 잡힙니다.
+- 글꼴 파일은 넣지 않았습니다. 합본 글꼴은 개인용이라 배포판에 넣으면 안 됩니다. 공대원 화면은 예전 그대로입니다.
+- 글자 크기와 간격은 그대로입니다. Fonts\2002 교체로 게임 기본 글꼴이 이미 NaowhKR라서 크기 차이가 없습니다.
+
+[명령 · 신규]
+- /nt font (또는 /nt 글꼴): 지금 쓰는 본문·숫자 글꼴과 경로를 보여 줍니다.
+- /nt font list: SharedMedia에 등록된 naowh·gotham·kr·asia 글꼴 이름을 보여 줍니다.
+- /nt font body <이름> · /nt font num <이름>: 원하는 SharedMedia 글꼴로 지정합니다. 이름은 대소문자까지 똑같이 써야 합니다.
+- /nt font auto: 자동으로 되돌립니다.
+- 바꾼 뒤 /reload 해야 이미 만들어진 창에도 적용됩니다.
+- 설정은 NiniToolsDB.fontPrefs에 저장됩니다. DBSchema에 등록해서 자가진단이 「모르는 키」로 잡지 않습니다.
+
+[버전]
+- TOC / Core 2.5.4. 저장 형식은 2.5.3과 같습니다 (fontPrefs 키만 추가).
+
+[업데이트]
+- 게임 종료 후 Interface\AddOns\NiniTools 폴더만 교체하세요. 기존 NiniToolsDB(WTF)는 지우지 마세요.

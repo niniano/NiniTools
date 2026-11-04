@@ -1,0 +1,82 @@
+﻿NiniTools 2.5.4
+
+NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운드/Navi, Naowh Smart Reminders 연동을 한 창에 모은 WoW 통합 편의 애드온입니다.
+
+[메인 메뉴]
+- Gold History
+- Interrupt & M+
+- NSRT 개인 메모
+- 화면 & 편의
+- 사운드 & Navi
+- 우측 상단 버튼: 버전/상태/기본 설정
+
+[주요 기능]
+- 차단 담당 징표/로테이션, 중요 시전·생존기 알림, 중요몹 ! 표시
+- 중요몹 ! 표시: 기본형/펄스형/강조형, 크기·위치 선택 + 실시간 미리보기
+- NiniTools N 브랜드: 설정창 왼쪽 상단은 배경 없는 Wordmark, 우측 설정 버튼은 배경 없는 Round, 미니맵은 설정 버튼과 같은 두 줄 N(미니맵용 굵은 선) 사용
+- 전투시간 및 주변 적 숫자 표시
+- Lorrgs 등 메모를 NSRT 개인 메모로 가져오기
+- 목적지 안내, 채팅 말풍선, 던전 검색, 미니맵/창 설정
+- GTFO, 효과음, CallMe 이름 호출, Navi 마우스 커서
+- Gold History: 현재 소지금 스냅샷, 거래 기록, 필터/검색, 전투부대 은행
+
+[Naowh Smart Reminders]
+- 도적 프로필: Nini Rogue M+ S2 - Safe Alpha
+- 암살/무법/잠행 3특성에 같은 프로필을 연결합니다.
+- 쐐기 기본 규칙과 Raid S2 Safe Alpha 기본 체크를 같은 프로필에 구성합니다.
+- 레이드 기본 체크는 숫자 seed version으로 최초 필요한 항목만 채우며, 이후 사용자가 Raid Bosses에서 추가한 수동 체크는 보존합니다.
+- 레이드 기본값은 교란 중심이며, 영혼살무사 네크잘리의 기원은 그림자 망토로 시드합니다. 자동 회피 레이드 바인딩은 넣지 않습니다.
+- Naowh Smart Reminders의 활성 프로필이 실제 ON일 때만 Naowh가 생존기 알림 담당으로 판정됩니다.
+- Smart Reminders OFF/미설치/API 준비 전에는 NiniTools 경로를 유지합니다.
+- 설정 > 차단 > 생존기 알림에서 'Naowh가 켜져 있어도 NiniTools 생존기 알림 유지'를 선택할 수 있습니다.
+- /nini check에서 현재 담당과 판정 근거를 확인할 수 있습니다.
+- EXBoss 사용 시 도적 AoE는 EXBoss 음성 뒤 생존기 TTS가 이어집니다.
+- EXBoss 미사용/미설치 시 검증된 AoE fallback을 NiniTools가 추적합니다.
+- NiniTools 자체 Media/Sounds/Sonar.ogg를 포함합니다.
+- 테스트: /nininsr sonar
+- 상태: /nininsr status 또는 /nininsr fallbackstatus
+
+[전용 매크로]
+- NiniTools는 차단 흐름에 필요한 NiniKickFocus / NiniKickAuto 두 개만 관리합니다.
+- 범용 매크로 제작은 EllesmereUI 등 외부 편의 기능에 맡깁니다.
+- 기존 NiniPotion 매크로는 삭제하지 않지만 NiniTools가 더 이상 생성/수정하지 않습니다.
+
+[설치]
+1. 게임을 종료합니다.
+2. ZIP 안의 NiniTools 폴더를 World of Warcraft/_retail_/Interface/AddOns/에 넣습니다.
+3. 기존 NiniTools를 덮어쓸 때 WTF의 NiniToolsDB는 삭제하지 마세요.
+4. 게임 실행 후 NiniTools 설정창과 /nini check로 상태를 확인하세요.
+
+[업데이트 주의]
+- 기존 NiniToolsDB를 유지하면 설정과 골드 기록이 보존됩니다.
+- 기존 Raid Bosses 수동 체크는 2.5.2의 보존 병합 구조에서 유지됩니다.
+- 레이드 seed version은 애드온 문자열 버전과 별개이므로 2.5.2 정식 전환만으로 재시드/초기화되지 않습니다.
+
+[2.5.2 안정성 확인]
+- EventDispatcher의 미등록 이벤트 UnregisterEvent 경로 수정 후 ADDON_ACTION_FORBIDDEN 재발 0회 확인.
+- /reload, 전투 진입/종료, 쐐기 시작, 특성 변경, 지역 이동 흐름에서 사용 확인.
+- Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
+
+[배포]
+- 현재 정식 버전: 2.5.4
+- 최신 변경사항: CHANGELOG_2.5.4.txt (2.5.3: CHANGELOG_2.5.3.txt · 2.5.2: CHANGELOG_2.5.2.txt)
+
+[공대 메모 캡처 (2.5.3)]
+- 기본은 꺼짐. /nini memo on 을 입력한 캐릭터만 저장합니다.
+- 공대장이 보낸 NSRT 공유 메모를 받은 시각과, 보스를 풀 때마다 그때 켜져 있던 NSRT 공유 메모·MRT 메모를 NiniTools.lua(SavedVariables)에 남깁니다.
+- 메모를 읽기만 하고 바꾸거나 다시 보내지 않습니다. 같은 메모는 한 번만 저장(최대 메모 80개 · 기록 600개).
+- /nini memo (상태) · /nini memo on · /nini memo off · /nini memo clear
+- 저장 파일은 게임 종료나 /reload 때 디스크에 써집니다.
+
+[글꼴 (2.5.4)]
+- SharedMedia에 NaowhKR(본문)·GothamNarrowUltraKR(숫자)가 있으면 자동으로 씁니다. 없으면 EllesmereUI 글꼴 → 게임 기본 글꼴.
+- /nini font (지금 글꼴) · /nini font list · /nini font body <이름> · /nini font num <이름> · /nini font auto
+- 글꼴 파일은 애드온에 들어 있지 않습니다.
+
+[진단]
+- /nini check
+- /nini check copy
+- /nini check cpu start [메모]
+- /nini check cpu stop
+- Enemy Count 암살 목조르기 커버리지: /nec garrote on | off
+- 목조르기 커버리지 디버그: /nec garrote debug

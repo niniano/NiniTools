@@ -1,0 +1,50 @@
+## Interface: 120100
+## Title: |cffF4B23ANini|r|cffE9EDF2Tools|r
+## Notes: NiniTools - interrupts, gold, media and quality-of-life tools
+## Author: Nini
+## Version: 2.5.4
+## OptionalDeps: BigWigs, GTFO, EXBoss, NorthernSkyRaidTools, NaowhSmartReminders
+## SavedVariables: NiniToolsDB
+## IconTexture: Interface\AddOns\NiniTools\Media\NiniTools.tga
+## AddonCompartmentFunc: NiniTools_AddonCompartmentClick
+## AddonCompartmentFuncOnEnter: NiniTools_AddonCompartmentOnEnter
+## AddonCompartmentFuncOnLeave: NiniTools_AddonCompartmentOnLeave
+
+Libs\LibStub-1.0\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibRangeCheck-3.0\LibRangeCheck-3.0.lua
+
+EventDispatcher.lua
+Bootstrap.lua
+DBSchema.lua
+Core.lua
+Adapters\Core.lua
+Adapters\BigWigs.lua
+Adapters\EXBoss.lua
+Adapters\Naowh.lua
+Adapters\Ellesmere.lua
+Adapters\NSRT.lua
+Diagnostics.lua
+
+Modules\Kick\Data.lua
+Modules\Kick\Core.lua
+Modules\Kick\ImportantCast.lua
+Modules\Kick\Briefing.lua
+Modules\Combat\EnemyCount.lua
+
+Modules\Gold\Gold.lua
+Modules\Gold\Warband.lua
+Modules\Media\Media.lua
+Modules\Media\Jump.lua
+Modules\Media\NaviCursor.lua
+Modules\Media\NaviChat.lua
+Modules\Media\CallMe.lua
+
+Modules\NSRT\NSRTImport.lua
+Modules\NSRT\NoteCapture.lua
+Modules\NSR\SmartRemindersProfile.lua
+Modules\NSR\TrashAoEFallback.lua
+
+Waypoints.lua
+UI.lua
+DungeonSearch.lua
