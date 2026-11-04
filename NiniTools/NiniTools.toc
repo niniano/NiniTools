@@ -2,7 +2,7 @@
 ## Title: |cffF4B23ANini|r|cffE9EDF2Tools|r
 ## Notes: NiniTools - interrupts, gold, media and quality-of-life tools
 ## Author: Nini
-## Version: 2.6.0
+## Version: 2.6.1
 ## OptionalDeps: BigWigs, GTFO, EXBoss, NorthernSkyRaidTools, NaowhSmartReminders
 ## SavedVariables: NiniToolsDB
 ## IconTexture: Interface\AddOns\NiniTools\Media\NiniTools.tga

@@ -698,8 +698,13 @@ function UI:StyleCardRow(parent, label, y, items, isActive, onPick)
     end
     card.iconHolder=iconHolder; card.icon=icon; card.glow=glow; card.ring=ring
     if item.preset and item.preset.texture then
-      -- 2.6.0: 고급형은 전용 그림
+      -- 2.6.0: 고급형은 전용 그림 · 2.6.1: 흰 광택도 같이
       for _,tx in ipairs({ring,glow,icon}) do tx:SetTexture(item.preset.texture) end
+    end
+    if item.preset and item.preset.gloss then
+      local gl=iconHolder:CreateTexture(nil,"OVERLAY",nil,7)
+      gl:SetTexture(item.preset.gloss); gl:SetPoint("CENTER"); gl:SetSize(28,28)
+      card.gloss=gl
     end
 
     card.label=UI:Font(card,9,item.text or "",C.text)
@@ -725,6 +730,7 @@ function UI:StyleCardRow(parent, label, y, items, isActive, onPick)
         local cyc=now%2.5
         local f=NT:ImportantCastFrame(preset,now,cyc,cyc>=2.2 and (cyc-2.2) or nil)
         card.icon:SetSize(28*f.iconScale,28*f.iconScale)
+        if card.gloss then card.gloss:SetSize(28*f.iconScale,28*f.iconScale); card.gloss:SetAlpha(f.iconAlpha*(f.alpha or 1)) end
         card.icon:SetVertexColor(f.r,f.g,f.b,1)
         card.icon:SetAlpha(f.iconAlpha*(f.alpha or 1))
         card.glow:SetAlpha(0)
@@ -1534,7 +1540,7 @@ function UI:BuildKick()
     if _G.NiniKick and _G.NiniKick.RefreshImportantCastStyle then _G.NiniKick.RefreshImportantCastStyle() end
   end,function(v) return math.floor((tonumber(v) or 100)+.5).."%" end)
 
-  local positionItems={{text="머리 위",value="HEAD"},{text="이름 바로 위",value="NAME"},{text="체력바 위",value="BAR"},{text="이름표 왼쪽",value="LEFT"}}
+  local positionItems={{text="머리 위",value="HEAD"},{text="이름 바로 위",value="NAME"},{text="체력바 위",value="BAR"},{text="이름표 왼쪽",value="LEFT"},{text="이름표 오른쪽",value="RIGHT"},{text="이름표 아래",value="BELOW"}}
   p.importantPositionRow=self:DropdownRow(impLeft,"표시 위치",-90,positionItems,function()
     return get().importantCastMarkerPosition or "HEAD"
   end,function(v)
@@ -1553,7 +1559,7 @@ function UI:BuildKick()
       get().importantCastMarkerStyle=v
       if _G.NiniKick and _G.NiniKick.RefreshImportantCastStyle then _G.NiniKick.RefreshImportantCastStyle() end
     end)
-  local impNote=self:Font(impLeft,8,"고급형=빨강↔주황 · 크게 튀어나왔다 제자리 · 기본형=천천히 숨쉬기 · 펄스형=박동 · 강조형=부풀기",C.muted)
+  local impNote=self:Font(impLeft,8,"고급형=주황↔핫핑크 · 크게 튀어나왔다 제자리 · 기본형=천천히 숨쉬기 · 펄스형=박동 · 강조형=부풀기",C.muted)
   impNote:SetPoint("TOPLEFT",22,-218); impNote:SetPoint("RIGHT",-12,0); impNote:SetJustifyH("LEFT")
 
   local preview=CreateFrame("Frame",nil,important.body,"BackdropTemplate")
@@ -1584,6 +1590,9 @@ function UI:BuildKick()
   preview.icon:SetTexture("Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_White.tga")
   preview.icon:SetPoint("CENTER")
   preview.icon:SetBlendMode("BLEND")
+  preview.gloss=preview.iconHolder:CreateTexture(nil,"OVERLAY",nil,7)
+  preview.gloss:SetPoint("CENTER")
+  preview.gloss:Hide()
   for _,tx in ipairs({preview.ring,preview.glow,preview.icon}) do
     if tx.SetSnapToPixelGrid then pcall(tx.SetSnapToPixelGrid,tx,false) end
     if tx.SetTexelSnappingBias then pcall(tx.SetTexelSnappingBias,tx,0) end
@@ -1603,15 +1612,24 @@ function UI:BuildKick()
     self.stylePreset=preset
     local texPath=preset.texture or "Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_White.tga"
     for _,tx in ipairs({self.ring,self.glow,self.icon}) do tx:SetTexture(texPath) end
+    if preset.gloss then self.gloss:SetTexture(preset.gloss); self.gloss:Show() else self.gloss:Hide() end
     self:SetAlpha(d.importantCastMarkerEnabled==false and .42 or 1)
     local posLabel="머리 위"
-    if d.importantCastMarkerPosition=="NAME" then posLabel="이름 바로 위" elseif d.importantCastMarkerPosition=="BAR" then posLabel="체력바 위" elseif d.importantCastMarkerPosition=="LEFT" then posLabel="이름표 왼쪽" end
+    if d.importantCastMarkerPosition=="NAME" then posLabel="이름 바로 위" elseif d.importantCastMarkerPosition=="BAR" then posLabel="체력바 위" elseif d.importantCastMarkerPosition=="LEFT" then posLabel="이름표 왼쪽" elseif d.importantCastMarkerPosition=="RIGHT" then posLabel="이름표 오른쪽" elseif d.importantCastMarkerPosition=="BELOW" then posLabel="이름표 아래" end
     self.styleLabel:SetText((preset.label or "기본형")..(preset.desc and (" ("..preset.desc..")") or "").." · "..math.floor(scale*100+.5).."% · "..posLabel)
     self.iconHolder:ClearAllPoints()
     local offset=8
     if d.importantCastMarkerPosition=="NAME" then offset=-2 elseif d.importantCastMarkerPosition=="BAR" then offset=-12 end
+    -- 2.6.1: 아래 위치일 때는 가짜 이름표를 위로 올려서 느낌표가 미리보기 안에 보이게
+    local below=d.importantCastMarkerPosition=="BELOW"
+    fakeBar:ClearAllPoints(); fakeBar:SetPoint("BOTTOM",0,below and 96 or 30)
+    fakeName:ClearAllPoints(); fakeName:SetPoint("BOTTOM",0,below and 120 or 54)
     if d.importantCastMarkerPosition=="LEFT" then
       self.iconHolder:SetPoint("RIGHT",fakeBar,"LEFT",iconSize*0.30,-2)
+    elseif d.importantCastMarkerPosition=="RIGHT" then
+      self.iconHolder:SetPoint("LEFT",fakeBar,"RIGHT",-iconSize*0.30,-2)
+    elseif below then
+      self.iconHolder:SetPoint("TOP",fakeBar,"BOTTOM",0,2)
     else
       self.iconHolder:SetPoint("BOTTOM",fakeName,"TOP",0,offset)
     end
@@ -1625,6 +1643,7 @@ function UI:BuildKick()
     local f=NT:ImportantCastFrame(self.stylePreset,now,cyc,fading)
     local ib,gb=self.iconBase or 48,self.glowBase or 68
     self.icon:SetSize(ib*f.iconScale,ib*f.iconScale)
+    if self.gloss:IsShown() then self.gloss:SetSize(ib*f.iconScale,ib*f.iconScale); self.gloss:SetAlpha(f.iconAlpha*f.alpha) end
     self.icon:SetVertexColor(f.r,f.g,f.b,1)
     self.icon:SetAlpha(f.iconAlpha*f.alpha)
     self.glow:SetAlpha(0)

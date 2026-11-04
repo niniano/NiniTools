@@ -105,6 +105,7 @@ local function visualTick(ind,now)
   local glowBase=ind.glowBase or 96
   ind.tex:SetSize(iconBase*f.iconScale,iconBase*f.iconScale)
   ind.tex:SetVertexColor(f.r,f.g,f.b,1)
+  if ind.gloss and ind.gloss:IsShown() then ind.gloss:SetSize(iconBase*f.iconScale,iconBase*f.iconScale) end
   ind.tex:SetAlpha(f.iconAlpha)
   if ind.glow then
     if f.glowAlpha>0.01 then
@@ -187,9 +188,14 @@ local function applyVisualStyle(ind)
   ind.visual:SetSize(iconSize,iconSize)
   ind.visual:SetScale(1)
   ind.visual:ClearAllPoints()
-  if markerPositionKey()=="LEFT" then
+  local posKey=markerPositionKey()
+  if posKey=="LEFT" then
     -- 2.6.0: 이름표 왼쪽 (체력바·시전바 옆). 그림 안의 여백만큼 안쪽으로 붙인다.
     ind.visual:SetPoint("RIGHT",ind,"LEFT",iconSize*0.30,-6)
+  elseif posKey=="RIGHT" then
+    ind.visual:SetPoint("LEFT",ind,"RIGHT",-iconSize*0.30,-6)   -- 2.6.1: 이름표 오른쪽
+  elseif posKey=="BELOW" then
+    ind.visual:SetPoint("TOP",ind,"BOTTOM",0,iconSize*0.06)      -- 2.6.1: 이름표 아래 (시전바 밑)
   else
     ind.visual:SetPoint("BOTTOM",ind,"TOP",0,markerPositionOffset())
   end
@@ -199,6 +205,17 @@ local function applyVisualStyle(ind)
     if tex and tex.SetTexture then tex:SetTexture(texPath) end
   end
   if ind.mine and ind.mine.tex then ind.mine.tex:SetTexture(texPath) end
+  if ind.gloss then
+    if preset.gloss then
+      ind.gloss:SetTexture(preset.gloss)
+      ind.gloss:ClearAllPoints()
+      ind.gloss:SetPoint("CENTER",ind.visual,"CENTER",0,0)
+      ind.gloss:SetSize(iconSize,iconSize)
+      ind.gloss:Show()
+    else
+      ind.gloss:Hide()
+    end
+  end
   for _,tex in ipairs({ind.tex,ind.glow,ind.ring}) do
     if tex then
       tex:ClearAllPoints()
@@ -286,7 +303,16 @@ local function getIndicator(nameplate)
   tex:SetVertexColor(1,0.12,0.04,1)
   noSnap(tex)
 
+  -- 2.6.1: 고급형 흰 광택 (색을 입히지 않고 느낌표 위에 덮음)
+  local gloss=visual:CreateTexture(nil,"OVERLAY",nil,7)
+  gloss:SetPoint("CENTER",visual,"CENTER",0,0)
+  gloss:SetSize(68,68)
+  gloss:SetBlendMode("BLEND")
+  gloss:Hide()
+  noSnap(gloss)
+
   ind.visual=visual
+  ind.gloss=gloss
   ind.tex=tex
   ind.glow=glow
   ind.ring=ring

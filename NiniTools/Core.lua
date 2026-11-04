@@ -2,7 +2,7 @@ local ADDON_NAME, NT = ...
 NT = NT or {}
 _G.NiniTools = NT
 
-NT.VERSION = "2.6.0"
+NT.VERSION = "2.6.1"
 local function resolveClassAccent()
   local classFile
   if UnitClass then
@@ -142,15 +142,17 @@ NT.ALERT_STYLE = NT.ALERT_STYLE or {
 --   (2.5.6) 세 스타일 모두 색은 빨강→주황→노랑→주황→빨강 1.6초 주기
 --   PULSE    펄스형 · 두근-두근 두 번 뛰는 박동
 --   EMPHASIS 강조형 · 큰 아이콘이 크게 부풀었다 돌아옴
---   (2.6.0) PREMIUM 고급형 · 크기 그대로 · 빨강↔주황 빠르게 · 크게 튀어나왔다가 제자리, 끝나면 작아지며 사라짐
---           가늘고 입체감 있는 전용 그림(ImportantAlert_Premium.tga) · 새 기본값
+--   (2.6.0) PREMIUM 고급형 · 크기 그대로 · 크게 튀어나왔다가 제자리, 끝나면 작아지며 사라짐 · 새 기본값
+--   (2.6.1) 고급형 그림을 다시 그림: 오른쪽으로 살짝 기운 넓은 몸통 · 입체 결 · 흰 광택(색 안 입힘)
+--           색은 주황↔핫핑크 (빨간 체력바가 겹친 쐐기 이름표 위에서도 잘 보이게)
 NT.IMPORTANT_CAST_STYLE_ORDER = {"PREMIUM","DEFAULT","PULSE","EMPHASIS"}
 NT.IMPORTANT_CAST_STYLES = {
   PREMIUM = {
-    label="고급형", desc="빨강↔주황 · 튀어나오기", motion="static", pop="zoom",
+    label="고급형", desc="주황↔핫핑크 · 튀어나오기", motion="static", pop="zoom",
     texture="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium.tga",
+    gloss="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium_Gloss.tga",
     iconSize=72, scaleAmp=0, period=1.00,
-    low={1.00,0.07,0.03}, high={1.00,0.52,0.04}, colorPeriod=0.50,
+    low={1.00,0.55,0.05}, high={1.00,0.16,0.60}, colorPeriod=0.60,
   },
   DEFAULT = {
     label="기본형", desc="천천히 숨쉬기", motion="breathe",
