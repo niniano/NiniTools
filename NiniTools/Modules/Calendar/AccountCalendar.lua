@@ -174,8 +174,19 @@ end
 
 -- ── 달력 접근 ─────────────────────────────────────────
 function M:BlizzardCalendarOpen()
+  -- 2.6.5: IsShown은 부모(UIParent 등)가 숨겨져 있어도 참일 수 있다. 실제로 화면에 보일 때만 「열림」.
   local f = _G.CalendarFrame
-  return f and f.IsShown and f:IsShown() and true or false
+  if not (f and f.IsVisible) then return false end
+  local ok, vis = pcall(f.IsVisible, f)
+  return ok and vis == true
+end
+
+-- 2.6.5: 니니툴 달력에서 응답을 누르면 와우 달력 창은 니니툴이 닫는다 (같은 달력 API를 같이 쓰면 꼬임).
+function M:CloseBlizzardCalendar()
+  local f = _G.CalendarFrame
+  if not f then return end
+  if type(HideUIPanel) == "function" then pcall(HideUIPanel, f) end
+  if f.IsShown and f:IsShown() then pcall(f.Hide, f) end
 end
 
 function M:CanTouchCalendar()
@@ -386,8 +397,53 @@ function M:Open(charKey, e, action, quiet)
   return true
 end
 
+-- 2.6.5: 수락 · 미정 · 거절
+-- 예전에는 달력이 잠깐이라도 바쁘면(참가자 목록을 읽는 중 · 서버 응답 대기 · 와우 달력 창 열림) 바로 거절했다.
+-- 이제는 같은 일정을 읽는 중이면 그 흐름에 응답을 얹고, 아니면 최대 6초 동안 0.25초마다 다시 시도한다.
+local RESPOND_TRIES = 24
+local ACTION_LABEL = { yes = "수락", maybe = "미정", no = "거절" }
+
 function M:Respond(charKey, e, action)
-  return self:Open(charKey, e, action)
+  local okR, whyR = self:CanRespond(charKey, e)
+  if not okR then NT:Print(whyR); return false, "deny" end
+  local key = self.DetailKey(e)
+  local p = self.pending
+  if p and p.key == key then
+    if p.opened then
+      -- 이미 열려 있는 같은 일정: 바로 응답
+      local ok, err = pcall(self.DoAction, self, e, action)
+      if not ok then NT:Print("응답 실패: " .. tostring(err)); return false, "error" end
+      self.forceScan = true
+      after(2, function() self:RequestScan("action", true) end)
+      NT:Print((ACTION_LABEL[action] or "응답") .. " 보냄")
+      return true
+    end
+    p.action = action   -- 아직 여는 중: 열리면 OnOpenEvent가 응답한다
+    return true
+  end
+  self.respondToken = (self.respondToken or 0) + 1
+  local token = self.respondToken
+  self.respondHoldUntil = gtime() + RESPOND_TRIES * 0.25 + 3
+  local announced = false
+  local function try(n)
+    if self.respondToken ~= token then return end   -- 그 사이 다른 버튼을 눌렀으면 이전 시도는 버림
+    if InCombatLockdown and InCombatLockdown() then NT:Print("전투가 끝난 뒤 다시 눌러 주세요."); return end
+    if self:BlizzardCalendarOpen() then self:CloseBlizzardCalendar() end
+    local ok, why = self:CanTouchCalendar()
+    local busy = (not ok and (why == "pending" or why == "blizzard")) or self.pending ~= nil or self.scanning
+    if busy then
+      if n >= RESPOND_TRIES then
+        NT:Print("달력이 계속 바쁩니다. 잠시 뒤 다시 눌러 주세요." .. (why and (" (" .. tostring(why) .. ")") or ""))
+        return
+      end
+      if not announced then announced = true; NT:Print((ACTION_LABEL[action] or "응답") .. " 보내는 중… (달력 대기)") end
+      after(0.25, function() try(n + 1) end)
+      return
+    end
+    self:Open(charKey, e, action)
+  end
+  try(0)
+  return true
 end
 
 function M:CaptureOpenEvent()
@@ -435,10 +491,12 @@ end
 function M:OnOpenEvent()
   local p = self.pending
   if not p then return end
+  p.opened = true
   pcall(self.CaptureOpenEvent, self)
   if p.action then
     local ok, err = pcall(self.DoAction, self, p.e, p.action)
     if ok then
+      NT:Print((ACTION_LABEL[p.action] or "응답") .. " 보냄")
       self.forceScan = true
       after(2, function() self:RequestScan("action", true) end)
     else
@@ -487,6 +545,11 @@ end
 
 function M:NextAutoDetail()
   if self.pending then return end
+  -- 2.6.5: 수락/미정/거절을 기다리는 동안에는 자동 참가자 읽기를 쉰다 (응답이 먼저)
+  if self.respondHoldUntil and gtime() < self.respondHoldUntil then
+    after(1, function() self:NextAutoDetail() end)
+    return
+  end
   local q = self.autoQueue
   if not q or #q == 0 then self.autoQueue = nil; return end
   if self.autoChar ~= self:CurrentCharKey() then self.autoQueue = nil; return end
