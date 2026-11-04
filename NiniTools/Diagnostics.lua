@@ -416,6 +416,10 @@ function D:Run(arg)
     local ok,line=pcall(NT.NaowhUILink.StatusLine,NT.NaowhUILink)
     if ok and line then NT:Print(tostring(line)) end
   end
+  if NT.AccountCalendar and type(NT.AccountCalendar.StatusLine)=="function" then
+    local ok,line=pcall(NT.AccountCalendar.StatusLine,NT.AccountCalendar)
+    if ok and line then NT:Print(tostring(line)) end
+  end
 
   if memoryKB then
     local memLine = string.format("Memory %.1f KB", round1(memoryKB))

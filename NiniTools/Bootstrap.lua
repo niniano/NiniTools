@@ -9,6 +9,7 @@ NiniToolsDB.modules.gold = type(NiniToolsDB.modules.gold)=="table" and NiniTools
 NiniToolsDB.modules.media = type(NiniToolsDB.modules.media)=="table" and NiniToolsDB.modules.media or {}
 NiniToolsDB.modules.nsrt = type(NiniToolsDB.modules.nsrt)=="table" and NiniToolsDB.modules.nsrt or {}
 NiniToolsDB.modules.enemyCount = type(NiniToolsDB.modules.enemyCount)=="table" and NiniToolsDB.modules.enemyCount or {}
+NiniToolsDB.modules.calendar = type(NiniToolsDB.modules.calendar)=="table" and NiniToolsDB.modules.calendar or {} -- 2.5.8 계정 달력
 
 -- Legacy global names remain as in-memory aliases so the mature module code can
 -- keep working, but only NiniToolsDB is persisted by the single NiniTools addon.

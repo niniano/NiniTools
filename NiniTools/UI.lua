@@ -7,13 +7,14 @@ NT.UI = UI
 UI.pages = {}
 UI.navButtons = {}
 -- 2.3.0: five primary tabs only.  Maintenance lives behind the title-bar gear.
-UI.pageOrder = {"GOLD","KICK","NSRT","QOL","MEDIA"}
+UI.pageOrder = {"GOLD","KICK","NSRT","QOL","MEDIA","CAL"}
 UI.pageNames = {
   KICK="Interrupt & M+",
   GOLD="Gold History",
   NSRT="NSRT 개인 메모",
   MEDIA="사운드 & Navi",
   QOL="화면 & 편의",
+  CAL="계정 달력",
   TOOLS="설정 & 진단",
 }
 UI.pageHints = {
@@ -22,6 +23,7 @@ UI.pageHints = {
   NSRT="Lorrgs 등에서 복사한 메모를 전문화별 NSRT 개인 메모로 전달",
   MEDIA="GTFO · 효과음 · CallMe · 마우스 Navi",
   QOL="그래픽 · 목적지 · 말풍선 · 던전 검색 · 미니맵",
+  CAL="캐릭별 달력 초대 모아보기 · 날짜 메모 · 각 캐릭 접속할 때 자동 동기화",
   TOOLS="버전 · 연동 상태 · 유지관리",
 }
 
@@ -57,6 +59,7 @@ local C = {
   warn={1,0.72,0.25},
   bad={1,0.35,0.35},
 }
+UI.C = C -- 2.5.8: 계정 달력 화면이 같은 색을 쓴다
 
 function UI:ColorText(text, color)
   local r,g,b=color[1],color[2],color[3]
@@ -1075,7 +1078,7 @@ function UI:BuildFrame()
   navBar:SetBackdropBorderColor(C.border[1],C.border[2],C.border[3],0.55)
   self.navBar=navBar
 
-  local widths={GOLD=126,KICK=148,NSRT=150,QOL=132,MEDIA=146}
+  local widths={GOLD=126,KICK=148,NSRT=150,QOL=132,MEDIA=146,CAL=120}
   local x=8
   for _,id in ipairs(self.pageOrder) do
     local b=CreateFrame("Button",nil,navBar)
@@ -1264,6 +1267,8 @@ function UI:BuildPages()
   self:BuildMedia()
   self:BuildQOL()
   self:BuildTools()
+  -- 2.5.8: 계정 달력 (Modules/Calendar/CalendarUI.lua)
+  if type(self.BuildCalendar)=="function" then self:BuildCalendar() end
 end
 
 function UI:BuildNSRT()
@@ -2772,7 +2777,7 @@ SlashCmdList.NINITOOLS=function(msg)
     end
     return
   end
-  local map={kick="KICK",gold="GOLD",media="MEDIA",sound="MEDIA",qol="QOL",tools="TOOLS",home="KICK",nsrt="NSRT"}
+  local map={kick="KICK",gold="GOLD",media="MEDIA",sound="MEDIA",qol="QOL",tools="TOOLS",home="KICK",nsrt="NSRT",cal="CAL",calendar="CAL",["달력"]="CAL"}
   NT:ToggleUI(map[msg] or nil)
 end
 
