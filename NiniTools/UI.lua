@@ -1429,6 +1429,7 @@ function UI:BuildNSRT()
       p.nsrtResult=nil
       p.nsrtLastOK=nil
       p.nsrtAppliedText=nil
+      p.nsrtLastApplied=nil
     end
 
     local status=NR:GetStatus() or ""
@@ -1459,7 +1460,14 @@ function UI:BuildNSRT()
       applyBtn.sub:SetTextColor(C.muted[1],C.muted[2],C.muted[3],1)
     else
       fields[1]:SetText("-"); fields[2]:SetText("-"); fields[3]:SetText("-")
-      if text=="" then
+      local last=p.nsrtLastApplied
+      if text=="" and last then
+        -- 2.6.7: 적용 성공 뒤 붙여넣기 칸은 비우고, 방금 적용한 결과는 그대로 보여 준다
+        fields[1]:SetText(last.name or "-"); fields[2]:SetText(last.diff or "-"); fields[3]:SetText(last.spec or "-")
+        fields[4]:SetText("적용 완료")
+        fields[4]:SetTextColor(C.good[1],C.good[2],C.good[3],1)
+        p.nsrtResultText:SetText((p.nsrtResult or "").."  |cff9aa4b2· 칸을 비웠어요 · 다음 메모를 바로 붙여넣으세요|r")
+      elseif text=="" then
         fields[4]:SetText("붙여넣기 대기")
         fields[4]:SetTextColor(C.muted[1],C.muted[2],C.muted[3],1)
         p.nsrtResultText:SetText("메모를 붙여넣으면 이곳에 자동 판별 결과가 표시됩니다.")
@@ -1477,7 +1485,7 @@ function UI:BuildNSRT()
     lines=(text=="" and 0 or lines+1)
     self:SetHeight(math.max(176,lines*15+18))
     scroll:UpdateScrollChildRect()
-    refreshPreview(true)
+    refreshPreview(not p.nsrtClearing)
   end)
 
   applyBtn:SetScript("OnClick",function()
@@ -1486,6 +1494,19 @@ function UI:BuildNSRT()
     p.nsrtResult=(ok and "|cff3fdb6c✓|r " or "|cffff5555✕|r ")..tostring(msg or "")
     p.nsrtLastOK=ok and true or false
     p.nsrtAppliedText=ok and text or nil
+    if ok then
+      -- 2.6.7: 성공하면 붙여넣기 칸을 비우고 커서를 넣어 둔다 → 다음 메모를 바로 Ctrl+V (실패하면 고칠 수 있게 그대로 둠)
+      local parsed=NR:ParsePaste(text)
+      p.nsrtLastApplied=parsed and {
+        name=parsed.name,
+        diff=DIFF_LABEL[parsed.difficultyID] or tostring(parsed.difficultyID or "-"),
+        spec=(parsed.spec and parsed.spec.label) or currentSpecLabel(),
+      } or {name="-",diff="-",spec="-"}
+      p.nsrtClearing=true
+      edit:SetText("")
+      p.nsrtClearing=nil
+      edit:SetFocus()
+    end
     refreshPreview(false)
   end)
 
