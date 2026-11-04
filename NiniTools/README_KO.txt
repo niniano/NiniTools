@@ -58,8 +58,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
 
 [배포]
-- 현재 정식 버전: 2.5.5
-- 최신 변경사항: CHANGELOG_2.5.5.txt (2.5.4: CHANGELOG_2.5.4.txt · 2.5.3: CHANGELOG_2.5.3.txt)
+- 현재 정식 버전: 2.5.6
+- 최신 변경사항: CHANGELOG_2.5.6.txt (2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
 
 [공대 메모 캡처 (2.5.3)]
 - 기본은 꺼짐. /nini memo on 을 입력한 캐릭터만 저장합니다.

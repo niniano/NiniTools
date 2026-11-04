@@ -2,7 +2,7 @@ local ADDON_NAME, NT = ...
 NT = NT or {}
 _G.NiniTools = NT
 
-NT.VERSION = "2.5.5"
+NT.VERSION = "2.5.6"
 local function resolveClassAccent()
   local classFile
   if UnitClass then
@@ -138,7 +138,8 @@ NT.ALERT_STYLE = NT.ALERT_STYLE or {
 -- Important-cast marker visual presets (2.5.5 R2).  One "!" only: the icon itself
 -- grows and shrinks.  No glow copy or ripple copy behind it (those read as a second,
 -- differently sized "!").  The three styles differ by how the single icon moves:
---   DEFAULT  기본형 · 천천히 숨쉬듯 조금 커졌다 작아짐 + 주홍↔호박색
+--   DEFAULT  기본형 · 천천히 숨쉬듯 조금 커졌다 작아짐
+--   (2.5.6) 세 스타일 모두 색은 빨강→주황→노랑→주황→빨강 1.6초 주기
 --   PULSE    펄스형 · 두근-두근 두 번 뛰는 박동
 --   EMPHASIS 강조형 · 큰 아이콘이 크게 부풀었다 돌아옴
 NT.IMPORTANT_CAST_STYLE_ORDER = {"DEFAULT","PULSE","EMPHASIS"}
@@ -146,17 +147,17 @@ NT.IMPORTANT_CAST_STYLES = {
   DEFAULT = {
     label="기본형", desc="천천히 숨쉬기", motion="breathe",
     iconSize=68, scaleAmp=0.08, period=1.20,
-    low={1.00,0.12,0.04}, high={1.00,0.64,0.06},
+    low={1.00,0.08,0.03}, high={1.00,0.92,0.12}, colorPeriod=1.60,
   },
   PULSE = {
     label="펄스형", desc="두근두근 박동", motion="heartbeat",
     iconSize=70, scaleAmp=0.16, period=0.95,
-    low={1.00,0.10,0.04}, high={1.00,0.70,0.08},
+    low={1.00,0.08,0.03}, high={1.00,0.92,0.12}, colorPeriod=1.60,
   },
   EMPHASIS = {
     label="강조형", desc="크게 부풀기", motion="swell",
     iconSize=82, scaleAmp=0.18, period=1.00,
-    low={1.00,0.14,0.04}, high={1.00,0.58,0.06},
+    low={1.00,0.08,0.03}, high={1.00,0.92,0.12}, colorPeriod=1.60,
   },
 }
 
@@ -192,7 +193,10 @@ function NT:ImportantCastFrame(preset,now,elapsed,fading)
     grow=nt_smooth(ph<0.35 and ph/0.35 or (1-ph)/0.65)
     t=grow
   end
-  local lo,hi=preset.low or {1,0.12,0.04},preset.high or {1,0.64,0.06}
+  -- 2.5.6: 색은 크기와 따로 빨강→주황→노랑→주황→빨강으로 천천히 돈다 (흰 느낌표 그림에 색을 입힘)
+  local cp=tonumber(preset.colorPeriod)
+  if cp and cp>0 then t=0.5-0.5*math.cos(2*math.pi*((now%cp)/cp)) end
+  local lo,hi=preset.low or {1,0.08,0.03},preset.high or {1,0.92,0.12}
   local r,g,b=lo[1]+(hi[1]-lo[1])*t, lo[2]+(hi[2]-lo[2])*t, lo[3]+(hi[3]-lo[3])*t
   local alpha, popScale = 1, 1
   elapsed=tonumber(elapsed)

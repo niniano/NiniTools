@@ -26,7 +26,7 @@ local CAST_EVENTS = {
   "UNIT_SPELLCAST_CHANNEL_STOP",
 }
 
-local ALERT_TEXTURE = "Interface\\AddOns\\NiniTools\\Media\\ImportantAlert.tga"
+local ALERT_TEXTURE = "Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_White.tga"
 local NT = _G.NiniTools or {}
 
 local function framePreset()
