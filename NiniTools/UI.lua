@@ -494,7 +494,7 @@ function UI:AdjustRow(parent, label, y, getText, onStep)
 end
 
 -- 2.3.0 RC2.1: proposal-parity slider row with draggable thumb.
-function UI:SliderRow(parent, label, y, minValue, maxValue, step, getValue, onValue, formatValue)
+function UI:SliderRow(parent, label, y, minValue, maxValue, step, getValue, onValue, formatValue, opts)
   local row=CreateFrame("Frame",nil,parent)
   row:SetPoint("TOPLEFT",18,y)
   row:SetPoint("TOPRIGHT",-18,y)
@@ -508,6 +508,20 @@ function UI:SliderRow(parent, label, y, minValue, maxValue, step, getValue, onVa
   value:SetWidth(58)
   value:SetJustifyH("RIGHT")
   row.value=value
+
+  -- 2.6.3: opts.editable → 오른쪽 숫자를 직접 입력하는 칸 (Naowh Smart Reminders처럼). Enter로 적용.
+  local box
+  if type(opts)=="table" and opts.editable then
+    value:Hide()
+    local bg=CreateFrame("Frame",nil,row,"BackdropTemplate")
+    bg:SetPoint("RIGHT",-4,0); bg:SetSize(58,24)
+    self:Backdrop(bg,C.panel2,C.border)
+    box=CreateFrame("EditBox",nil,bg)
+    box:SetPoint("TOPLEFT",4,-2); box:SetPoint("BOTTOMRIGHT",-4,2)
+    box:SetAutoFocus(false); box:SetFontObject(ChatFontNormal); box:SetJustifyH("CENTER"); box:SetMaxLetters(5)
+    row.box=box
+    value=bg   -- 슬라이더 오른쪽 끝을 입력 칸에 맞춘다
+  end
 
   -- Use Blizzard's proven slider template here.  The custom bare Slider used
   -- before could lose the cursor/drag relationship inside scaled/scrolling UI.
@@ -561,7 +575,21 @@ function UI:SliderRow(parent, label, y, minValue, maxValue, step, getValue, onVa
     frac=math.max(0,math.min(1,frac))
     local usable=math.max(1,(slider:GetWidth() or 1)-(thumbHalf*2))
     fill:SetWidth(math.max(1,usable*frac))
-    value:SetText(formatValue and formatValue(v) or tostring(v))
+    if box then
+      if not box:HasFocus() then box:SetText(tostring(math.floor(v+.5))) end
+    else
+      value:SetText(formatValue and formatValue(v) or tostring(v))
+    end
+  end
+  if box then
+    box:SetScript("OnEnterPressed",function(self)
+      local v=tonumber((self:GetText() or ""):match("^%s*(-?%d+)"))
+      self:ClearFocus()
+      if v then slider:SetValue(normalize(v)) end   -- OnValueChanged가 onValue를 부른다
+      redraw(slider:GetValue() or minValue)
+    end)
+    box:SetScript("OnEscapePressed",function(self) self:ClearFocus(); redraw(slider:GetValue() or minValue) end)
+    box:SetScript("OnEditFocusLost",function() redraw(slider:GetValue() or minValue) end)
   end
 
   -- Never rebuild the whole page while the thumb is moving.  The value callback
@@ -1526,7 +1554,7 @@ function UI:BuildKick()
   autoNote:SetPoint("BOTTOMLEFT",216,18); autoNote:SetPoint("RIGHT",-18,0); autoNote:SetJustifyH("LEFT")
 
   -- 3) Important mob marker -------------------------------------------------------------
-  local important=self:AccordionSection(p,"important","중요몹 ! 표시","쐐기 · 추종자 던전 중요 시전을 이름표 느낌표로 강조",330,false)
+  local important=self:AccordionSection(p,"important","중요몹 ! 표시","쐐기 · 추종자 던전 중요 시전을 이름표 느낌표로 강조",372,false)
   local impLeft=CreateFrame("Frame",nil,important.body)
   impLeft:SetPoint("TOPLEFT",0,0); impLeft:SetPoint("BOTTOMLEFT",0,0); impLeft:SetWidth(570)
   p.importantRow=self:Toggle(impLeft,"중요몹 ! 표시 사용","importantCastMarkerEnabled",get,function(v)
@@ -1540,38 +1568,57 @@ function UI:BuildKick()
     if _G.NiniKick and _G.NiniKick.RefreshImportantCastStyle then _G.NiniKick.RefreshImportantCastStyle() end
   end,function(v) return math.floor((tonumber(v) or 100)+.5).."%" end)
 
-  local positionItems={{text="머리 위",value="HEAD"},{text="이름 바로 위",value="NAME"},{text="체력바 위",value="BAR"},{text="이름표 왼쪽",value="LEFT"},{text="이름표 오른쪽",value="RIGHT"},{text="이름표 아래",value="BELOW"}}
-  p.importantPositionRow=self:DropdownRow(impLeft,"표시 위치",-90,positionItems,function()
-    return get().importantCastMarkerPosition or "HEAD"
-  end,function(v)
-    get().importantCastMarkerPosition=v
-    if _G.NiniKick and _G.NiniKick.RefreshImportantCastStyle then _G.NiniKick.RefreshImportantCastStyle() end
-  end)
+  -- 2.6.3: 위치 = 체력바 위 가운데 기준 + X · Y 이동 (막대 · 숫자 입력)
+  local range=(_G.NiniKick and _G.NiniKick.IMPORTANT_CAST_OFFSET_RANGE) or {xMin=-200,xMax=200,yMin=-80,yMax=160}
+  local function offsetGetter(key)
+    return function()
+      if _G.NiniKick and _G.NiniKick.ImportantCastMigratePosition then pcall(_G.NiniKick.ImportantCastMigratePosition) end
+      local d=get() or {}
+      return math.floor((tonumber(d[key]) or 0)+.5)
+    end
+  end
+  local function offsetSetter(key)
+    return function(v)
+      local d=get(); if not d then return end
+      d[key]=math.floor((tonumber(v) or 0)+.5)
+      if _G.NiniKick and _G.NiniKick.RefreshImportantCastAnchor then pcall(_G.NiniKick.RefreshImportantCastAnchor) end
+      if p.importantPreview then p.importantPreview:Refresh() end
+    end
+  end
+  p.importantOffsetXRow=self:SliderRow(impLeft,"좌우 (X)",-90,range.xMin,range.xMax,1,offsetGetter("importantCastOffsetX"),offsetSetter("importantCastOffsetX"),nil,{editable=true})
+  p.importantOffsetYRow=self:SliderRow(impLeft,"위아래 (Y)",-126,range.yMin,range.yMax,1,offsetGetter("importantCastOffsetY"),offsetSetter("importantCastOffsetY"),nil,{editable=true})
 
   local styleItems={}
   for _,id in ipairs(NT.IMPORTANT_CAST_STYLE_ORDER or {"PREMIUM","PULSE","EMPHASIS"}) do
     local preset=NT.IMPORTANT_CAST_STYLES and NT.IMPORTANT_CAST_STYLES[id]
     styleItems[#styleItems+1]={text=(preset and preset.label) or id,value=id,width=96,preset=preset}
   end
-  p.importantStyleRow=self:StyleCardRow(impLeft,"표시 스타일",-132,styleItems,
+  p.importantStyleRow=self:StyleCardRow(impLeft,"표시 스타일",-168,styleItems,
     function(v) return select(2,NT:GetImportantCastStyle(get().importantCastMarkerStyle))==v end,
     function(v)
       get().importantCastMarkerStyle=v
       if _G.NiniKick and _G.NiniKick.RefreshImportantCastStyle then _G.NiniKick.RefreshImportantCastStyle() end
     end)
   local impNote=self:Font(impLeft,8,"셋 다 고급 「!」(주황↔핫핑크·광택) · 기본형=제자리 · 펄스형=두근두근 · 강조형=크게 부풀기",C.muted)
-  impNote:SetPoint("TOPLEFT",22,-214); impNote:SetPoint("RIGHT",-12,0); impNote:SetJustifyH("LEFT")
+  impNote:SetPoint("TOPLEFT",22,-250); impNote:SetPoint("RIGHT",-12,0); impNote:SetJustifyH("LEFT")
 
   -- 2.6.2: 추종자 던전에서도 표시 (차단 순번·음성은 쐐기에서만) + 이름표에 띄워 보는 테스트
   p.importantFollowerRow=self:Toggle(impLeft,"추종자 던전에서도 표시","importantCastFollowerEnabled",get,function()
     if _G.NiniKick and _G.NiniKick.ImportantCastRefreshAll then pcall(_G.NiniKick.ImportantCastRefreshAll) end
-  end,-232)
+  end,-268)
   local bangTest=self:Button(impLeft,"이름표에 띄워 보기 (10초)",186,24,function()
     NT:CallSlash("NINIKICK","bang test 10")
   end)
-  bangTest:SetPoint("TOPLEFT",22,-278)
-  local bangHint=self:Font(impLeft,8,"대상 이름표(없으면 화면 가운데)에 띄움 · 띄운 동안 위치·스타일을 바꿔 보세요 · /nini bang test",C.muted)
-  bangHint:SetPoint("LEFT",bangTest,"RIGHT",10,0); bangHint:SetPoint("RIGHT",impLeft,"RIGHT",-12,0); bangHint:SetJustifyH("LEFT"); bangHint:SetWordWrap(true)
+  bangTest:SetPoint("TOPLEFT",22,-314)
+  local posReset=self:Button(impLeft,"위치 초기화",96,24,function()
+    local d=get(); if not d then return end
+    d.importantCastOffsetX,d.importantCastOffsetY=0,0
+    if _G.NiniKick and _G.NiniKick.RefreshImportantCastAnchor then pcall(_G.NiniKick.RefreshImportantCastAnchor) end
+    UI:RefreshVisiblePage()
+  end)
+  posReset:SetPoint("LEFT",bangTest,"RIGHT",8,0)
+  local bangHint=self:Font(impLeft,8,"타겟 이름표에 띄움 · 띄운 동안 X·Y를 움직여 맞추세요",C.muted)
+  bangHint:SetPoint("LEFT",posReset,"RIGHT",10,0); bangHint:SetPoint("RIGHT",impLeft,"RIGHT",-12,0); bangHint:SetJustifyH("LEFT"); bangHint:SetWordWrap(true)
 
   local preview=CreateFrame("Frame",nil,important.body,"BackdropTemplate")
   preview:SetPoint("TOPRIGHT",-16,-12); preview:SetSize(336,260)
@@ -1579,8 +1626,10 @@ function UI:BuildKick()
   preview:SetBackdropColor(C.sidebar[1],C.sidebar[2],C.sidebar[3],0.88)
   preview.title=self:Font(preview,8,"실시간 애니메이션 미리보기",C.muted); preview.title:SetPoint("TOPLEFT",12,-10)
 
+  if preview.SetClipsChildren then preview:SetClipsChildren(true) end
   local fakeName=self:Font(preview,9,"분노한 전쟁군주",C.text)
   fakeName:SetPoint("BOTTOM",0,54)
+  local fakePct=self:Font(preview,9,"100%",C.text)
   local fakeBar=CreateFrame("Frame",nil,preview,"BackdropTemplate")
   fakeBar:SetSize(210,15); fakeBar:SetPoint("BOTTOM",0,30)
   self:Backdrop(fakeBar,{0.20,0.03,0.03},{0.05,0.05,0.05})
@@ -1625,25 +1674,18 @@ function UI:BuildKick()
     for _,tx in ipairs({self.ring,self.glow,self.icon}) do tx:SetTexture(texPath) end
     if preset.gloss then self.gloss:SetTexture(preset.gloss); self.gloss:Show() else self.gloss:Hide() end
     self:SetAlpha(d.importantCastMarkerEnabled==false and .42 or 1)
-    local posLabel="머리 위"
-    if d.importantCastMarkerPosition=="NAME" then posLabel="이름 바로 위" elseif d.importantCastMarkerPosition=="BAR" then posLabel="체력바 위" elseif d.importantCastMarkerPosition=="LEFT" then posLabel="이름표 왼쪽" elseif d.importantCastMarkerPosition=="RIGHT" then posLabel="이름표 오른쪽" elseif d.importantCastMarkerPosition=="BELOW" then posLabel="이름표 아래" end
-    self.styleLabel:SetText((preset.label or "기본형")..(preset.desc and (" ("..preset.desc..")") or "").." · "..math.floor(scale*100+.5).."% · "..posLabel)
+    -- 2.6.3: 실제와 같은 기준 · 체력바 위 가운데 + X · Y (미리보기는 0.72배)
+    local ox=math.floor((tonumber(d.importantCastOffsetX) or 0)+.5)
+    local oy=math.floor((tonumber(d.importantCastOffsetY) or 0)+.5)
+    self.styleLabel:SetText((preset.label or "기본형")..(preset.desc and (" ("..preset.desc..")") or "").." · "..math.floor(scale*100+.5).."% · X "..ox.." · Y "..oy)
+    local k=.72
+    local barBottom=44
+    if oy<0 then barBottom=math.min(150,44+(-oy*k)+iconSize*.35) end
+    fakeBar:ClearAllPoints(); fakeBar:SetPoint("BOTTOM",0,barBottom)
+    fakeName:ClearAllPoints(); fakeName:SetPoint("BOTTOMLEFT",fakeBar,"TOPLEFT",2,2)
+    fakePct:ClearAllPoints(); fakePct:SetPoint("BOTTOMRIGHT",fakeBar,"TOPRIGHT",-2,2)
     self.iconHolder:ClearAllPoints()
-    local offset=8
-    if d.importantCastMarkerPosition=="NAME" then offset=-2 elseif d.importantCastMarkerPosition=="BAR" then offset=-12 end
-    -- 2.6.1: 아래 위치일 때는 가짜 이름표를 위로 올려서 느낌표가 미리보기 안에 보이게
-    local below=d.importantCastMarkerPosition=="BELOW"
-    fakeBar:ClearAllPoints(); fakeBar:SetPoint("BOTTOM",0,below and 96 or 30)
-    fakeName:ClearAllPoints(); fakeName:SetPoint("BOTTOM",0,below and 120 or 54)
-    if d.importantCastMarkerPosition=="LEFT" then
-      self.iconHolder:SetPoint("RIGHT",fakeBar,"LEFT",iconSize*0.22,0)
-    elseif d.importantCastMarkerPosition=="RIGHT" then
-      self.iconHolder:SetPoint("LEFT",fakeBar,"RIGHT",-iconSize*0.22,0)
-    elseif below then
-      self.iconHolder:SetPoint("TOP",fakeBar,"BOTTOM",0,2)
-    else
-      self.iconHolder:SetPoint("BOTTOM",fakeName,"TOP",0,offset)
-    end
+    self.iconHolder:SetPoint("BOTTOM",fakeBar,"TOP",ox*k,oy*k-iconSize*0.13)
   end
   preview:SetScript("OnUpdate",function(self)
     if not self.stylePreset or not NT.ImportantCastFrame then return end
@@ -1752,7 +1794,8 @@ function UI:BuildKick()
   p.Refresh=function(self)
     for _,r in ipairs(self.kickRows) do if r and r.Refresh then r:Refresh() end end
     self.markerRow:Refresh(); self.rotaSizeRow:Refresh(); self.rotaOrderRow:Refresh()
-    self.importantRow:Refresh(); self.importantStyleRow:Refresh(); self.importantSizeRow:Refresh(); self.importantPositionRow:Refresh()
+    self.importantRow:Refresh(); self.importantStyleRow:Refresh(); self.importantSizeRow:Refresh()
+    if self.importantOffsetXRow then self.importantOffsetXRow:Refresh(); self.importantOffsetYRow:Refresh() end
     if self.importantFollowerRow then self.importantFollowerRow:Refresh() end
     self.combatTimerRow:Refresh(); self.combatSize:Refresh(); self.enemyCountRow:Refresh(); self.enemyCountSize:Refresh(); self.enemyGarroteRow:Refresh()
 

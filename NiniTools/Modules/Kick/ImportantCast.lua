@@ -82,17 +82,37 @@ local function stylePreset()
   return preset, math.max(.70,math.min(1.40,tonumber(d.importantCastMarkerScale) or 1))
 end
 
-local function markerPositionOffset()
-  local d=db() or {}
-  local key=d.importantCastMarkerPosition or "HEAD"
-  if key=="NAME" then return -16 end
-  if key=="BAR" then return -28 end
-  return -4
+-- 2.6.3: 위치는 「체력바 위 가운데」 하나를 기준으로, 설정의 X · Y 막대로 옮긴다.
+-- (2.6.1~2.6.2의 머리 위 · 이름 위 · 체력바 위 · 왼쪽 · 오른쪽 · 아래 고르기는 없앰)
+local OFFSET_X_MIN,OFFSET_X_MAX=-200,200
+local OFFSET_Y_MIN,OFFSET_Y_MAX=-80,160
+RDE.IMPORTANT_CAST_OFFSET_RANGE={xMin=OFFSET_X_MIN,xMax=OFFSET_X_MAX,yMin=OFFSET_Y_MIN,yMax=OFFSET_Y_MAX}
+
+local function clampOffset(v,lo,hi)
+  v=math.floor((tonumber(v) or 0)+.5)
+  if v<lo then return lo elseif v>hi then return hi end
+  return v
 end
 
-local function markerPositionKey()
+-- 예전 위치를 쓰던 사람은 한 번만 비슷한 X · Y로 옮겨 준다. 머리 위 · 이름 위 · 체력바 위는 새 기준(0, 0)으로.
+local function migratePosition(d)
+  if not d or (tonumber(d.importantCastPosRev) or 0)>=263 then return end
+  if d.importantCastOffsetX==nil and d.importantCastOffsetY==nil then
+    local key=d.importantCastMarkerPosition
+    local x,y=0,0
+    if key=="LEFT" then x,y=-130,-24
+    elseif key=="RIGHT" then x,y=130,-24
+    elseif key=="BELOW" then x,y=0,-62 end
+    d.importantCastOffsetX,d.importantCastOffsetY=x,y
+  end
+  d.importantCastPosRev=263
+end
+RDE.ImportantCastMigratePosition=function() migratePosition(db()) end
+
+local function markerOffsets()
   local d=db() or {}
-  return d.importantCastMarkerPosition or "HEAD"
+  migratePosition(db())
+  return clampOffset(d.importantCastOffsetX,OFFSET_X_MIN,OFFSET_X_MAX), clampOffset(d.importantCastOffsetY,OFFSET_Y_MIN,OFFSET_Y_MAX)
 end
 
 local function deactivateVisual(ind)
@@ -231,36 +251,23 @@ local function anchorVisual(ind)
   if not ind or not ind.visual then return end
   local iconSize=ind.iconBase or 68
   local visual=ind.visual
+  local ox,oy=markerOffsets()
   visual:ClearAllPoints()
-  local posKey=markerPositionKey()
-  if posKey=="LEFT" or posKey=="RIGHT" then
-    local bar=ind.barRef
-    if not bar or safeCall(bar,"IsShown")~=true then
-      bar=findHealthBar(ind.plate,ind)
-      ind.barRef=bar
-    end
-    if bar then
-      -- 그림 안 여백(느낌표는 가운데 40% 정도)만큼만 겹쳐서 글자 쪽이 막대 끝에서 조금 떨어지게
-      local inset=iconSize*0.22
-      local okA
-      if posKey=="LEFT" then
-        okA=pcall(visual.SetPoint,visual,"RIGHT",bar,"LEFT",inset,0)
-      else
-        okA=pcall(visual.SetPoint,visual,"LEFT",bar,"RIGHT",-inset,0)
-      end
-      if okA then return end
-      visual:ClearAllPoints()
-    end
-    if posKey=="LEFT" then
-      visual:SetPoint("RIGHT",ind,"LEFT",iconSize*0.30,-6)    -- 체력바를 못 찾으면 예전 위치
-    else
-      visual:SetPoint("LEFT",ind,"RIGHT",-iconSize*0.30,-6)
-    end
-  elseif posKey=="BELOW" then
-    visual:SetPoint("TOP",ind,"BOTTOM",0,iconSize*0.06)      -- 2.6.1: 이름표 아래 (시전바 밑)
-  else
-    visual:SetPoint("BOTTOM",ind,"TOP",0,markerPositionOffset())
+  local bar=ind.barRef
+  if not bar or safeCall(bar,"IsShown")~=true then
+    bar=findHealthBar(ind.plate,ind)
+    ind.barRef=bar
   end
+  if bar then
+    -- 그림 아래 여백(점 아래 14%)만큼 내려서, X·Y가 0이면 느낌표 점이 체력바 윗변에 딱 닿게
+    if pcall(visual.SetPoint,visual,"BOTTOM",bar,"TOP",ox,oy-iconSize*0.13) then return end
+    visual:ClearAllPoints()
+  end
+  visual:SetPoint("BOTTOM",ind,"TOP",ox,oy-28)   -- 체력바를 못 찾는 이름표: 예전 「체력바 위」 자리 기준
+end
+
+RDE.RefreshImportantCastAnchor=function()
+  for _,ind in pairs(indicators) do anchorVisual(ind) end
 end
 
 local function applyVisualStyle(ind)
@@ -699,8 +706,8 @@ local function runTest(seconds)
   end
   loop(GetTime())
   local preset=select(1,stylePreset())
-  local pos={HEAD="머리 위",NAME="이름 바로 위",BAR="체력바 위",LEFT="이름표 왼쪽",RIGHT="이름표 오른쪽",BELOW="이름표 아래"}
-  return where,(preset and preset.label or "기본형"),(pos[markerPositionKey()] or "머리 위"),seconds
+  local ox,oy=markerOffsets()
+  return where,(preset and preset.label or "기본형"),string.format("체력바 위 X %+d · Y %+d",ox,oy),seconds
 end
 
 RDE.ImportantCastTest=function(arg)
@@ -740,6 +747,7 @@ frame:SetScript("OnEvent",function(_,event,unit)
   if event=="PLAYER_LOGIN" then
     local d=db()
     if d and d.importantCastMarkerEnabled==nil then d.importantCastMarkerEnabled=true end
+    migratePosition(d)
     C_Timer.After(.2,syncListening)
     return
   elseif event=="PLAYER_ENTERING_WORLD" then
