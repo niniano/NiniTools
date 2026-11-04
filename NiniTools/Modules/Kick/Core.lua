@@ -17,7 +17,7 @@ local defaults = {
   focusMacroEnabled=true, focusMacroName="NiniKickFocus", freeFocusSolo=false,
   autoInterruptMacroEnabled=true, autoInterruptMacroName="NiniKickAuto",
   defensiveEnabled=false, keepDefensiveWithNaowh=false, displayStyle="ICON", simpleShowMechanic=true, importantCastMarkerEnabled=true,
-  importantCastMarkerStyle="PREMIUM", importantCastMarkerScale=1.0, importantCastMarkerPosition="HEAD",
+  importantCastMarkerStyle="PREMIUM", importantCastMarkerScale=1.0, importantCastMarkerPosition="HEAD", importantCastFollowerEnabled=true,
   -- 2.0.23: 아이콘/텍스트 각각 끌 수 있다. 기존 사용자는 둘 다 켜진 상태로 시작한다.
   alertIconEnabled=true, alertTextEnabled=true,
   iconSize=40, timerTextSize=18, alertTextSize=18, textGap=8,
@@ -2600,6 +2600,14 @@ SlashCmdList.NINIKICK=function(input)
   elseif c=="advanced" or c=="old" or c=="window" then openSettings()
   elseif c=="test" then
     runPreviewCycle()
+  elseif c=="bang" or c=="!" then
+    -- 2.6.2: 중요몹 「!」 확인 (/nk bang · /nini bang 같은 명령)
+    if a=="" or a=="status" then
+      P(RDE.ImportantCastStatus and RDE.ImportantCastStatus() or "중요몹 표시 모듈을 찾지 못했습니다.")
+      P("/nk bang test [초] · /nk bang stop")
+    elseif RDE.ImportantCastTest then
+      P(RDE.ImportantCastTest(a:match("^test%s*(.-)$") or a))
+    end
   elseif c=="unlock" then setUnlockState(true)
   elseif c=="lock" then setUnlockState(false)
   elseif c=="debug" then
@@ -2655,7 +2663,7 @@ SlashCmdList.NINIKICK=function(input)
     elseif db.freeFocusSolo then interruptStatus="자유 주시 단독 차단"
     else interruptStatus=MARKER_NAMES[db.interruptMarker].." 단독 차단" end
     P(string.format("v%s · %s · %s · 주시 직접감지 · 현재순번 %d · 차단음성 %s · 전투시간 %s · 단독=내 차단 준비시에만 · 브리핑 %s",VERSION,"차단 전용",interruptStatus,interruptState.currentOrder or 1,db.voiceMode,(db.combatTimerEnabled~=false and "ON" or "OFF"),(RDE.GetBriefingSummary and RDE.GetBriefingSummary() or "미설정")))
-  else P("/nk · status, briefing, kickstate, focusmacro, automacro, combattime, version") end
+  else P("/nk · status, briefing, kickstate, focusmacro, automacro, combattime, bang, version") end
 end
 
 -- 2.0.5: delayed Mythic+ completion greeting.

@@ -16,6 +16,7 @@ local castEventsRegistered = false
 local animationDriver = CreateFrame("Frame")
 local activeVisuals = {}
 local activeVisualCount = 0
+local testState = {token=0}   -- 2.6.2: /nini bang test 상태
 local CAST_EVENTS = {
   "NAME_PLATE_UNIT_ADDED",
   "NAME_PLATE_UNIT_REMOVED",
@@ -30,7 +31,7 @@ local ALERT_TEXTURE = "Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_White
 local NT = _G.NiniTools or {}
 
 local function framePreset()
-  return NT.IMPORTANT_CAST_STYLES and NT.IMPORTANT_CAST_STYLES.DEFAULT or {}
+  return NT.IMPORTANT_CAST_STYLES and NT.IMPORTANT_CAST_STYLES.PREMIUM or {}
 end
 
 local function noSnap(tex)
@@ -47,18 +48,31 @@ local function db()
   return type(RogueDefensivesDB)=="table" and RogueDefensivesDB or nil
 end
 
+-- 2.6.2: 추종자 던전(난이도 205)에서도 「!」를 켤 수 있다 (설정 · 기본 켬).
+-- 차단 순번 · 파티 쿨 추적 · 차단 음성은 지금처럼 쐐기에서만 돈다 (Core의 activeMythicPlus 그대로).
+local FOLLOWER_DIFFICULTY=205
+local function inFollowerDungeon()
+  if type(GetInstanceInfo)~="function" then return false end
+  local ok,_,instanceType,difficultyID=pcall(GetInstanceInfo)
+  if not ok or isSecret(instanceType) or isSecret(difficultyID) then return false end
+  return instanceType=="party" and tonumber(difficultyID)==FOLLOWER_DIFFICULTY
+end
+RDE.IsFollowerDungeon=inFollowerDungeon
+
 local function enabled()
   local d=db()
   if not d or d.enabled==false or d.importantCastMarkerEnabled==false then return false end
-  return type(RDE.IsActiveMythicPlus)=="function" and RDE.IsActiveMythicPlus() or false
+  if type(RDE.IsActiveMythicPlus)=="function" and RDE.IsActiveMythicPlus() then return true end
+  return d.importantCastFollowerEnabled~=false and inFollowerDungeon()
 end
 
 local function stylePreset()
   local d=db() or {}
   -- 2.6.0: 고급형을 새 기본으로. 예전 기본(DEFAULT)이던 사람은 한 번만 고급형으로 바꾼다 (설정에서 되돌릴 수 있음).
-  if db() and (tonumber(d.importantCastStyleRev) or 0)<260 then
+  if db() and (tonumber(d.importantCastStyleRev) or 0)<262 then
+    -- 2.6.2: 예전 그림의 기본형(DEFAULT)은 없어졌다 → 새 기본형(PREMIUM). 펄스형·강조형은 이름 그대로 새 그림.
     if d.importantCastMarkerStyle==nil or d.importantCastMarkerStyle=="DEFAULT" then d.importantCastMarkerStyle="PREMIUM" end
-    d.importantCastStyleRev=260
+    d.importantCastStyleRev=262
   end
   local preset
   if type(NT.GetImportantCastStyle)=="function" then
@@ -175,6 +189,80 @@ local function activateVisual(ind)
   end
 end
 
+-- 2.6.2: 왼쪽 · 오른쪽은 이름표 애드온의 실제 체력바 옆에 붙인다.
+-- Ellesmere(220px) · Plater 등은 체력바가 우리 틀(118px)보다 넓어서, 틀 기준으로 붙이면 막대 안쪽에 겹쳐 보였다.
+-- 이름표 안의 보이는 StatusBar 중 가장 넓은 것(같으면 위쪽 = 체력바)을 찾는다. 못 찾으면 예전 위치.
+local function safeCall(obj,method,...)
+  if not obj then return nil end
+  local fn=obj[method]
+  if type(fn)~="function" then return nil end
+  local ok,v=pcall(fn,obj,...)
+  if not ok or isSecret(v) then return nil end
+  return v
+end
+
+local function findHealthBar(plate,skip)
+  if not plate then return nil end
+  local best,bestW,bestTop
+  local function visit(f,depth)
+    if depth>4 or f==skip then return end
+    local okC,kids=pcall(function() return {f:GetChildren()} end)
+    if not okC or type(kids)~="table" then return end
+    for _,c in ipairs(kids) do
+      if c~=skip and safeCall(c,"IsShown")==true then
+        if safeCall(c,"GetObjectType")=="StatusBar" then
+          local w=tonumber(safeCall(c,"GetWidth")) or 0
+          local top=tonumber(safeCall(c,"GetTop")) or 0
+          if w>=40 and w<=500 then
+            if not best or w>bestW+2 or (math.abs(w-bestW)<=2 and top>bestTop) then
+              best,bestW,bestTop=c,w,top
+            end
+          end
+        end
+        visit(c,depth+1)
+      end
+    end
+  end
+  visit(plate,1)
+  return best
+end
+
+local function anchorVisual(ind)
+  if not ind or not ind.visual then return end
+  local iconSize=ind.iconBase or 68
+  local visual=ind.visual
+  visual:ClearAllPoints()
+  local posKey=markerPositionKey()
+  if posKey=="LEFT" or posKey=="RIGHT" then
+    local bar=ind.barRef
+    if not bar or safeCall(bar,"IsShown")~=true then
+      bar=findHealthBar(ind.plate,ind)
+      ind.barRef=bar
+    end
+    if bar then
+      -- 그림 안 여백(느낌표는 가운데 40% 정도)만큼만 겹쳐서 글자 쪽이 막대 끝에서 조금 떨어지게
+      local inset=iconSize*0.22
+      local okA
+      if posKey=="LEFT" then
+        okA=pcall(visual.SetPoint,visual,"RIGHT",bar,"LEFT",inset,0)
+      else
+        okA=pcall(visual.SetPoint,visual,"LEFT",bar,"RIGHT",-inset,0)
+      end
+      if okA then return end
+      visual:ClearAllPoints()
+    end
+    if posKey=="LEFT" then
+      visual:SetPoint("RIGHT",ind,"LEFT",iconSize*0.30,-6)    -- 체력바를 못 찾으면 예전 위치
+    else
+      visual:SetPoint("LEFT",ind,"RIGHT",-iconSize*0.30,-6)
+    end
+  elseif posKey=="BELOW" then
+    visual:SetPoint("TOP",ind,"BOTTOM",0,iconSize*0.06)      -- 2.6.1: 이름표 아래 (시전바 밑)
+  else
+    visual:SetPoint("BOTTOM",ind,"TOP",0,markerPositionOffset())
+  end
+end
+
 local function applyVisualStyle(ind)
   if not ind or not ind.visual then return end
   local preset,scale=stylePreset()
@@ -187,18 +275,8 @@ local function applyVisualStyle(ind)
   -- 바깥 틀은 크기 고정 · 그림은 가운데 기준으로만 커지고 작아진다 (위치가 흔들리지 않음)
   ind.visual:SetSize(iconSize,iconSize)
   ind.visual:SetScale(1)
-  ind.visual:ClearAllPoints()
-  local posKey=markerPositionKey()
-  if posKey=="LEFT" then
-    -- 2.6.0: 이름표 왼쪽 (체력바·시전바 옆). 그림 안의 여백만큼 안쪽으로 붙인다.
-    ind.visual:SetPoint("RIGHT",ind,"LEFT",iconSize*0.30,-6)
-  elseif posKey=="RIGHT" then
-    ind.visual:SetPoint("LEFT",ind,"RIGHT",-iconSize*0.30,-6)   -- 2.6.1: 이름표 오른쪽
-  elseif posKey=="BELOW" then
-    ind.visual:SetPoint("TOP",ind,"BOTTOM",0,iconSize*0.06)      -- 2.6.1: 이름표 아래 (시전바 밑)
-  else
-    ind.visual:SetPoint("BOTTOM",ind,"TOP",0,markerPositionOffset())
-  end
+  ind.barRef=nil
+  anchorVisual(ind)
   local texPath=preset.texture or ALERT_TEXTURE
   for _,key in ipairs({"tex","glow","ring"}) do
     local tex=ind[key]
@@ -312,6 +390,7 @@ local function getIndicator(nameplate)
   noSnap(gloss)
 
   ind.visual=visual
+  ind.plate=nameplate
   ind.gloss=gloss
   ind.tex=tex
   ind.glow=glow
@@ -351,6 +430,7 @@ local function startImportantEffect(ind)
   ind.deactivateNow=nil
   ind.visual:SetScale(1)
   ind.visual:SetAlpha(0)
+  anchorVisual(ind)   -- 2.6.2: 이름표가 재사용되면 체력바 크기가 바뀔 수 있어 시전마다 다시 붙인다
   activateVisual(ind)
   visualTick(ind,GetTime())
 end
@@ -496,7 +576,7 @@ end
 
 local function hideAll()
   for _,ind in pairs(indicators) do
-    if ind then
+    if ind and ind~=testState.ind then
       ind.effectToken=(ind.effectToken or 0)+1
       ind:SetAlpha(0)
       if ind.mine then ind.mine:Hide() end
@@ -534,6 +614,115 @@ local function syncListening()
   if castEventsRegistered then refreshAll() end
 end
 
+-- 2.6.2: 확인용 테스트 (/nini bang test)
+-- 쐐기 밖에서도 「!」를 몇 초 동안 띄운다. 대상 이름표가 있으면 거기에, 없으면 화면 가운데 가짜 이름표에.
+-- 중요 여부를 secret 값으로 판단하지 않고 그냥 보이게 하는 것뿐이라 전투 판정과 상관없다.
+-- 띄워 둔 동안 설정에서 위치 · 스타일 · 크기를 바꾸면 바로 반영된다.
+local fakePlate
+
+local function getFakePlate()
+  if fakePlate then return fakePlate end
+  local f=CreateFrame("Frame",nil,UIParent)
+  f:SetSize(150,40)
+  f:SetPoint("CENTER",UIParent,"CENTER",0,140)
+  f:SetFrameStrata("HIGH")
+  local name=f:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+  name:SetPoint("TOP",0,-2)
+  name:SetText("테스트 몹 (니니툴)")
+  name:SetTextColor(1,.82,.2,1)
+  local bar=CreateFrame("StatusBar",nil,f)   -- 진짜 이름표처럼 StatusBar (왼쪽·오른쪽 위치 확인용)
+  bar:SetPoint("BOTTOMLEFT",4,6); bar:SetPoint("BOTTOMRIGHT",-4,6); bar:SetHeight(12)
+  bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+  bar:SetStatusBarColor(.86,.08,.05,1)
+  bar:SetMinMaxValues(0,1); bar:SetValue(1)
+  local bg=f:CreateTexture(nil,"BACKGROUND")
+  bg:SetPoint("TOPLEFT",bar,"TOPLEFT",-1,1); bg:SetPoint("BOTTOMRIGHT",bar,"BOTTOMRIGHT",1,-1)
+  bg:SetColorTexture(0,0,0,.85)
+  f:Hide()
+  fakePlate=f
+  return f
+end
+
+local function testTarget()
+  if C_NamePlate and C_NamePlate.GetNamePlateForUnit then
+    local okE,exists=pcall(UnitExists,"target")
+    if okE and exists==true then
+      local ok,plate=pcall(C_NamePlate.GetNamePlateForUnit,"target")
+      if ok and plate then return plate,"대상 이름표" end
+    end
+  end
+  local f=getFakePlate()
+  f:Show()
+  return f,"화면 가운데 가짜 이름표"
+end
+
+local function stopTest()
+  testState.token=testState.token+1
+  local ind=testState.ind
+  testState.ind=nil
+  if ind then
+    ind:SetAlpha(0)
+    if ind.mine then ind.mine:Hide() end
+    ind.effectMode="main"
+    if ind.visual then ind.visual:SetAlpha(1); ind.visual:SetScale(1) end
+    deactivateVisual(ind)
+  end
+  if fakePlate then fakePlate:Hide() end
+end
+
+local function runTest(seconds)
+  stopTest()
+  seconds=math.max(3,math.min(30,tonumber(seconds) or 10))
+  local plate,where=testTarget()
+  local realPlate=(plate~=fakePlate)
+  local ind=getIndicator(plate)
+  applyVisualStyle(ind)
+  if ind.mine then ind.mine:Hide() end
+  testState.ind=ind
+  local token=testState.token
+  local cycle=3.0
+  local function loop(started)
+    if testState.token~=token or testState.ind~=ind then return end
+    if GetTime()-started>=seconds then stopTest(); return end
+    if realPlate then
+      -- 대상이 바뀌거나 이름표가 사라지면(다른 몹에 재사용될 수 있음) 바로 끈다
+      local ok,cur=pcall(C_NamePlate.GetNamePlateForUnit,"target")
+      if not ok or cur~=plate then stopTest(); return end
+    end
+    ind:SetAlpha(1)
+    startImportantEffect(ind)
+    C_Timer.After(cycle-0.45,function()
+      if testState.token~=token then return end
+      finishImportantEffect(ind)
+    end)
+    C_Timer.After(cycle,function() loop(started) end)
+  end
+  loop(GetTime())
+  local preset=select(1,stylePreset())
+  local pos={HEAD="머리 위",NAME="이름 바로 위",BAR="체력바 위",LEFT="이름표 왼쪽",RIGHT="이름표 오른쪽",BELOW="이름표 아래"}
+  return where,(preset and preset.label or "기본형"),(pos[markerPositionKey()] or "머리 위"),seconds
+end
+
+RDE.ImportantCastTest=function(arg)
+  arg=tostring(arg or ""):lower()
+  if arg=="stop" or arg=="off" or arg=="끄기" then
+    stopTest()
+    return "테스트를 껐습니다."
+  end
+  local where,label,pos,secs=runTest(tonumber(arg))
+  return string.format("「!」 테스트 %d초 · %s · %s · %s (띄워 둔 동안 설정을 바꾸면 바로 보입니다 · 끄기: /nini bang stop)",secs,where,label,pos)
+end
+
+RDE.ImportantCastStatus=function()
+  local d=db() or {}
+  local where
+  if type(RDE.IsActiveMythicPlus)=="function" and RDE.IsActiveMythicPlus() then where="쐐기 진행 중 → 표시"
+  elseif inFollowerDungeon() then where=(d.importantCastFollowerEnabled~=false) and "추종자 던전 → 표시" or "추종자 던전 → 설정에서 꺼 둠"
+  else where="쐐기·추종자 던전 밖 → 표시 안 함 (/nini bang test 로 모양만 확인)" end
+  local preset=select(1,stylePreset())
+  return string.format("중요몹 「!」 %s · %s · %s",(d.importantCastMarkerEnabled==false) and "꺼짐" or "켜짐",preset and preset.label or "기본형",where)
+end
+
 RDE.ImportantCastRefreshAll=syncListening
 RDE.RefreshImportantCastStyle=function()
   for _,ind in pairs(indicators) do applyVisualStyle(ind) end
@@ -546,6 +735,7 @@ frame:RegisterEvent("PLAYER_REGEN_DISABLED")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("CHALLENGE_MODE_START")
 frame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
+frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")   -- 2.6.2: 추종자 던전 입장 확인
 frame:SetScript("OnEvent",function(_,event,unit)
   if event=="PLAYER_LOGIN" then
     local d=db()
@@ -554,6 +744,9 @@ frame:SetScript("OnEvent",function(_,event,unit)
     return
   elseif event=="PLAYER_ENTERING_WORLD" then
     hideAll()
+    C_Timer.After(.5,syncListening)
+    return
+  elseif event=="ZONE_CHANGED_NEW_AREA" then
     C_Timer.After(.5,syncListening)
     return
   elseif event=="CHALLENGE_MODE_START" then

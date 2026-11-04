@@ -400,6 +400,13 @@ function D:Run(arg)
   end
 
   NT:Print(string.format("Kick %s · Important %s · Enemy %s · Navi %s", onOff(modules.kick), onOff(modules.importantCast), onOff(modules.enemyCount), onOff(modules.naviCursor)))
+  do -- 2.6.2: 중요몹 「!」 지금 뜨는지 (쐐기 / 추종자 던전)
+    local K=_G.NiniKick
+    if K and type(K.ImportantCastStatus)=="function" then
+      local ok,line=pcall(K.ImportantCastStatus)
+      if ok and line then NT:Print(tostring(line)) end
+    end
+  end
   NT:Print("Macro Ownership · NiniKickFocus/Auto = NiniTools · Potion/범용 = External(Ellesmere 권장)")
   if A and type(A.DescribeNaowhReminderOwner)=="function" then
     local owner,detail=A:DescribeNaowhReminderOwner()

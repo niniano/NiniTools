@@ -1,4 +1,4 @@
-﻿NiniTools 2.6.1
+﻿NiniTools 2.6.2
 
 NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운드/Navi, Naowh Smart Reminders 연동을 한 창에 모은 WoW 통합 편의 애드온입니다.
 
@@ -13,7 +13,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 
 [주요 기능]
 - 차단 담당 징표/로테이션, 중요 시전·생존기 알림, 중요몹 ! 표시
-- 중요몹 ! 표시: 고급형(기본 · 주황↔핫핑크 · 광택 · 튀어나오기)/기본형/펄스형/강조형, 크기·위치(위·왼쪽·오른쪽·아래) 선택 + 실시간 미리보기
+- 중요몹 ! 표시: 고급 「!」(주황↔핫핑크 · 광택) 기본형/펄스형/강조형, 크기·위치(위·왼쪽·오른쪽·아래) 선택 + 실시간 미리보기
+- 「!」는 쐐기 · 추종자 던전에서 표시 · /nini bang test 로 어디서나 모양 확인
 - NiniTools N 브랜드: 설정창 왼쪽 상단은 배경 없는 Wordmark, 우측 설정 버튼은 배경 없는 Round, 미니맵은 설정 버튼과 같은 두 줄 N(미니맵용 굵은 선) 사용
 - 전투시간 및 주변 적 숫자 표시
 - Lorrgs 등 메모를 NSRT 개인 메모로 가져오기
@@ -64,8 +65,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
 
 [배포]
-- 현재 정식 버전: 2.6.1
-- 최신 변경사항: CHANGELOG_2.6.1.txt (2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
+- 현재 정식 버전: 2.6.2
+- 최신 변경사항: CHANGELOG_2.6.2.txt (2.6.0 · 2.6.1 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
 
 [계정 달력 (2.5.8)]
 - NiniTools 창 「계정 달력」 탭 · /nini cal

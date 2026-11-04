@@ -2,7 +2,7 @@ local ADDON_NAME, NT = ...
 NT = NT or {}
 _G.NiniTools = NT
 
-NT.VERSION = "2.6.1"
+NT.VERSION = "2.6.2"
 local function resolveClassAccent()
   local classFile
   if UnitClass then
@@ -145,31 +145,33 @@ NT.ALERT_STYLE = NT.ALERT_STYLE or {
 --   (2.6.0) PREMIUM 고급형 · 크기 그대로 · 크게 튀어나왔다가 제자리, 끝나면 작아지며 사라짐 · 새 기본값
 --   (2.6.1) 고급형 그림을 다시 그림: 오른쪽으로 살짝 기운 넓은 몸통 · 입체 결 · 흰 광택(색 안 입힘)
 --           색은 주황↔핫핑크 (빨간 체력바가 겹친 쐐기 이름표 위에서도 잘 보이게)
-NT.IMPORTANT_CAST_STYLE_ORDER = {"PREMIUM","DEFAULT","PULSE","EMPHASIS"}
+--   (2.6.2) 새 「!」 그림을 바탕으로 세 가지 움직임만 남김. 예전 빨강·노랑 그림 스타일은 없앰.
+--           기본형 = 튀어나오기 · 펄스형 = 두근두근 · 강조형 = 크게 부풀기 (셋 다 주황↔핫핑크 · 광택 · 튀어나오며 등장)
+NT.IMPORTANT_CAST_STYLE_ORDER = {"PREMIUM","PULSE","EMPHASIS"}
+local PREMIUM_TEX="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium.tga"
+local PREMIUM_GLOSS="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium_Gloss.tga"
 NT.IMPORTANT_CAST_STYLES = {
   PREMIUM = {
-    label="고급형", desc="주황↔핫핑크 · 튀어나오기", motion="static", pop="zoom",
-    texture="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium.tga",
-    gloss="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium_Gloss.tga",
+    label="기본형", desc="제자리 고정", motion="static", pop="zoom",
+    texture=PREMIUM_TEX, gloss=PREMIUM_GLOSS,
     iconSize=72, scaleAmp=0, period=1.00,
     low={1.00,0.55,0.05}, high={1.00,0.16,0.60}, colorPeriod=0.60,
   },
-  DEFAULT = {
-    label="기본형", desc="천천히 숨쉬기", motion="breathe",
-    iconSize=68, scaleAmp=0.08, period=1.20,
-    low={1.00,0.08,0.03}, high={1.00,0.92,0.12}, colorPeriod=1.60,
-  },
   PULSE = {
-    label="펄스형", desc="두근두근 박동", motion="heartbeat",
-    iconSize=70, scaleAmp=0.16, period=0.95,
-    low={1.00,0.08,0.03}, high={1.00,0.92,0.12}, colorPeriod=1.60,
+    label="펄스형", desc="두근두근", motion="heartbeat", pop="zoom",
+    texture=PREMIUM_TEX, gloss=PREMIUM_GLOSS,
+    iconSize=72, scaleAmp=0.14, period=0.90,
+    low={1.00,0.55,0.05}, high={1.00,0.16,0.60}, colorPeriod=0.90,
   },
   EMPHASIS = {
-    label="강조형", desc="크게 부풀기", motion="swell",
-    iconSize=82, scaleAmp=0.18, period=1.00,
-    low={1.00,0.08,0.03}, high={1.00,0.92,0.12}, colorPeriod=1.60,
+    label="강조형", desc="크게 부풀기", motion="swell", pop="zoom",
+    texture=PREMIUM_TEX, gloss=PREMIUM_GLOSS,
+    iconSize=80, scaleAmp=0.18, period=1.00,
+    low={1.00,0.55,0.05}, high={1.00,0.16,0.60}, colorPeriod=1.00,
   },
 }
+-- 예전 이름(DEFAULT = 옛 기본형)으로 저장된 설정은 새 기본형으로 읽는다.
+NT.IMPORTANT_CAST_STYLE_ALIASES = { DEFAULT="PREMIUM" }
 
 local function nt_clamp01(x) if x<0 then return 0 elseif x>1 then return 1 end return x end
 local function nt_smooth(x) x=nt_clamp01(x) return x*x*(3-2*x) end
@@ -186,7 +188,7 @@ end
 -- fading = seconds since the cast ended (nil while casting).  Shared by the nameplate
 -- marker and the settings preview so both always look the same.
 function NT:ImportantCastFrame(preset,now,elapsed,fading)
-  preset=preset or self.IMPORTANT_CAST_STYLES.DEFAULT
+  preset=preset or self.IMPORTANT_CAST_STYLES.PREMIUM
   now=tonumber(now) or (GetTime and GetTime() or 0)
   local period=tonumber(preset.period) or 1.20
   local ph=(now%period)/period
@@ -242,7 +244,9 @@ end
 
 function NT:GetImportantCastStyle(id)
   id=type(id)=="string" and id:upper() or "PREMIUM"
-  return self.IMPORTANT_CAST_STYLES[id] or self.IMPORTANT_CAST_STYLES.PREMIUM or self.IMPORTANT_CAST_STYLES.DEFAULT, id
+  id=(self.IMPORTANT_CAST_STYLE_ALIASES and self.IMPORTANT_CAST_STYLE_ALIASES[id]) or id
+  if not self.IMPORTANT_CAST_STYLES[id] then id="PREMIUM" end
+  return self.IMPORTANT_CAST_STYLES[id], id
 end
 
 function NT:GetAlertPulse(now)

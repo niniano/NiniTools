@@ -1526,7 +1526,7 @@ function UI:BuildKick()
   autoNote:SetPoint("BOTTOMLEFT",216,18); autoNote:SetPoint("RIGHT",-18,0); autoNote:SetJustifyH("LEFT")
 
   -- 3) Important mob marker -------------------------------------------------------------
-  local important=self:AccordionSection(p,"important","중요몹 ! 표시","쐐기 중요 시전을 이름표 위 느낌표로 강조",284,false)
+  local important=self:AccordionSection(p,"important","중요몹 ! 표시","쐐기 · 추종자 던전 중요 시전을 이름표 느낌표로 강조",330,false)
   local impLeft=CreateFrame("Frame",nil,important.body)
   impLeft:SetPoint("TOPLEFT",0,0); impLeft:SetPoint("BOTTOMLEFT",0,0); impLeft:SetWidth(570)
   p.importantRow=self:Toggle(impLeft,"중요몹 ! 표시 사용","importantCastMarkerEnabled",get,function(v)
@@ -1549,18 +1549,29 @@ function UI:BuildKick()
   end)
 
   local styleItems={}
-  for _,id in ipairs(NT.IMPORTANT_CAST_STYLE_ORDER or {"DEFAULT","PULSE","EMPHASIS"}) do
+  for _,id in ipairs(NT.IMPORTANT_CAST_STYLE_ORDER or {"PREMIUM","PULSE","EMPHASIS"}) do
     local preset=NT.IMPORTANT_CAST_STYLES and NT.IMPORTANT_CAST_STYLES[id]
     styleItems[#styleItems+1]={text=(preset and preset.label) or id,value=id,width=96,preset=preset}
   end
   p.importantStyleRow=self:StyleCardRow(impLeft,"표시 스타일",-132,styleItems,
-    function(v) return (get().importantCastMarkerStyle or "PREMIUM")==v end,
+    function(v) return select(2,NT:GetImportantCastStyle(get().importantCastMarkerStyle))==v end,
     function(v)
       get().importantCastMarkerStyle=v
       if _G.NiniKick and _G.NiniKick.RefreshImportantCastStyle then _G.NiniKick.RefreshImportantCastStyle() end
     end)
-  local impNote=self:Font(impLeft,8,"고급형=주황↔핫핑크 · 크게 튀어나왔다 제자리 · 기본형=천천히 숨쉬기 · 펄스형=박동 · 강조형=부풀기",C.muted)
-  impNote:SetPoint("TOPLEFT",22,-218); impNote:SetPoint("RIGHT",-12,0); impNote:SetJustifyH("LEFT")
+  local impNote=self:Font(impLeft,8,"셋 다 고급 「!」(주황↔핫핑크·광택) · 기본형=제자리 · 펄스형=두근두근 · 강조형=크게 부풀기",C.muted)
+  impNote:SetPoint("TOPLEFT",22,-214); impNote:SetPoint("RIGHT",-12,0); impNote:SetJustifyH("LEFT")
+
+  -- 2.6.2: 추종자 던전에서도 표시 (차단 순번·음성은 쐐기에서만) + 이름표에 띄워 보는 테스트
+  p.importantFollowerRow=self:Toggle(impLeft,"추종자 던전에서도 표시","importantCastFollowerEnabled",get,function()
+    if _G.NiniKick and _G.NiniKick.ImportantCastRefreshAll then pcall(_G.NiniKick.ImportantCastRefreshAll) end
+  end,-232)
+  local bangTest=self:Button(impLeft,"이름표에 띄워 보기 (10초)",186,24,function()
+    NT:CallSlash("NINIKICK","bang test 10")
+  end)
+  bangTest:SetPoint("TOPLEFT",22,-278)
+  local bangHint=self:Font(impLeft,8,"대상 이름표(없으면 화면 가운데)에 띄움 · 띄운 동안 위치·스타일을 바꿔 보세요 · /nini bang test",C.muted)
+  bangHint:SetPoint("LEFT",bangTest,"RIGHT",10,0); bangHint:SetPoint("RIGHT",impLeft,"RIGHT",-12,0); bangHint:SetJustifyH("LEFT"); bangHint:SetWordWrap(true)
 
   local preview=CreateFrame("Frame",nil,important.body,"BackdropTemplate")
   preview:SetPoint("TOPRIGHT",-16,-12); preview:SetSize(336,260)
@@ -1625,9 +1636,9 @@ function UI:BuildKick()
     fakeBar:ClearAllPoints(); fakeBar:SetPoint("BOTTOM",0,below and 96 or 30)
     fakeName:ClearAllPoints(); fakeName:SetPoint("BOTTOM",0,below and 120 or 54)
     if d.importantCastMarkerPosition=="LEFT" then
-      self.iconHolder:SetPoint("RIGHT",fakeBar,"LEFT",iconSize*0.30,-2)
+      self.iconHolder:SetPoint("RIGHT",fakeBar,"LEFT",iconSize*0.22,0)
     elseif d.importantCastMarkerPosition=="RIGHT" then
-      self.iconHolder:SetPoint("LEFT",fakeBar,"RIGHT",-iconSize*0.30,-2)
+      self.iconHolder:SetPoint("LEFT",fakeBar,"RIGHT",-iconSize*0.22,0)
     elseif below then
       self.iconHolder:SetPoint("TOP",fakeBar,"BOTTOM",0,2)
     else
@@ -1742,6 +1753,7 @@ function UI:BuildKick()
     for _,r in ipairs(self.kickRows) do if r and r.Refresh then r:Refresh() end end
     self.markerRow:Refresh(); self.rotaSizeRow:Refresh(); self.rotaOrderRow:Refresh()
     self.importantRow:Refresh(); self.importantStyleRow:Refresh(); self.importantSizeRow:Refresh(); self.importantPositionRow:Refresh()
+    if self.importantFollowerRow then self.importantFollowerRow:Refresh() end
     self.combatTimerRow:Refresh(); self.combatSize:Refresh(); self.enemyCountRow:Refresh(); self.enemyCountSize:Refresh(); self.enemyGarroteRow:Refresh()
 
     local nsrStatus=(NT.NSRBridge and NT.NSRBridge:GetStatus()) or "Naowh Smart Reminders 연결 대기"
@@ -2797,6 +2809,12 @@ SlashCmdList.NINITOOLS=function(msg)
     else
       NT:Print("EXBoss 프로필 모듈을 찾지 못했습니다.")
     end
+    return
+  end
+  if msg=="bang" or msg:match("^bang%s+") or msg=="!" or msg:match("^!%s+") or msg=="느낌표" or msg:match("^느낌표%s+") then
+    -- 2.6.2: 중요몹 「!」 확인 · /nini bang (상태) · /nini bang test [초] · /nini bang stop
+    local arg=msg:match("^%S+%s*(.-)%s*$") or ""
+    NT:CallSlash("NINIKICK","bang "..arg)
     return
   end
   if msg=="check" or msg:match("^check%s+") then
