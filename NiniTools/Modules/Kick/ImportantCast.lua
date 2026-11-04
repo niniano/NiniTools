@@ -55,6 +55,11 @@ end
 
 local function stylePreset()
   local d=db() or {}
+  -- 2.6.0: 고급형을 새 기본으로. 예전 기본(DEFAULT)이던 사람은 한 번만 고급형으로 바꾼다 (설정에서 되돌릴 수 있음).
+  if db() and (tonumber(d.importantCastStyleRev) or 0)<260 then
+    if d.importantCastMarkerStyle==nil or d.importantCastMarkerStyle=="DEFAULT" then d.importantCastMarkerStyle="PREMIUM" end
+    d.importantCastStyleRev=260
+  end
   local preset
   if type(NT.GetImportantCastStyle)=="function" then
     preset=NT:GetImportantCastStyle(d.importantCastMarkerStyle)
@@ -69,6 +74,11 @@ local function markerPositionOffset()
   if key=="NAME" then return -16 end
   if key=="BAR" then return -28 end
   return -4
+end
+
+local function markerPositionKey()
+  local d=db() or {}
+  return d.importantCastMarkerPosition or "HEAD"
 end
 
 local function deactivateVisual(ind)
@@ -177,7 +187,18 @@ local function applyVisualStyle(ind)
   ind.visual:SetSize(iconSize,iconSize)
   ind.visual:SetScale(1)
   ind.visual:ClearAllPoints()
-  ind.visual:SetPoint("BOTTOM",ind,"TOP",0,markerPositionOffset())
+  if markerPositionKey()=="LEFT" then
+    -- 2.6.0: 이름표 왼쪽 (체력바·시전바 옆). 그림 안의 여백만큼 안쪽으로 붙인다.
+    ind.visual:SetPoint("RIGHT",ind,"LEFT",iconSize*0.30,-6)
+  else
+    ind.visual:SetPoint("BOTTOM",ind,"TOP",0,markerPositionOffset())
+  end
+  local texPath=preset.texture or ALERT_TEXTURE
+  for _,key in ipairs({"tex","glow","ring"}) do
+    local tex=ind[key]
+    if tex and tex.SetTexture then tex:SetTexture(texPath) end
+  end
+  if ind.mine and ind.mine.tex then ind.mine.tex:SetTexture(texPath) end
   for _,tex in ipairs({ind.tex,ind.glow,ind.ring}) do
     if tex then
       tex:ClearAllPoints()

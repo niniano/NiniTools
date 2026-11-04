@@ -2,7 +2,7 @@ local ADDON_NAME, NT = ...
 NT = NT or {}
 _G.NiniTools = NT
 
-NT.VERSION = "2.5.9"
+NT.VERSION = "2.6.0"
 local function resolveClassAccent()
   local classFile
   if UnitClass then
@@ -142,8 +142,16 @@ NT.ALERT_STYLE = NT.ALERT_STYLE or {
 --   (2.5.6) 세 스타일 모두 색은 빨강→주황→노랑→주황→빨강 1.6초 주기
 --   PULSE    펄스형 · 두근-두근 두 번 뛰는 박동
 --   EMPHASIS 강조형 · 큰 아이콘이 크게 부풀었다 돌아옴
-NT.IMPORTANT_CAST_STYLE_ORDER = {"DEFAULT","PULSE","EMPHASIS"}
+--   (2.6.0) PREMIUM 고급형 · 크기 그대로 · 빨강↔주황 빠르게 · 크게 튀어나왔다가 제자리, 끝나면 작아지며 사라짐
+--           가늘고 입체감 있는 전용 그림(ImportantAlert_Premium.tga) · 새 기본값
+NT.IMPORTANT_CAST_STYLE_ORDER = {"PREMIUM","DEFAULT","PULSE","EMPHASIS"}
 NT.IMPORTANT_CAST_STYLES = {
+  PREMIUM = {
+    label="고급형", desc="빨강↔주황 · 튀어나오기", motion="static", pop="zoom",
+    texture="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium.tga",
+    iconSize=72, scaleAmp=0, period=1.00,
+    low={1.00,0.07,0.03}, high={1.00,0.52,0.04}, colorPeriod=0.50,
+  },
   DEFAULT = {
     label="기본형", desc="천천히 숨쉬기", motion="breathe",
     iconSize=68, scaleAmp=0.08, period=1.20,
@@ -188,6 +196,8 @@ function NT:ImportantCastFrame(preset,now,elapsed,fading)
     local beat=nt_bump(ph,0.00,0.30)+0.55*nt_bump(ph,0.32,0.30)
     grow=beat
     t=0.15+0.70*beat
+  elseif motion=="static" then
+    grow=0
   elseif motion=="swell" then
     -- 빨리 부풀고 천천히 돌아온다 (같은 곡선이라 끊김 없음)
     grow=nt_smooth(ph<0.35 and ph/0.35 or (1-ph)/0.65)
@@ -200,15 +210,22 @@ function NT:ImportantCastFrame(preset,now,elapsed,fading)
   local r,g,b=lo[1]+(hi[1]-lo[1])*t, lo[2]+(hi[2]-lo[2])*t, lo[3]+(hi[3]-lo[3])*t
   local alpha, popScale = 1, 1
   elapsed=tonumber(elapsed)
-  if elapsed and elapsed<0.22 then
+  local zoom=preset.pop=="zoom"
+  if zoom and elapsed and elapsed<0.14 then
+    -- 2.6.0 고급형: 2.2배 크기로 반투명하게 나타나 0.14초 만에 제자리로 내려앉음
+    local e=nt_easeOutCubic(elapsed/0.14)
+    popScale=2.2-1.2*e
+    alpha=0.30+0.70*e
+  elseif not zoom and elapsed and elapsed<0.22 then
     popScale=0.60+0.40*nt_easeOutBack(elapsed/0.22)   -- 작게 시작해서 살짝 튀며 제자리
     alpha=nt_smooth(elapsed/0.16)
   end
   fading=tonumber(fading)
+  local fadeLen=zoom and 0.15 or 0.18
   if fading then
-    local p=nt_smooth(fading/0.18)
+    local p=nt_smooth(fading/fadeLen)
     alpha=alpha*(1-p)
-    popScale=popScale*(1-0.12*p)
+    popScale=popScale*(1-(zoom and 0.50 or 0.12)*p)   -- 고급형은 절반 크기로 작아지며 사라짐
   end
   return {
     r=r,g=g,b=b,
@@ -217,13 +234,13 @@ function NT:ImportantCastFrame(preset,now,elapsed,fading)
     glowAlpha=0, glowScale=1,          -- 겹쳐 보이던 외곽광 복사본은 쓰지 않음
     ringScale=nil, ringAlpha=0,        -- 파동 복사본도 쓰지 않음
     alpha=alpha,
-    done=fading~=nil and fading>=0.18,
+    done=fading~=nil and fading>=fadeLen,
   }
 end
 
 function NT:GetImportantCastStyle(id)
-  id=type(id)=="string" and id:upper() or "DEFAULT"
-  return self.IMPORTANT_CAST_STYLES[id] or self.IMPORTANT_CAST_STYLES.DEFAULT, id
+  id=type(id)=="string" and id:upper() or "PREMIUM"
+  return self.IMPORTANT_CAST_STYLES[id] or self.IMPORTANT_CAST_STYLES.PREMIUM or self.IMPORTANT_CAST_STYLES.DEFAULT, id
 end
 
 function NT:GetAlertPulse(now)
