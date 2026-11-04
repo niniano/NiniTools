@@ -403,6 +403,80 @@ end
 local RESPOND_TRIES = 24
 local ACTION_LABEL = { yes = "수락", maybe = "미정", no = "거절" }
 
+-- 2.6.8: 응답을 보낸 뒤 실제로 와우 달력에 반영됐는지 다시 읽어서 확인한다.
+-- (2.6.5~2.6.7은 「수락 보냄」만 찍고 끝 → 실제로는 반영 안 된 경우가 있었음)
+local EXPECT = { yes = "yes", maybe = "maybe", no = "no" }
+-- 지금 와우 달력이 이 일정에 대해 들고 있는 내 응답 상태 (못 읽으면 nil)
+function M:LiveStatus(e)
+  if not (C_Calendar and C_Calendar.GetDayEvent) then return nil end
+  local okT = self:CanTouchCalendar()
+  if not okT or self.pending or self.scanning then return nil end
+  local okF, i = pcall(self.FindIndex, self, e)
+  local st
+  if okF and i then
+    local okE, ev = pcall(C_Calendar.GetDayEvent, 0, e.d, i)
+    if okE and type(ev) == "table" then st = num(ev.inviteStatus) end
+  end
+  self:RestoreMonth()
+  return st
+end
+
+function M:VerifyResponse(charKey, e, action)
+  self.verifyToken = (self.verifyToken or 0) + 1
+  local token = self.verifyToken
+  local label = ACTION_LABEL[action] or "응답"
+  local function check(n)
+    if self.verifyToken ~= token then return end
+    local st = self:LiveStatus(e)
+    if st == nil then
+      -- 달력을 지금 못 읽음(다른 작업 중): DB에 저장된 값으로 (다시 읽은 뒤라면)
+      local key = self.DetailKey(e)
+      local ch = self:DB().chars[charKey]
+      for _, x in ipairs((ch and ch.events) or {}) do
+        if self.DetailKey(x) == key then st = tonumber(x.status); break end
+      end
+    end
+    local info = st and self.STATUS_INFO[st]
+    if info and info[2] == EXPECT[action] then
+      NT:Print(label .. " 완료 · 와우 달력에 반영됨 (" .. info[1] .. ")")
+      self.forceScan = true; self:RequestScan("action", true)
+      return
+    end
+    if n < 2 then after(4, function() check(n + 1) end); return end   -- 서버가 늦을 수 있어 한 번 더
+    if info then
+      NT:Print("|cffff7755" .. label .. "이 와우 달력에 반영되지 않았어요 (지금: " .. info[1] .. ") · 한 번 더 누르거나 와우 달력에서 직접 눌러 주세요.|r")
+    else
+      NT:Print(label .. " 반영 여부를 확인 못 했어요 · 와우 달력에서 확인해 주세요.")
+    end
+    self.forceScan = true; self:RequestScan("action", true)
+  end
+  after(2.5, function() check(1) end)
+end
+
+-- 2.6.8: 와우 기본 달력의 우클릭 메뉴와 같은 방식(ContextMenu)으로, 버튼을 누른 그 순간에 바로 응답한다.
+-- 일정을 열고(OpenEvent) 서버 응답(CALENDAR_OPEN_EVENT)을 기다렸다가 응답하던 방식은 클릭과 떨어져서 반영이 안 될 수 있었다.
+function M:RespondDirect(e, action)
+  local C = C_Calendar
+  if not (C and C.ContextMenuSelectEvent) then return false end
+  local fn
+  if action == "yes" then
+    fn = self:IsSignup(e) and C.ContextMenuEventSignUp or C.ContextMenuInviteAvailable
+  elseif action == "maybe" then
+    fn = C.ContextMenuInviteTentative
+  elseif action == "no" then
+    fn = C.ContextMenuInviteDecline
+  end
+  if type(fn) ~= "function" then return false end
+  local okFind, i = pcall(self.FindIndex, self, e)
+  if not okFind or not i then self:RestoreMonth(); return false, "missing" end
+  local okSel = pcall(C.ContextMenuSelectEvent, 0, e.d, i)
+  if not okSel then self:RestoreMonth(); return false end
+  local okAct, err = pcall(fn)
+  self:RestoreMonth()
+  if not okAct then NT:Print("응답 실패: " .. tostring(err)); return false, "error" end
+  return true
+end
+
 function M:Respond(charKey, e, action)
   local okR, whyR = self:CanRespond(charKey, e)
   if not okR then NT:Print(whyR); return false, "deny" end
@@ -413,12 +487,18 @@ function M:Respond(charKey, e, action)
       -- 이미 열려 있는 같은 일정: 바로 응답
       local ok, err = pcall(self.DoAction, self, e, action)
       if not ok then NT:Print("응답 실패: " .. tostring(err)); return false, "error" end
-      self.forceScan = true
-      after(2, function() self:RequestScan("action", true) end)
-      NT:Print((ACTION_LABEL[action] or "응답") .. " 보냄")
+      NT:Print((ACTION_LABEL[action] or "응답") .. " 요청 보냄 · 와우 달력 반영 확인 중…")
+      self:VerifyResponse(charKey, e, action)
       return true
     end
-    p.action = action   -- 아직 여는 중: 열리면 OnOpenEvent가 응답한다
+    -- 아직 여는 중: 여는 걸 기다리지 않고 지금 바로(클릭한 순간) 응답한다
+    if self:RespondDirect(e, action) then
+      NT:Print((ACTION_LABEL[action] or "응답") .. " 요청 보냄 · 와우 달력 반영 확인 중…")
+      self:VerifyResponse(charKey, e, action)
+      return true
+    end
+    p.action = action   -- 바로 못 하면: 열리면 OnOpenEvent가 응답한다
+    p.char = charKey
     return true
   end
   self.respondToken = (self.respondToken or 0) + 1
@@ -438,6 +518,12 @@ function M:Respond(charKey, e, action)
       end
       if not announced then announced = true; NT:Print((ACTION_LABEL[action] or "응답") .. " 보내는 중… (달력 대기)") end
       after(0.25, function() try(n + 1) end)
+      return
+    end
+    -- 2.6.8: 우클릭 메뉴 방식으로 바로 응답 (안 되면 예전 방식 = 일정 열고 응답)
+    if self:RespondDirect(e, action) then
+      NT:Print((ACTION_LABEL[action] or "응답") .. " 요청 보냄 · 와우 달력 반영 확인 중…")
+      self:VerifyResponse(charKey, e, action)
       return
     end
     self:Open(charKey, e, action)
@@ -496,9 +582,8 @@ function M:OnOpenEvent()
   if p.action then
     local ok, err = pcall(self.DoAction, self, p.e, p.action)
     if ok then
-      NT:Print((ACTION_LABEL[p.action] or "응답") .. " 보냄")
-      self.forceScan = true
-      after(2, function() self:RequestScan("action", true) end)
+      NT:Print((ACTION_LABEL[p.action] or "응답") .. " 요청 보냄 · 와우 달력 반영 확인 중…")
+      self:VerifyResponse(p.char or self:CurrentCharKey(), p.e, p.action)
     else
       NT:Print("응답 실패: " .. tostring(err))
     end
