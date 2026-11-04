@@ -200,6 +200,33 @@ local function currentInterruptMacroIcon()
   return 132219 -- Rogue Kick fallback
 end
 
+-- 2.6.4: NiniKickFocus 아이콘 = 지금 찍는 징표 모양 (별 · 동그라미 · … · 해골).
+-- 징표가 바뀌면 ensureFocusMarkerMacro가 다시 불려서 아이콘도 같이 바뀐다.
+-- 무징표 전담처럼 징표를 안 찍는 매크로일 때는 사냥꾼의 징표(조준경) 아이콘.
+-- (예전에는 오토 매크로와 같은 차단 기술 아이콘이라 단축바에서 둘이 구분되지 않았다)
+local RAID_ICON_FILE_FALLBACK=137000   -- UI-RaidTargetingIcon_1..8 = 137001..137008
+local function raidMarkerIconID(marker)
+  marker=math.max(1,math.min(8,tonumber(marker) or 1))
+  if type(GetFileIDFromPath)=="function" then
+    local ok,id=pcall(GetFileIDFromPath,"Interface\\TargetingFrame\\UI-RaidTargetingIcon_"..marker)
+    id=ok and safeNum(id) or nil
+    if id and id>0 then return id end
+  end
+  return RAID_ICON_FILE_FALLBACK+marker
+end
+
+local function focusMacroIcon(body)
+  if type(body)=="string" and body:find("/tm ",1,true) then
+    return raidMarkerIconID(db and db.interruptMarker)
+  end
+  if C_Spell and C_Spell.GetSpellInfo then
+    local ok,info=pcall(C_Spell.GetSpellInfo,257284)   -- 사냥꾼의 징표 (빨간 조준경)
+    if ok and info and safeNum(info.iconID) then return info.iconID end
+  end
+  return 134400
+end
+RDE.FocusMacroIcon=function() return focusMacroIcon(focusMarkerMacroBody(db and db.interruptMarker)) end
+
 local function macroCounts()
   local accountCount,charCount=0,0
   if type(GetNumMacros)=="function" then
@@ -268,7 +295,7 @@ ensureFocusMarkerMacro=function(silent)
   if configuredName=="" then configuredName=FOCUS_MACRO_NAME end
 
   local body=focusMarkerMacroBody(db.interruptMarker)
-  local icon=currentInterruptMacroIcon()
+  local icon=focusMacroIcon(body)
   local index=0
   local name=configuredName
 
