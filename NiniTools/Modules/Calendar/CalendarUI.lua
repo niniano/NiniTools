@@ -2,6 +2,7 @@ local ADDON_NAME, NT = ...
 if not NT or not NT.UI then return end
 
 -- 2.5.8: 계정 달력 화면 (NiniTools 창 「계정 달력」 탭)
+-- 2.5.9: 오른쪽 위 초대 목록을 초대 수만큼만 · 상세를 바로 아래로 · 참가자 16줄 · 위 목록에서 휠 → 참가자 목록
 local UI = NT.UI
 local M = NT.AccountCalendar
 
@@ -20,8 +21,8 @@ local CW, CH, GAP = 80, 64, 2
 local HEAD_H = 22
 local RX = GX + 7 * (CW + GAP) + 12
 local RW = 984 - RX - 16
-local DAY_ROWS = 6
-local PART_ROWS = 9
+local DAY_ROWS = 4    -- 2.5.9: 그날 초대 목록은 초대 수만큼만 (최대 4줄, 넘으면 휠)
+local PART_ROWS = 16  -- 2.5.9: 참가자 목록을 더 길게
 
 local function F(parent, size, text, color)
   local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -170,7 +171,7 @@ end
 function UI:BuildCalendar()
   if not M then return end
   local p = self:NewPage("CAL")
-  p.contentHeight = 720
+  p.contentHeight = 790
   local t = M:Today()
   p.viewY, p.viewM, p.selDay = t.year, t.month, t.day
   p.listOffset, p.partOffset = 0, 0
@@ -307,7 +308,8 @@ function UI:BuildCalendar()
   }
 
   -- 오른쪽: 그날 초대 목록
-  local dayP = panel(p, RX, -10, RW, 40 + DAY_ROWS * 28 + 8)
+  local dayP = panel(p, RX, -10, RW, 40 + 28 + 8)
+  p.dayPanel = dayP
   p.dayTitle = F(dayP, 14, "", C.text); p.dayTitle:SetPoint("TOPLEFT", 12, -10)
   p.dayCount = F(dayP, 11, "", C.muted); p.dayCount:SetPoint("TOPRIGHT", -12, -12)
   p.dayRows = {}
@@ -333,15 +335,26 @@ function UI:BuildCalendar()
     end)
     p.dayRows[i] = b
   end
+  -- 2.5.9: 참가자 목록 휠. 오른쪽 위 목록에서 굴려도 (초대가 4개를 넘지 않으면) 참가자 목록이 움직인다.
+  local function scrollParts(delta)
+    p.partOffset = math.max(0, math.min((p.partCount or 0) - PART_ROWS, (p.partOffset or 0) - delta * 3))
+    p:Refresh()
+  end
   dayP:EnableMouseWheel(true)
   dayP:SetScript("OnMouseWheel", function(_, delta)
-    p.listOffset = math.max(0, math.min((p.dayItemsCount or 0) - DAY_ROWS, (p.listOffset or 0) - delta))
-    p:Refresh()
+    if (p.dayItemsCount or 0) > DAY_ROWS then
+      p.listOffset = math.max(0, math.min((p.dayItemsCount or 0) - DAY_ROWS, (p.listOffset or 0) - delta))
+      p:Refresh()
+    else
+      scrollParts(delta)
+    end
   end)
 
   -- 오른쪽: 선택한 초대 상세
-  local detY = -10 - (40 + DAY_ROWS * 28 + 8) - 8
-  local det = panel(p, RX, detY, RW, 470)
+  local det = panel(p, RX, -10, RW, 600)
+  det:ClearAllPoints()
+  det:SetPoint("TOPLEFT", dayP, "BOTTOMLEFT", 0, -8)   -- 2.5.9: 위 목록 높이에 붙어 따라 올라감
+  p.detPanel = det
   p.detTitle = F(det, 15, "", C.text); p.detTitle:SetPoint("TOPLEFT", 12, -10); p.detTitle:SetPoint("RIGHT", -12, 0); UI:SingleLine(p.detTitle)
   p.detLines = F(det, 12, "", C.text); p.detLines:SetPoint("TOPLEFT", 12, -34); p.detLines:SetPoint("RIGHT", -12, 0)
   p.detLines:SetSpacing(3)
@@ -387,10 +400,7 @@ function UI:BuildCalendar()
     p.partRows[i] = b
   end
   det:EnableMouseWheel(true)
-  det:SetScript("OnMouseWheel", function(_, delta)
-    p.partOffset = math.max(0, math.min((p.partCount or 0) - PART_ROWS, (p.partOffset or 0) - delta * 3))
-    p:Refresh()
-  end)
+  det:SetScript("OnMouseWheel", function(_, delta) scrollParts(delta) end)
   p.partFoot = F(det, 11, "", C.muted); p.partFoot:SetPoint("BOTTOMLEFT", 12, 10); p.partFoot:SetPoint("RIGHT", -12, 0)
 
   -- ── 다시 그리기 ─────────────────────────────────────
@@ -466,11 +476,13 @@ function UI:BuildCalendar()
     local items = idx[self.selDay] or {}
     self.dayItemsCount = #items
     self.listOffset = math.max(0, math.min(math.max(0, #items - DAY_ROWS), self.listOffset or 0))
+    local visRows = math.max(1, math.min(DAY_ROWS, #items))
+    self.dayPanel:SetHeight(40 + visRows * 28 + 8)
     self.dayTitle:SetText(string.format("%d월 %d일 (%s)", m, self.selDay, WEEK[M.Weekday(y, m, self.selDay)]))
-    self.dayCount:SetText(#items > 0 and ("받은 초대 " .. #items .. "개") or "")
+    self.dayCount:SetText(#items > 0 and ("받은 초대 " .. #items .. "개" .. (#items > DAY_ROWS and " · 휠로 더 보기" or "")) or "")
     local selectedItem
     for i, row in ipairs(self.dayRows) do
-      local it = items[i + self.listOffset]
+      local it = (i <= visRows) and items[i + self.listOffset] or nil
       row.item = it
       if it then
         local label, grp = M:StatusInfo(it.e.status, it.e.ctype)
@@ -579,7 +591,7 @@ function UI:BuildCalendar()
           end
         end
         local who = detail.by and db.chars[detail.by] and db.chars[detail.by].name or "?"
-        self.partFoot:SetText(string.format("%s 기준 (%s 접속 때 읽음)%s", ago(detail.updated), who, #sorted > PART_ROWS and " · 마우스 휠로 더 보기" or ""))
+        self.partFoot:SetText(string.format("%s 기준 (%s 접속 때 읽음)%s", ago(detail.updated), who, #sorted > PART_ROWS and " · 오른쪽 아무 곳에서나 마우스 휠로 더 보기" or ""))
       else
         self.partCount = 0
         for _, r in ipairs(self.partRows) do r:Hide() end
