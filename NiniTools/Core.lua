@@ -2,7 +2,7 @@ local ADDON_NAME, NT = ...
 NT = NT or {}
 _G.NiniTools = NT
 
-NT.VERSION = "2.6.5"
+NT.VERSION = "2.6.6"
 local function resolveClassAccent()
   local classFile
   if UnitClass then
@@ -147,9 +147,21 @@ NT.ALERT_STYLE = NT.ALERT_STYLE or {
 --           색은 주황↔핫핑크 (빨간 체력바가 겹친 쐐기 이름표 위에서도 잘 보이게)
 --   (2.6.2) 새 「!」 그림을 바탕으로 세 가지 움직임만 남김. 예전 빨강·노랑 그림 스타일은 없앰.
 --           기본형 = 튀어나오기 · 펄스형 = 두근두근 · 강조형 = 크게 부풀기 (셋 다 주황↔핫핑크 · 광택 · 튀어나오며 등장)
+--   (2.6.6) 그림(모양)과 움직임(스타일)을 나눔. 그림 = 클래식(예전 모양 · 외곽선 · 기본) / 기울임(2.6.1 그림).
+--           「!」 외곽선을 따라 아주 얇은 흰 테두리(기본 켬). 색은 그대로 주황↔핫핑크.
 NT.IMPORTANT_CAST_STYLE_ORDER = {"PREMIUM","PULSE","EMPHASIS"}
 local PREMIUM_TEX="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium.tga"
 local PREMIUM_GLOSS="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium_Gloss.tga"
+local CLASSIC_TEX="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_White.tga"
+NT.IMPORTANT_CAST_SHAPE_ORDER = {"CLASSIC","SLANT"}
+NT.IMPORTANT_CAST_SHAPES = {
+  -- bottomPad = 그림 아래 빈칸 비율 (체력바 위에 점이 닿게 맞출 때 씀)
+  -- rim = 글자 바깥을 따라 그린 흰 테두리 (그림과 같은 칸 · 같은 크기로 겹침)
+  CLASSIC = { label="클래식", desc="예전 모양 · 외곽선", texture=CLASSIC_TEX, gloss=nil, bottomPad=0.05,
+              rim="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Rim.tga" },
+  SLANT   = { label="기울임", desc="입체 결 · 광택", texture=PREMIUM_TEX, gloss=PREMIUM_GLOSS, bottomPad=0.13,
+              rim="Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_Premium_Rim.tga" },
+}
 NT.IMPORTANT_CAST_STYLES = {
   PREMIUM = {
     label="기본형", desc="제자리 고정", motion="static", pop="zoom",
@@ -170,6 +182,7 @@ NT.IMPORTANT_CAST_STYLES = {
     low={1.00,0.55,0.05}, high={1.00,0.16,0.60}, colorPeriod=1.00,
   },
 }
+for _,st in pairs(NT.IMPORTANT_CAST_STYLES) do st.rimAlpha=0.60 end   -- 흰 외곽선 불투명도 60%
 -- 예전 이름(DEFAULT = 옛 기본형)으로 저장된 설정은 새 기본형으로 읽는다.
 NT.IMPORTANT_CAST_STYLE_ALIASES = { DEFAULT="PREMIUM" }
 
@@ -235,18 +248,35 @@ function NT:ImportantCastFrame(preset,now,elapsed,fading)
     r=r,g=g,b=b,
     iconAlpha=1,
     iconScale=(1+amp*grow)*popScale,
-    glowAlpha=0, glowScale=1,          -- 겹쳐 보이던 외곽광 복사본은 쓰지 않음
+    -- 2.6.6 흰 테두리: 글자 바깥을 따라 아주 얇게 · 글자와 같은 크기로 겹침 · 불투명도 60% 고정
+    glowAlpha=preset.rim and (tonumber(preset.rimAlpha) or 0.6) or 0,
+    glowScale=(1+amp*grow)*popScale,
+    gr=1, gg=1, gb=1,
     ringScale=nil, ringAlpha=0,        -- 파동 복사본도 쓰지 않음
     alpha=alpha,
     done=fading~=nil and fading>=fadeLen,
   }
 end
 
-function NT:GetImportantCastStyle(id)
+-- 2.6.6: GetImportantCastStyle(움직임, 그림, 흰 테두리) → 그림·테두리를 입힌 복사본 (같은 조합은 재사용)
+NT._importantCastStyleCache = NT._importantCastStyleCache or {}
+function NT:GetImportantCastStyle(id,shape,rim)
   id=type(id)=="string" and id:upper() or "PREMIUM"
   id=(self.IMPORTANT_CAST_STYLE_ALIASES and self.IMPORTANT_CAST_STYLE_ALIASES[id]) or id
   if not self.IMPORTANT_CAST_STYLES[id] then id="PREMIUM" end
-  return self.IMPORTANT_CAST_STYLES[id], id
+  shape=type(shape)=="string" and shape:upper() or "CLASSIC"
+  if not self.IMPORTANT_CAST_SHAPES[shape] then shape="CLASSIC" end
+  rim=(rim~=false)
+  local key=id.."|"..shape.."|"..(rim and "1" or "0")
+  local cached=self._importantCastStyleCache[key]
+  if cached then return cached,id,shape end
+  local base,sh=self.IMPORTANT_CAST_STYLES[id],self.IMPORTANT_CAST_SHAPES[shape]
+  local out={}
+  for k,v in pairs(base) do out[k]=v end
+  out.texture,out.gloss,out.bottomPad,out.shape=sh.texture,sh.gloss,sh.bottomPad,shape
+  out.rim=rim and sh.rim or nil
+  self._importantCastStyleCache[key]=out
+  return out,id,shape
 end
 
 function NT:GetAlertPulse(now)

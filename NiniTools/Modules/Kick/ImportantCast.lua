@@ -76,7 +76,7 @@ local function stylePreset()
   end
   local preset
   if type(NT.GetImportantCastStyle)=="function" then
-    preset=NT:GetImportantCastStyle(d.importantCastMarkerStyle)
+    preset=NT:GetImportantCastStyle(d.importantCastMarkerStyle,d.importantCastMarkerShape,d.importantCastRim~=false)
   end
   preset=preset or framePreset()
   return preset, math.max(.70,math.min(1.40,tonumber(d.importantCastMarkerScale) or 1))
@@ -144,7 +144,7 @@ local function visualTick(ind,now)
   if ind.glow then
     if f.glowAlpha>0.01 then
       ind.glow:SetSize(glowBase*f.glowScale,glowBase*f.glowScale)
-      ind.glow:SetVertexColor(f.r,f.g,f.b,1)
+      ind.glow:SetVertexColor(f.gr or f.r,f.gg or f.g,f.gb or f.b,1)
       ind.glow:SetAlpha(f.glowAlpha)
       ind.glow:Show()
     else
@@ -260,7 +260,8 @@ local function anchorVisual(ind)
   end
   if bar then
     -- 그림 아래 여백(점 아래 14%)만큼 내려서, X·Y가 0이면 느낌표 점이 체력바 윗변에 딱 닿게
-    if pcall(visual.SetPoint,visual,"BOTTOM",bar,"TOP",ox,oy-iconSize*0.13) then return end
+    local pad=tonumber((ind.stylePreset or {}).bottomPad) or 0.13   -- 2.6.6: 그림마다 아래 빈칸이 다름
+    if pcall(visual.SetPoint,visual,"BOTTOM",bar,"TOP",ox,oy-iconSize*pad) then return end
     visual:ClearAllPoints()
   end
   visual:SetPoint("BOTTOM",ind,"TOP",ox,oy-28)   -- 체력바를 못 찾는 이름표: 예전 「체력바 위」 자리 기준
@@ -276,7 +277,7 @@ local function applyVisualStyle(ind)
   ind.stylePreset=preset
   ind.markerScale=scale
   local iconSize=(tonumber(preset.iconSize) or 68)*scale
-  local glowSize=(tonumber(preset.glowSize) or iconSize/scale)*scale
+  local glowSize=iconSize   -- 2.6.6 흰 테두리는 글자와 같은 칸
   ind.iconBase=iconSize
   ind.glowBase=glowSize
   -- 바깥 틀은 크기 고정 · 그림은 가운데 기준으로만 커지고 작아진다 (위치가 흔들리지 않음)
@@ -285,9 +286,14 @@ local function applyVisualStyle(ind)
   ind.barRef=nil
   anchorVisual(ind)
   local texPath=preset.texture or ALERT_TEXTURE
-  for _,key in ipairs({"tex","glow","ring"}) do
+  for _,key in ipairs({"tex","ring"}) do
     local tex=ind[key]
     if tex and tex.SetTexture then tex:SetTexture(texPath) end
+  end
+  if ind.glow then
+    -- 2.6.6: 흰 테두리 그림 (흰색 그대로 · 끄면 숨김)
+    if preset.rim then ind.glow:SetTexture(preset.rim); ind.glow:SetBlendMode("BLEND"); ind.glow:SetAlpha(0); ind.glow:Show()
+    else ind.glow:Hide() end
   end
   if ind.mine and ind.mine.tex then ind.mine.tex:SetTexture(texPath) end
   if ind.gloss then

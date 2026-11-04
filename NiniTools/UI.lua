@@ -725,15 +725,19 @@ function UI:StyleCardRow(parent, label, y, items, isActive, onPick)
       if tx.SetTexelSnappingBias then pcall(tx.SetTexelSnappingBias,tx,0) end
     end
     card.iconHolder=iconHolder; card.icon=icon; card.glow=glow; card.ring=ring
-    if item.preset and item.preset.texture then
-      -- 2.6.0: 고급형은 전용 그림 · 2.6.1: 흰 광택도 같이
-      for _,tx in ipairs({ring,glow,icon}) do tx:SetTexture(item.preset.texture) end
+    -- 2.6.6: 그림(클래식/기울임)·광택·흰 외곽선을 나중에 바꿀 수 있게 SetPreset으로 다시 입힌다
+    local gl=iconHolder:CreateTexture(nil,"OVERLAY",nil,7)
+    gl:SetPoint("CENTER"); gl:SetSize(28,28); gl:Hide()
+    card.gloss=gl
+    card.SetPreset=function(self,preset)
+      self.preset=preset
+      if not preset then return end
+      local texPath=preset.texture or "Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_White.tga"
+      self.icon:SetTexture(texPath); self.ring:SetTexture(texPath)
+      if preset.gloss then self.gloss:SetTexture(preset.gloss); self.gloss:Show() else self.gloss:Hide() end
+      if preset.rim then self.glow:SetTexture(preset.rim); self.glow:SetBlendMode("BLEND"); self.glow:Show() else self.glow:Hide() end
     end
-    if item.preset and item.preset.gloss then
-      local gl=iconHolder:CreateTexture(nil,"OVERLAY",nil,7)
-      gl:SetTexture(item.preset.gloss); gl:SetPoint("CENTER"); gl:SetSize(28,28)
-      card.gloss=gl
-    end
+    card:SetPreset(item.preset)
 
     card.label=UI:Font(card,9,item.text or "",C.text)
     card.label:SetPoint("BOTTOM",0,6)
@@ -758,10 +762,15 @@ function UI:StyleCardRow(parent, label, y, items, isActive, onPick)
         local cyc=now%2.5
         local f=NT:ImportantCastFrame(preset,now,cyc,cyc>=2.2 and (cyc-2.2) or nil)
         card.icon:SetSize(28*f.iconScale,28*f.iconScale)
-        if card.gloss then card.gloss:SetSize(28*f.iconScale,28*f.iconScale); card.gloss:SetAlpha(f.iconAlpha*(f.alpha or 1)) end
+        if card.gloss:IsShown() then card.gloss:SetSize(28*f.iconScale,28*f.iconScale); card.gloss:SetAlpha(f.iconAlpha*(f.alpha or 1)) end
         card.icon:SetVertexColor(f.r,f.g,f.b,1)
         card.icon:SetAlpha(f.iconAlpha*(f.alpha or 1))
-        card.glow:SetAlpha(0)
+        if card.glow:IsShown() and (f.glowAlpha or 0)>0.01 then
+          local hs=28*(f.glowScale or 1)
+          card.glow:SetSize(hs,hs); card.glow:SetVertexColor(f.gr or 1,f.gg or 1,f.gb or 1,1); card.glow:SetAlpha(f.glowAlpha*(f.alpha or 1))
+        else
+          card.glow:SetAlpha(0)
+        end
         if f.ringScale and f.ringAlpha>0.01 then
           card.ring:SetSize(28*f.ringScale,28*f.ringScale)
           card.ring:SetVertexColor(f.r,f.g,f.b,1)
@@ -1554,7 +1563,7 @@ function UI:BuildKick()
   autoNote:SetPoint("BOTTOMLEFT",216,18); autoNote:SetPoint("RIGHT",-18,0); autoNote:SetJustifyH("LEFT")
 
   -- 3) Important mob marker -------------------------------------------------------------
-  local important=self:AccordionSection(p,"important","중요몹 ! 표시","쐐기 · 추종자 던전 중요 시전을 이름표 느낌표로 강조",372,false)
+  local important=self:AccordionSection(p,"important","중요몹 ! 표시","쐐기 · 추종자 던전 중요 시전을 이름표 느낌표로 강조",472,false)
   local impLeft=CreateFrame("Frame",nil,important.body)
   impLeft:SetPoint("TOPLEFT",0,0); impLeft:SetPoint("BOTTOMLEFT",0,0); impLeft:SetWidth(570)
   p.importantRow=self:Toggle(impLeft,"중요몹 ! 표시 사용","importantCastMarkerEnabled",get,function(v)
@@ -1588,28 +1597,39 @@ function UI:BuildKick()
   p.importantOffsetXRow=self:SliderRow(impLeft,"좌우 (X)",-90,range.xMin,range.xMax,1,offsetGetter("importantCastOffsetX"),offsetSetter("importantCastOffsetX"),nil,{editable=true})
   p.importantOffsetYRow=self:SliderRow(impLeft,"위아래 (Y)",-126,range.yMin,range.yMax,1,offsetGetter("importantCastOffsetY"),offsetSetter("importantCastOffsetY"),nil,{editable=true})
 
+  -- 2.6.6: 느낌표 그림(클래식/기울임)과 움직임(스타일)을 따로 고른다 · 카드도 지금 고른 조합으로 보여 줌
+  local function curStyle() local d=get() or {}; return d.importantCastMarkerStyle, d.importantCastMarkerShape, d.importantCastRim~=false end
+  local function refreshMarker() if _G.NiniKick and _G.NiniKick.RefreshImportantCastStyle then _G.NiniKick.RefreshImportantCastStyle() end end
+  local shapeItems={}
+  for _,id in ipairs(NT.IMPORTANT_CAST_SHAPE_ORDER or {"CLASSIC","SLANT"}) do
+    local sh=NT.IMPORTANT_CAST_SHAPES and NT.IMPORTANT_CAST_SHAPES[id]
+    local st,_,halo=curStyle()
+    shapeItems[#shapeItems+1]={text=(sh and sh.label) or id,value=id,width=96,preset=NT:GetImportantCastStyle(st,id,halo)}
+  end
+  p.importantShapeRow=self:StyleCardRow(impLeft,"느낌표 그림",-164,shapeItems,
+    function(v) return select(3,NT:GetImportantCastStyle(curStyle()))==v end,
+    function(v) get().importantCastMarkerShape=v; refreshMarker() end)
   local styleItems={}
   for _,id in ipairs(NT.IMPORTANT_CAST_STYLE_ORDER or {"PREMIUM","PULSE","EMPHASIS"}) do
-    local preset=NT.IMPORTANT_CAST_STYLES and NT.IMPORTANT_CAST_STYLES[id]
-    styleItems[#styleItems+1]={text=(preset and preset.label) or id,value=id,width=96,preset=preset}
+    local base=NT.IMPORTANT_CAST_STYLES and NT.IMPORTANT_CAST_STYLES[id]
+    local _,sh,halo=curStyle()
+    styleItems[#styleItems+1]={text=(base and base.label) or id,value=id,width=96,preset=NT:GetImportantCastStyle(id,sh,halo)}
   end
-  p.importantStyleRow=self:StyleCardRow(impLeft,"표시 스타일",-168,styleItems,
+  p.importantStyleRow=self:StyleCardRow(impLeft,"표시 스타일",-248,styleItems,
     function(v) return select(2,NT:GetImportantCastStyle(get().importantCastMarkerStyle))==v end,
-    function(v)
-      get().importantCastMarkerStyle=v
-      if _G.NiniKick and _G.NiniKick.RefreshImportantCastStyle then _G.NiniKick.RefreshImportantCastStyle() end
-    end)
-  local impNote=self:Font(impLeft,8,"셋 다 고급 「!」(주황↔핫핑크·광택) · 기본형=제자리 · 펄스형=두근두근 · 강조형=크게 부풀기",C.muted)
-  impNote:SetPoint("TOPLEFT",22,-250); impNote:SetPoint("RIGHT",-12,0); impNote:SetJustifyH("LEFT")
+    function(v) get().importantCastMarkerStyle=v; refreshMarker() end)
+  local impNote=self:Font(impLeft,8,"색은 둘 다 주황↔핫핑크 · 기본형=제자리 · 펄스형=두근두근 · 강조형=크게 부풀기",C.muted)
+  impNote:SetPoint("TOPLEFT",22,-330); impNote:SetPoint("RIGHT",-12,0); impNote:SetJustifyH("LEFT")
+  p.importantHaloRow=self:Toggle(impLeft,"「!」 흰 외곽선 (아주 얇게 · 60%)","importantCastRim",get,function() refreshMarker() end,-348)
 
   -- 2.6.2: 추종자 던전에서도 표시 (차단 순번·음성은 쐐기에서만) + 이름표에 띄워 보는 테스트
   p.importantFollowerRow=self:Toggle(impLeft,"추종자 던전에서도 표시","importantCastFollowerEnabled",get,function()
     if _G.NiniKick and _G.NiniKick.ImportantCastRefreshAll then pcall(_G.NiniKick.ImportantCastRefreshAll) end
-  end,-268)
+  end,-390)
   local bangTest=self:Button(impLeft,"이름표에 띄워 보기 (10초)",186,24,function()
     NT:CallSlash("NINIKICK","bang test 10")
   end)
-  bangTest:SetPoint("TOPLEFT",22,-314)
+  bangTest:SetPoint("TOPLEFT",22,-436)
   local posReset=self:Button(impLeft,"위치 초기화",96,24,function()
     local d=get(); if not d then return end
     d.importantCastOffsetX,d.importantCastOffsetY=0,0
@@ -1661,23 +1681,25 @@ function UI:BuildKick()
 
   function preview:Refresh()
     local d=get()
-    local preset=NT:GetImportantCastStyle(d.importantCastMarkerStyle)
+    local preset=NT:GetImportantCastStyle(d.importantCastMarkerStyle,d.importantCastMarkerShape,d.importantCastRim~=false)
     local scale=math.max(.70,math.min(1.40,tonumber(d.importantCastMarkerScale) or 1))
     local iconSize=(tonumber(preset.iconSize) or 68)*scale*.72
-    local glowSize=(tonumber(preset.glowSize) or tonumber(preset.iconSize) or 68)*scale*.72
+    local glowSize=iconSize
     self.iconHolder:SetSize(iconSize,iconSize)
     self.iconBase,self.glowBase=iconSize,glowSize
     self.icon:SetSize(iconSize,iconSize)
     self.glow:SetSize(glowSize,glowSize)
     self.stylePreset=preset
     local texPath=preset.texture or "Interface\\AddOns\\NiniTools\\Media\\ImportantAlert_White.tga"
-    for _,tx in ipairs({self.ring,self.glow,self.icon}) do tx:SetTexture(texPath) end
+    for _,tx in ipairs({self.ring,self.icon}) do tx:SetTexture(texPath) end
     if preset.gloss then self.gloss:SetTexture(preset.gloss); self.gloss:Show() else self.gloss:Hide() end
+    if preset.rim then self.glow:SetTexture(preset.rim); self.glow:SetBlendMode("BLEND"); self.glow:Show() else self.glow:Hide() end
     self:SetAlpha(d.importantCastMarkerEnabled==false and .42 or 1)
     -- 2.6.3: 실제와 같은 기준 · 체력바 위 가운데 + X · Y (미리보기는 0.72배)
     local ox=math.floor((tonumber(d.importantCastOffsetX) or 0)+.5)
     local oy=math.floor((tonumber(d.importantCastOffsetY) or 0)+.5)
-    self.styleLabel:SetText((preset.label or "기본형")..(preset.desc and (" ("..preset.desc..")") or "").." · "..math.floor(scale*100+.5).."% · X "..ox.." · Y "..oy)
+    local shp=NT.IMPORTANT_CAST_SHAPES and NT.IMPORTANT_CAST_SHAPES[preset.shape or "CLASSIC"]
+    self.styleLabel:SetText((shp and shp.label or "클래식").." · "..(preset.label or "기본형").." · "..math.floor(scale*100+.5).."% · X "..ox.." · Y "..oy)
     local k=.72
     local barBottom=44
     if oy<0 then barBottom=math.min(150,44+(-oy*k)+iconSize*.35) end
@@ -1685,7 +1707,7 @@ function UI:BuildKick()
     fakeName:ClearAllPoints(); fakeName:SetPoint("BOTTOMLEFT",fakeBar,"TOPLEFT",2,2)
     fakePct:ClearAllPoints(); fakePct:SetPoint("BOTTOMRIGHT",fakeBar,"TOPRIGHT",-2,2)
     self.iconHolder:ClearAllPoints()
-    self.iconHolder:SetPoint("BOTTOM",fakeBar,"TOP",ox*k,oy*k-iconSize*0.13)
+    self.iconHolder:SetPoint("BOTTOM",fakeBar,"TOP",ox*k,oy*k-iconSize*(tonumber(preset.bottomPad) or 0.13))
   end
   preview:SetScript("OnUpdate",function(self)
     if not self.stylePreset or not NT.ImportantCastFrame then return end
@@ -1699,7 +1721,13 @@ function UI:BuildKick()
     if self.gloss:IsShown() then self.gloss:SetSize(ib*f.iconScale,ib*f.iconScale); self.gloss:SetAlpha(f.iconAlpha*f.alpha) end
     self.icon:SetVertexColor(f.r,f.g,f.b,1)
     self.icon:SetAlpha(f.iconAlpha*f.alpha)
-    self.glow:SetAlpha(0)
+    if self.glow:IsShown() and (f.glowAlpha or 0)>0.01 then
+      self.glow:SetSize(gb*(f.glowScale or 1),gb*(f.glowScale or 1))
+      self.glow:SetVertexColor(f.gr or 1,f.gg or 1,f.gb or 1,1)
+      self.glow:SetAlpha(f.glowAlpha*f.alpha)
+    else
+      self.glow:SetAlpha(0)
+    end
     if f.ringScale and f.ringAlpha>0.01 then
       self.ring:SetSize(ib*f.ringScale,ib*f.ringScale)
       self.ring:SetVertexColor(f.r,f.g,f.b,1)
@@ -1796,6 +1824,18 @@ function UI:BuildKick()
     self.markerRow:Refresh(); self.rotaSizeRow:Refresh(); self.rotaOrderRow:Refresh()
     self.importantRow:Refresh(); self.importantStyleRow:Refresh(); self.importantSizeRow:Refresh()
     if self.importantOffsetXRow then self.importantOffsetXRow:Refresh(); self.importantOffsetYRow:Refresh() end
+    if self.importantHaloRow then self.importantHaloRow:Refresh() end
+    do -- 2.6.6: 카드 그림을 지금 고른 그림·스타일·흰 외곽선으로 다시 입힘
+      local kd=NT:GetKickDB() or {}
+      local halo=kd.importantCastRim~=false
+      for _,card in ipairs((self.importantShapeRow and self.importantShapeRow.cards) or {}) do
+        card:SetPreset(NT:GetImportantCastStyle(kd.importantCastMarkerStyle,card.itemValue,halo))
+      end
+      for _,card in ipairs((self.importantStyleRow and self.importantStyleRow.cards) or {}) do
+        card:SetPreset(NT:GetImportantCastStyle(card.itemValue,kd.importantCastMarkerShape,halo))
+      end
+      if self.importantShapeRow then self.importantShapeRow:Refresh() end
+    end
     if self.importantFollowerRow then self.importantFollowerRow:Refresh() end
     self.combatTimerRow:Refresh(); self.combatSize:Refresh(); self.enemyCountRow:Refresh(); self.enemyCountSize:Refresh(); self.enemyGarroteRow:Refresh()
 
@@ -1817,8 +1857,9 @@ function UI:BuildKick()
       assign:SetState((markerNames[cfg.marker or 1] or "징표").." · 로테 없음","accent")
     end
     automation:SetState((k.interruptEnabled~=false and "차단 ON" or "차단 OFF").." · "..(k.autoBriefing~=false and "자동" or "수동"),k.interruptEnabled~=false and "good" or "warn")
-    local preset=NT:GetImportantCastStyle(k.importantCastMarkerStyle)
-    important:SetState((k.importantCastMarkerEnabled~=false and "ON" or "OFF").." · "..(preset.label or "기본형").." · "..math.floor((tonumber(k.importantCastMarkerScale) or 1)*100+.5).."%",k.importantCastMarkerEnabled~=false and "accent" or "warn")
+    local preset=NT:GetImportantCastStyle(k.importantCastMarkerStyle,k.importantCastMarkerShape,k.importantCastRim~=false)
+    local shp=NT.IMPORTANT_CAST_SHAPES and NT.IMPORTANT_CAST_SHAPES[preset.shape or "CLASSIC"]
+    important:SetState((k.importantCastMarkerEnabled~=false and "ON" or "OFF").." · "..(shp and shp.label or "클래식").." "..(preset.label or "기본형").." · "..math.floor((tonumber(k.importantCastMarkerScale) or 1)*100+.5).."%",k.importantCastMarkerEnabled~=false and "accent" or "warn")
     local A=NT.Adapters
     local state=A and type(A.GetNaowhReminderState)=="function" and A:GetNaowhReminderState() or nil
     if state and state.owner=="naowh" then
