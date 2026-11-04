@@ -110,6 +110,10 @@ function D:GetAdapterWarnings(states)
       warnings[#warnings + 1] = "Naowh Smart Reminders 담당 상태 확인 불가 · 안전하게 NiniTools 생존기 알림 유지"
     end
   end
+  if NT.ExbossS2 and type(NT.ExbossS2.Warnings)=="function" then
+    local ok,list=pcall(NT.ExbossS2.Warnings,NT.ExbossS2)
+    if ok and type(list)=="table" then for _,w in ipairs(list) do warnings[#warnings+1]=w end end
+  end
   local schema=NT.DBSchema and NT.DBSchema.GetState and NT.DBSchema:GetState() or nil
   if schema then
     if schema.futureSchema then
@@ -221,6 +225,14 @@ function D:BuildCopyReport(states, warnings)
     lines[#lines + 1] = "Defensive alerts: NiniTools 담당 · adapter unavailable"
   end
   lines[#lines + 1] = "NSR bridge: " .. onOff(modules.nsrBridge) .. " / NSRT import=" .. onOff(modules.nsrtImport)
+  if NT.ExbossS2 and type(NT.ExbossS2.StatusLine)=="function" then
+    local ok,line=pcall(NT.ExbossS2.StatusLine,NT.ExbossS2)
+    if ok and line then lines[#lines + 1] = tostring(line) end
+  end
+  if NT.NaowhUILink and type(NT.NaowhUILink.StatusLine)=="function" then
+    local ok,line=pcall(NT.NaowhUILink.StatusLine,NT.NaowhUILink)
+    if ok and line then lines[#lines + 1] = tostring(line) end
+  end
   local schema=NT.DBSchema and NT.DBSchema.GetState and NT.DBSchema:GetState() or nil
   if schema then
     lines[#lines + 1] = string.format("DB schema: %d/%d · min %d · cleanup %d/%d · legacy=%s · candidates=%d · unknown=%d",
@@ -396,6 +408,14 @@ function D:Run(arg)
     NT:Print("생존기 알림 · NiniTools 담당 · adapter unavailable")
   end
   NT:Print(string.format("NSR Bridge %s · NSRT Import %s",yesNo(modules.nsrBridge),onOff(modules.nsrtImport)))
+  if NT.ExbossS2 and type(NT.ExbossS2.StatusLine)=="function" then
+    local ok,line=pcall(NT.ExbossS2.StatusLine,NT.ExbossS2)
+    if ok and line then NT:Print(tostring(line)) end
+  end
+  if NT.NaowhUILink and type(NT.NaowhUILink.StatusLine)=="function" then
+    local ok,line=pcall(NT.NaowhUILink.StatusLine,NT.NaowhUILink)
+    if ok and line then NT:Print(tostring(line)) end
+  end
 
   if memoryKB then
     local memLine = string.format("Memory %.1f KB", round1(memoryKB))

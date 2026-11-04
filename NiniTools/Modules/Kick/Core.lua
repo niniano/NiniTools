@@ -2622,14 +2622,7 @@ SlashCmdList.NINIKICK=function(input)
   elseif c=="gfx" then RDE.ApplyNaowhGraphicsPreset()
   elseif c=="gfxcombat" then RDE.ApplyNaowhCombatPreset()
   elseif c=="gfxrestore" then RDE.RestoreGraphicsBackup()
-  elseif c=="tracker" then
-    if RDE.InterruptTrackerTogglePreview then local on=RDE.InterruptTrackerTogglePreview(); P("파티 차단 추적바 미리보기 "..(on and "켜짐" or "꺼짐")) else P("추적바 모듈을 찾지 못했습니다.") end
-    
-  elseif c=="trackerreset" then
-    if RDE.InterruptTrackerResetProfile then RDE.InterruptTrackerResetProfile(); P("파티 차단 추적바를 EXBoss 저장 프로필로 초기화") end
-    
-  elseif c=="trackerdiag" then
-    P(RDE.GetInterruptTrackerDiag and RDE.GetInterruptTrackerDiag() or "추적바 진단을 확인할 수 없습니다.")
+  -- 2.5.5: /nk tracker · trackerreset · trackerdiag 제거 (추적바 모듈은 1.5.0부터 EXBoss가 담당, 함수 없음)
   elseif c=="kickstate" then P(RDE.GetKickStateSummary and RDE.GetKickStateSummary() or "차단 상태를 확인할 수 없습니다.")
   elseif c=="automacro" or c=="autokick" then
     local ok,why=RDE.UpdateAutoInterruptMacro(false)

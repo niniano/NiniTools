@@ -680,13 +680,20 @@ function UI:StyleCardRow(parent, label, y, items, isActive, onPick)
     local iconHolder=CreateFrame("Frame",nil,card)
     iconHolder:SetSize(28,28)
     iconHolder:SetPoint("TOP",0,-7)
+    local ring=iconHolder:CreateTexture(nil,"BACKGROUND")
+    ring:SetTexture("Interface\\AddOns\\NiniTools\\Media\\ImportantAlert.tga")
+    ring:SetPoint("CENTER"); ring:SetSize(28,28); ring:SetBlendMode("ADD"); ring:Hide()
     local glow=iconHolder:CreateTexture(nil,"ARTWORK")
     glow:SetTexture("Interface\\AddOns\\NiniTools\\Media\\ImportantAlert.tga")
     glow:SetPoint("CENTER"); glow:SetSize(34,34); glow:SetBlendMode("ADD")
     local icon=iconHolder:CreateTexture(nil,"OVERLAY")
     icon:SetTexture("Interface\\AddOns\\NiniTools\\Media\\ImportantAlert.tga")
-    icon:SetAllPoints(iconHolder)
-    card.iconHolder=iconHolder; card.icon=icon; card.glow=glow
+    icon:SetPoint("CENTER"); icon:SetSize(28,28)
+    for _,tx in ipairs({ring,glow,icon}) do
+      if tx.SetSnapToPixelGrid then pcall(tx.SetSnapToPixelGrid,tx,false) end
+      if tx.SetTexelSnappingBias then pcall(tx.SetTexelSnappingBias,tx,0) end
+    end
+    card.iconHolder=iconHolder; card.icon=icon; card.glow=glow; card.ring=ring
 
     card.label=UI:Font(card,9,item.text or "",C.text)
     card.label:SetPoint("BOTTOM",0,6)
@@ -704,17 +711,23 @@ function UI:StyleCardRow(parent, label, y, items, isActive, onPick)
   row:SetScript("OnUpdate",function(self)
     local now=GetTime()
     for _,card in ipairs(self.cards) do
-      local preset=card.preset or {}
-      local r,g,b,t=NT:GetAlertColor(now)
-      local period=tonumber(preset.period) or 1.40
-      local phase=((now%period)/period)*2*math.pi
-      local pt=(math.sin(phase-(math.pi/2))+1)*0.5
-      card.icon:SetVertexColor(r,g,b,1)
-      card.glow:SetVertexColor(r,g,b,1)
-      local lo=tonumber(preset.glowAlphaMin) or .20
-      local hi=tonumber(preset.glowAlphaMax) or .58
-      card.glow:SetAlpha(lo+(hi-lo)*pt)
-      card.iconHolder:SetScale(1+(tonumber(preset.pulseScale) or 0)*pt)
+      local preset=card.preset
+      if preset and NT.ImportantCastFrame then
+        -- 2.5.5: 카드도 실제 이름표와 같은 움직임 (기본형 숨쉬기 · 펄스형 박동 · 강조형 파동)
+        local f=NT:ImportantCastFrame(preset,now,nil,nil)
+        card.icon:SetSize(28*f.iconScale,28*f.iconScale)
+        card.icon:SetVertexColor(f.r,f.g,f.b,1)
+        card.icon:SetAlpha(f.iconAlpha)
+        card.glow:SetAlpha(0)
+        if f.ringScale and f.ringAlpha>0.01 then
+          card.ring:SetSize(28*f.ringScale,28*f.ringScale)
+          card.ring:SetVertexColor(f.r,f.g,f.b,1)
+          card.ring:SetAlpha(f.ringAlpha)
+          card.ring:Show()
+        else
+          card.ring:Hide()
+        end
+      end
     end
   end)
 
@@ -1529,7 +1542,7 @@ function UI:BuildKick()
       get().importantCastMarkerStyle=v
       if _G.NiniKick and _G.NiniKick.RefreshImportantCastStyle then _G.NiniKick.RefreshImportantCastStyle() end
     end)
-  local impNote=self:Font(impLeft,8,"기본형=고정 · 펄스형=빠른 확대/축소 · 강조형=큰 아이콘+강한 외곽광",C.muted)
+  local impNote=self:Font(impLeft,8,"느낌표 하나가 커졌다 작아짐 · 기본형=천천히 숨쉬기 · 펄스형=두근두근 박동 · 강조형=크게 부풀기",C.muted)
   impNote:SetPoint("TOPLEFT",22,-218); impNote:SetPoint("RIGHT",-12,0); impNote:SetJustifyH("LEFT")
 
   local preview=CreateFrame("Frame",nil,important.body,"BackdropTemplate")
@@ -1548,14 +1561,22 @@ function UI:BuildKick()
 
   preview.iconHolder=CreateFrame("Frame",nil,preview)
   preview.iconHolder:SetPoint("BOTTOM",fakeName,"TOP",0,8)
+  preview.ring=preview.iconHolder:CreateTexture(nil,"BACKGROUND")
+  preview.ring:SetTexture("Interface\\AddOns\\NiniTools\\Media\\ImportantAlert.tga")
+  preview.ring:SetPoint("CENTER")
+  preview.ring:SetBlendMode("ADD")
   preview.glow=preview.iconHolder:CreateTexture(nil,"ARTWORK")
   preview.glow:SetTexture("Interface\\AddOns\\NiniTools\\Media\\ImportantAlert.tga")
   preview.glow:SetPoint("CENTER")
   preview.glow:SetBlendMode("ADD")
   preview.icon=preview.iconHolder:CreateTexture(nil,"OVERLAY")
   preview.icon:SetTexture("Interface\\AddOns\\NiniTools\\Media\\ImportantAlert.tga")
-  preview.icon:SetAllPoints(preview.iconHolder)
+  preview.icon:SetPoint("CENTER")
   preview.icon:SetBlendMode("BLEND")
+  for _,tx in ipairs({preview.ring,preview.glow,preview.icon}) do
+    if tx.SetSnapToPixelGrid then pcall(tx.SetSnapToPixelGrid,tx,false) end
+    if tx.SetTexelSnappingBias then pcall(tx.SetTexelSnappingBias,tx,0) end
+  end
   preview.styleLabel=self:Font(preview,8,"",C.muted); preview.styleLabel:SetPoint("BOTTOMRIGHT",-10,8)
 
   function preview:Refresh()
@@ -1563,35 +1584,41 @@ function UI:BuildKick()
     local preset=NT:GetImportantCastStyle(d.importantCastMarkerStyle)
     local scale=math.max(.70,math.min(1.40,tonumber(d.importantCastMarkerScale) or 1))
     local iconSize=(tonumber(preset.iconSize) or 68)*scale*.72
-    local glowSize=(tonumber(preset.glowSize) or 82)*scale*.72
+    local glowSize=(tonumber(preset.glowSize) or tonumber(preset.iconSize) or 68)*scale*.72
     self.iconHolder:SetSize(iconSize,iconSize)
-    self.icon:SetAllPoints(self.iconHolder)
+    self.iconBase,self.glowBase=iconSize,glowSize
+    self.icon:SetSize(iconSize,iconSize)
     self.glow:SetSize(glowSize,glowSize)
     self.stylePreset=preset
     self:SetAlpha(d.importantCastMarkerEnabled==false and .42 or 1)
     local posLabel="머리 위"
     if d.importantCastMarkerPosition=="NAME" then posLabel="이름 바로 위" elseif d.importantCastMarkerPosition=="BAR" then posLabel="체력바 위" end
-    self.styleLabel:SetText((preset.label or "기본형").." · "..math.floor(scale*100+.5).."% · "..posLabel)
+    self.styleLabel:SetText((preset.label or "기본형")..(preset.desc and (" ("..preset.desc..")") or "").." · "..math.floor(scale*100+.5).."% · "..posLabel)
     self.iconHolder:ClearAllPoints()
     local offset=8
     if d.importantCastMarkerPosition=="NAME" then offset=-2 elseif d.importantCastMarkerPosition=="BAR" then offset=-12 end
     self.iconHolder:SetPoint("BOTTOM",fakeName,"TOP",0,offset)
   end
   preview:SetScript("OnUpdate",function(self)
-    if not self.stylePreset then return end
+    if not self.stylePreset or not NT.ImportantCastFrame then return end
+    -- 2.5.5: 실제 이름표와 같은 계산 · 3초마다 시전 시작(튀어나옴) → 끝(사라짐)을 반복해서 보여 준다
     local now=GetTime()
-    local preset=self.stylePreset
-    local r,g,b,t=NT:GetAlertColor(now)
-    local period=tonumber(preset.period) or 1.40
-    local phase=((now%period)/period)*2*math.pi
-    local pt=(math.sin(phase-(math.pi/2))+1)*0.5
-    self.icon:SetVertexColor(r,g,b,1)
-    self.icon:SetAlpha(.86+.14*pt)
-    self.glow:SetVertexColor(r,g,b,1)
-    local lo=tonumber(preset.glowAlphaMin) or .20
-    local hi=tonumber(preset.glowAlphaMax) or .58
-    self.glow:SetAlpha(lo+(hi-lo)*pt)
-    self.iconHolder:SetScale(1+(tonumber(preset.pulseScale) or 0)*pt)
+    local cyc=now%3.0
+    local fading=cyc>=2.55 and (cyc-2.55) or nil
+    local f=NT:ImportantCastFrame(self.stylePreset,now,cyc,fading)
+    local ib,gb=self.iconBase or 48,self.glowBase or 68
+    self.icon:SetSize(ib*f.iconScale,ib*f.iconScale)
+    self.icon:SetVertexColor(f.r,f.g,f.b,1)
+    self.icon:SetAlpha(f.iconAlpha*f.alpha)
+    self.glow:SetAlpha(0)
+    if f.ringScale and f.ringAlpha>0.01 then
+      self.ring:SetSize(ib*f.ringScale,ib*f.ringScale)
+      self.ring:SetVertexColor(f.r,f.g,f.b,1)
+      self.ring:SetAlpha(f.ringAlpha*f.alpha)
+      self.ring:Show()
+    else
+      self.ring:Hide()
+    end
   end)
   p.importantPreview=preview
 
@@ -2633,6 +2660,8 @@ function UI:BuildTools()
   local actions=self:Section(p,"유지관리","자주 쓰는 공통 작업",-328,150)
   local b1=self:Button(actions,"UI 다시 불러오기",150,32,function() ReloadUI() end); b1:SetPoint("TOPLEFT",16,-58)
   local back=self:Button(actions,"메인 설정으로",150,32,function() UI:ShowPage(NT:GetDB().lastPage or "GOLD") end); back:SetPoint("LEFT",b1,"RIGHT",10,0)
+  local exb=self:Button(actions,"EXBoss 프로필",150,32,function() if NT.ExbossS2 then NT.ExbossS2:OpenDialog() end end); exb:SetPoint("LEFT",back,"RIGHT",10,0)
+  local nui=self:Button(actions,"나오 프로필 전부",150,32,function() if NT.NaowhUILink then NT.NaowhUILink:OpenInstaller() end end); nui:SetPoint("LEFT",exb,"RIGHT",10,0)
   local note=self:Font(actions,9,"명령어 목록은 제거했습니다. 주요 설정은 NiniTools 창에서 바로 조작합니다.",C.muted)
   note:SetPoint("BOTTOMLEFT",16,18); note:SetPoint("RIGHT",-16,0)
 
@@ -2708,6 +2737,24 @@ SlashCmdList.NINITOOLS=function(msg)
       NT.NoteCapture:Slash(msg:match("^memo%s*(.-)%s*$") or "")
     else
       NT:Print("메모 캡처 모듈을 찾지 못했습니다.")
+    end
+    return
+  end
+  if msg=="naowh" or msg:match("^naowh%s+") or msg=="나오" then
+    -- 2.5.5: 나오 프로필 전부 = 각자 설치한 NaowhUI 설치기 열기
+    if NT.NaowhUILink and type(NT.NaowhUILink.Slash)=="function" then
+      NT.NaowhUILink:Slash(msg:match("^naowh%s*(.-)%s*$") or "")
+    else
+      NT:Print("NaowhUI 연결 모듈을 찾지 못했습니다.")
+    end
+    return
+  end
+  if msg=="exboss" or msg:match("^exboss%s+") then
+    -- 2.5.5: Nini_S2 EXBoss 프로필 · 음성팩
+    if NT.ExbossS2 and type(NT.ExbossS2.Slash)=="function" then
+      NT.ExbossS2:Slash(msg:match("^exboss%s*(.-)%s*$") or "")
+    else
+      NT:Print("EXBoss 프로필 모듈을 찾지 못했습니다.")
     end
     return
   end

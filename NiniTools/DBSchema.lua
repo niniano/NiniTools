@@ -23,6 +23,7 @@ S.KNOWN_ROOT_KEYS = {
   diagnostics=true,
   _niniMeta=true,
   fontPrefs=true, -- 2.5.4: /nt font (본문·숫자 SharedMedia 글꼴 이름)
+  exbossS2=true, -- 2.5.5: Nini_S2 EXBoss 프로필 선택 기록 (예전 선택 복원용)
 
   -- Active root-level settings that predate the formal schema.
   dungeonSearchEnabled=true,
@@ -58,6 +59,7 @@ S.PROTECTED_ROOTS = {
   diagnostics=true,
   ui=true,
   waypoints=true,
+  exbossS2=true,
 }
 
 local function nowEpoch()

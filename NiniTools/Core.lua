@@ -2,7 +2,7 @@ local ADDON_NAME, NT = ...
 NT = NT or {}
 _G.NiniTools = NT
 
-NT.VERSION = "2.5.4"
+NT.VERSION = "2.5.5"
 local function resolveClassAccent()
   local classFile
   if UnitClass then
@@ -135,24 +135,87 @@ NT.ALERT_STYLE = NT.ALERT_STYLE or {
   glowAlphaMax = 0.92,
 }
 
--- Important-cast marker visual presets.  These intentionally reuse the same
--- proven ImportantAlert texture; the presets reproduce visual treatments we
--- used while iterating the marker instead of shipping duplicate image assets.
+-- Important-cast marker visual presets (2.5.5 R2).  One "!" only: the icon itself
+-- grows and shrinks.  No glow copy or ripple copy behind it (those read as a second,
+-- differently sized "!").  The three styles differ by how the single icon moves:
+--   DEFAULT  기본형 · 천천히 숨쉬듯 조금 커졌다 작아짐 + 주홍↔호박색
+--   PULSE    펄스형 · 두근-두근 두 번 뛰는 박동
+--   EMPHASIS 강조형 · 큰 아이콘이 크게 부풀었다 돌아옴
 NT.IMPORTANT_CAST_STYLE_ORDER = {"DEFAULT","PULSE","EMPHASIS"}
 NT.IMPORTANT_CAST_STYLES = {
   DEFAULT = {
-    -- Steady geometry, but much stronger color/brightness flash and halo.
-    label="기본형", iconSize=68, glowSize=94, glowAlphaMin=0.24, glowAlphaMax=0.86, pulseScale=0.00, period=0.50,
+    label="기본형", desc="천천히 숨쉬기", motion="breathe",
+    iconSize=68, scaleAmp=0.08, period=1.20,
+    low={1.00,0.12,0.04}, high={1.00,0.64,0.06},
   },
   PULSE = {
-    -- Fast breathing + size pulse for maximum peripheral visibility.
-    label="펄스형", iconSize=74, glowSize=112, glowAlphaMin=0.16, glowAlphaMax=0.98, pulseScale=0.15, period=0.42,
+    label="펄스형", desc="두근두근 박동", motion="heartbeat",
+    iconSize=70, scaleAmp=0.16, period=0.95,
+    low={1.00,0.10,0.04}, high={1.00,0.70,0.08},
   },
   EMPHASIS = {
-    -- Largest icon, broad halo, and a restrained size pulse.
-    label="강조형", iconSize=84, glowSize=132, glowAlphaMin=0.46, glowAlphaMax=1.00, pulseScale=0.07, period=0.50,
+    label="강조형", desc="크게 부풀기", motion="swell",
+    iconSize=82, scaleAmp=0.18, period=1.00,
+    low={1.00,0.14,0.04}, high={1.00,0.58,0.06},
   },
 }
+
+local function nt_clamp01(x) if x<0 then return 0 elseif x>1 then return 1 end return x end
+local function nt_smooth(x) x=nt_clamp01(x) return x*x*(3-2*x) end
+local function nt_easeOutCubic(x) x=nt_clamp01(x) local y=1-x return 1-y*y*y end
+local function nt_easeOutBack(x) x=nt_clamp01(x) local c1=1.40 local c3=c1+1 local y=x-1 return 1+c3*y*y*y+c1*y*y end
+local function nt_bump(x,c,w)
+  -- smooth single beat centred in [c, c+w]: 0 -> 1 -> 0 with zero slope at both ends
+  if x<c or x>c+w then return 0 end
+  local s=math.sin(math.pi*(x-c)/w)
+  return s*s
+end
+
+-- One frame of the important-cast marker.  elapsed = seconds since the cast started,
+-- fading = seconds since the cast ended (nil while casting).  Shared by the nameplate
+-- marker and the settings preview so both always look the same.
+function NT:ImportantCastFrame(preset,now,elapsed,fading)
+  preset=preset or self.IMPORTANT_CAST_STYLES.DEFAULT
+  now=tonumber(now) or (GetTime and GetTime() or 0)
+  local period=tonumber(preset.period) or 1.20
+  local ph=(now%period)/period
+  local motion=preset.motion or "breathe"
+  local amp=tonumber(preset.scaleAmp) or 0.08
+  local wave=0.5-0.5*math.cos(2*math.pi*ph)        -- 0..1, 끊김 없는 숨쉬기 곡선
+  local t, grow = wave, wave
+  if motion=="heartbeat" then
+    local beat=nt_bump(ph,0.00,0.30)+0.55*nt_bump(ph,0.32,0.30)
+    grow=beat
+    t=0.15+0.70*beat
+  elseif motion=="swell" then
+    -- 빨리 부풀고 천천히 돌아온다 (같은 곡선이라 끊김 없음)
+    grow=nt_smooth(ph<0.35 and ph/0.35 or (1-ph)/0.65)
+    t=grow
+  end
+  local lo,hi=preset.low or {1,0.12,0.04},preset.high or {1,0.64,0.06}
+  local r,g,b=lo[1]+(hi[1]-lo[1])*t, lo[2]+(hi[2]-lo[2])*t, lo[3]+(hi[3]-lo[3])*t
+  local alpha, popScale = 1, 1
+  elapsed=tonumber(elapsed)
+  if elapsed and elapsed<0.22 then
+    popScale=0.60+0.40*nt_easeOutBack(elapsed/0.22)   -- 작게 시작해서 살짝 튀며 제자리
+    alpha=nt_smooth(elapsed/0.16)
+  end
+  fading=tonumber(fading)
+  if fading then
+    local p=nt_smooth(fading/0.18)
+    alpha=alpha*(1-p)
+    popScale=popScale*(1-0.12*p)
+  end
+  return {
+    r=r,g=g,b=b,
+    iconAlpha=1,
+    iconScale=(1+amp*grow)*popScale,
+    glowAlpha=0, glowScale=1,          -- 겹쳐 보이던 외곽광 복사본은 쓰지 않음
+    ringScale=nil, ringAlpha=0,        -- 파동 복사본도 쓰지 않음
+    alpha=alpha,
+    done=fading~=nil and fading>=0.18,
+  }
+end
 
 function NT:GetImportantCastStyle(id)
   id=type(id)=="string" and id:upper() or "DEFAULT"

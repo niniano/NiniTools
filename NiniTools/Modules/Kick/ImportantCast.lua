@@ -29,14 +29,14 @@ local CAST_EVENTS = {
 local ALERT_TEXTURE = "Interface\\AddOns\\NiniTools\\Media\\ImportantAlert.tga"
 local NT = _G.NiniTools or {}
 
-local function alertVisual(now)
-  if type(NT.GetAlertColor)=="function" then
-    return NT:GetAlertColor(now)
-  end
-  local period=1.40
-  local phase=((now%period)/period)*2*math.pi
-  local t=(math.sin(phase-(math.pi/2))+1)*0.5
-  return 1,0.22+(0.72-0.22)*t,0.05+(0.08-0.05)*t,t
+local function framePreset()
+  return NT.IMPORTANT_CAST_STYLES and NT.IMPORTANT_CAST_STYLES.DEFAULT or {}
+end
+
+local function noSnap(tex)
+  -- 2.5.5: 크기가 부드럽게 변하도록 픽셀 맞춤을 끈다 (없는 클라이언트는 그냥 넘어감)
+  if tex.SetSnapToPixelGrid then pcall(tex.SetSnapToPixelGrid,tex,false) end
+  if tex.SetTexelSnappingBias then pcall(tex.SetTexelSnappingBias,tex,0) end
 end
 
 local function isSecret(v)
@@ -59,7 +59,7 @@ local function stylePreset()
   if type(NT.GetImportantCastStyle)=="function" then
     preset=NT:GetImportantCastStyle(d.importantCastMarkerStyle)
   end
-  preset=preset or {iconSize=68,glowSize=82,glowAlphaMin=.20,glowAlphaMax=.58,pulseScale=0,period=1.40}
+  preset=preset or framePreset()
   return preset, math.max(.70,math.min(1.40,tonumber(d.importantCastMarkerScale) or 1))
 end
 
@@ -69,13 +69,6 @@ local function markerPositionOffset()
   if key=="NAME" then return -16 end
   if key=="BAR" then return -28 end
   return -4
-end
-
-local function stylePulse(now,preset,fallback)
-  local period=tonumber(preset and preset.period) or 1.40
-  if math.abs(period-1.40)<.001 then return fallback end
-  local phase=((now%period)/period)*2*math.pi
-  return (math.sin(phase-(math.pi/2))+1)*0.5
 end
 
 local function deactivateVisual(ind)
@@ -91,46 +84,49 @@ local function deactivateVisual(ind)
   if activeVisualCount==0 then animationDriver:SetScript("OnUpdate",nil) end
 end
 
-local function visualTick(ind,now,r,g,b,t)
+local function visualTick(ind,now)
   local visual=ind.visual
   if not visual then return end
-  local mode=ind.effectMode or "main"
-  local elapsed=now-(ind.effectStartedAt or now)
-  local preset=ind.stylePreset or {}
-  local pt=stylePulse(now,preset,t)
-  local glowMin=tonumber(preset.glowAlphaMin) or 0.20
-  local glowMax=tonumber(preset.glowAlphaMax) or 0.58
-  local pulseScale=tonumber(preset.pulseScale) or 0
-
-  if ind.tex then
-    ind.tex:SetVertexColor(r,g,b,1)
-    ind.tex:SetAlpha(.86+.14*pt)
-  end
+  local preset=ind.stylePreset or framePreset()
+  local fading=(ind.effectMode=="finish") and (now-(ind.finishAt or now)) or nil
+  local f=NT.ImportantCastFrame and NT:ImportantCastFrame(preset,now,now-(ind.effectStartedAt or (now-1)),fading)
+  if not f then return end
+  local iconBase=ind.iconBase or 68
+  local glowBase=ind.glowBase or 96
+  ind.tex:SetSize(iconBase*f.iconScale,iconBase*f.iconScale)
+  ind.tex:SetVertexColor(f.r,f.g,f.b,1)
+  ind.tex:SetAlpha(f.iconAlpha)
   if ind.glow then
-    ind.glow:SetVertexColor(r,g,b,1)
-    ind.glow:SetAlpha(glowMin+(glowMax-glowMin)*pt)
-  end
-
-  if mode=="start" then
-    local p=math.max(0,math.min(1,elapsed/0.10))
-    visual:SetScale(1+pulseScale*pt)
-    visual:SetAlpha(p)
-    if p>=1 then
-      ind.effectMode="main"
-      ind.effectStartedAt=now
+    if f.glowAlpha>0.01 then
+      ind.glow:SetSize(glowBase*f.glowScale,glowBase*f.glowScale)
+      ind.glow:SetVertexColor(f.r,f.g,f.b,1)
+      ind.glow:SetAlpha(f.glowAlpha)
+      ind.glow:Show()
+    else
+      ind.glow:Hide()
     end
-    return
   end
-
-  if mode=="finish" then
-    local p=math.max(0,math.min(1,elapsed/0.10))
-    visual:SetScale(1+pulseScale*pt)
-    visual:SetAlpha(1-p)
-    return
+  if ind.mine and ind.mine:IsShown() then
+    -- 내 담당 강조는 같은 크기로 겹쳐서 아이콘 자체를 밝게 한다 (두 번째 느낌표처럼 안 보이게)
+    ind.mine:SetSize(iconBase*f.iconScale,iconBase*f.iconScale)
   end
-
-  visual:SetScale(1+pulseScale*pt)
-  visual:SetAlpha(1)
+  if ind.ring then
+    if f.ringScale and f.ringAlpha>0.01 then
+      ind.ring:SetSize(iconBase*f.ringScale,iconBase*f.ringScale)
+      ind.ring:SetVertexColor(f.r,f.g,f.b,1)
+      ind.ring:SetAlpha(f.ringAlpha)
+      ind.ring:Show()
+    else
+      ind.ring:Hide()
+    end
+  end
+  visual:SetAlpha(f.alpha)
+  if f.done then
+    ind:SetAlpha(0)
+    ind.effectMode="main"
+    visual:SetAlpha(1)
+    ind.deactivateNow=true
+  end
 end
 
 local function animationOnUpdate()
@@ -139,10 +135,19 @@ local function animationOnUpdate()
     return
   end
   local now=GetTime()
-  -- Shared palette calculation: once per frame, regardless of nameplate count.
-  local r,g,b,t=alertVisual(now)
+  local finished
   for ind in pairs(activeVisuals) do
-    visualTick(ind,now,r,g,b,t)
+    visualTick(ind,now)
+    if ind.deactivateNow then
+      finished=finished or {}
+      finished[#finished+1]=ind
+    end
+  end
+  if finished then
+    for _,ind in ipairs(finished) do
+      ind.deactivateNow=nil
+      deactivateVisual(ind)
+    end
   end
 end
 
@@ -165,20 +170,24 @@ local function applyVisualStyle(ind)
   ind.stylePreset=preset
   ind.markerScale=scale
   local iconSize=(tonumber(preset.iconSize) or 68)*scale
-  local glowSize=(tonumber(preset.glowSize) or 82)*scale
+  local glowSize=(tonumber(preset.glowSize) or iconSize/scale)*scale
+  ind.iconBase=iconSize
+  ind.glowBase=glowSize
+  -- 바깥 틀은 크기 고정 · 그림은 가운데 기준으로만 커지고 작아진다 (위치가 흔들리지 않음)
   ind.visual:SetSize(iconSize,iconSize)
+  ind.visual:SetScale(1)
   ind.visual:ClearAllPoints()
   ind.visual:SetPoint("BOTTOM",ind,"TOP",0,markerPositionOffset())
-  if ind.tex then ind.tex:SetAllPoints(ind.visual) end
-  if ind.glow then
-    ind.glow:ClearAllPoints()
-    ind.glow:SetPoint("CENTER",ind.visual,"CENTER",0,0)
-    ind.glow:SetSize(glowSize,glowSize)
+  for _,tex in ipairs({ind.tex,ind.glow,ind.ring}) do
+    if tex then
+      tex:ClearAllPoints()
+      tex:SetPoint("CENTER",ind.visual,"CENTER",0,0)
+    end
   end
-  if ind.mine then
-    local mineSize=math.max(iconSize+6,74*scale)
-    ind.mine:SetSize(mineSize,mineSize)
-  end
+  if ind.tex then ind.tex:SetSize(iconSize,iconSize) end
+  if ind.glow then ind.glow:SetSize(glowSize,glowSize) end
+  if ind.ring then ind.ring:SetSize(iconSize,iconSize); ind.ring:Hide() end
+  if ind.mine then ind.mine:SetSize(iconSize,iconSize) end
 end
 
 local function hostileUnit(unit)
@@ -229,24 +238,37 @@ local function getIndicator(nameplate)
   visual:SetScale(1)
   visual:Hide()
 
+  -- 퍼지는 파동 고리 (강조형만 보임): 아이콘 복사본이 커지며 사라진다.
+  local ring=visual:CreateTexture(nil,"BACKGROUND")
+  ring:SetTexture(ALERT_TEXTURE)
+  ring:SetPoint("CENTER",visual,"CENTER",0,0)
+  ring:SetSize(68,68)
+  ring:SetBlendMode("ADD")
+  ring:Hide()
+  noSnap(ring)
+
   -- Slightly enlarged additive copy behind the icon: visible glowing edge/halo.
   local glow=visual:CreateTexture(nil,"ARTWORK")
   glow:SetTexture(ALERT_TEXTURE)
   glow:SetPoint("CENTER",visual,"CENTER",0,0)
-  glow:SetSize(82,82)
+  glow:SetSize(96,96)
   glow:SetBlendMode("ADD")
-  glow:SetVertexColor(1,0.22,0.05,1)
-  glow:SetAlpha(0.20)
+  glow:SetVertexColor(1,0.12,0.04,1)
+  glow:SetAlpha(0.30)
+  noSnap(glow)
 
   local tex=visual:CreateTexture(nil,"OVERLAY")
   tex:SetTexture(ALERT_TEXTURE)
-  tex:SetAllPoints()
+  tex:SetPoint("CENTER",visual,"CENTER",0,0)
+  tex:SetSize(68,68)
   tex:SetBlendMode("BLEND")
-  tex:SetVertexColor(1,0.22,0.05,1)
+  tex:SetVertexColor(1,0.12,0.04,1)
+  noSnap(tex)
 
   ind.visual=visual
   ind.tex=tex
   ind.glow=glow
+  ind.ring=ring
   ind.effectMode="main"
   ind.effectStartedAt=GetTime()
   ind.effectToken=0
@@ -265,7 +287,7 @@ local function getIndicator(nameplate)
   mineTex:SetBlendMode("ADD")
   mineTex:SetVertexColor(1,.88,.12,1)
   mine.tex=mineTex
-  mine.pulse=makePulse(mineTex,.10,1,.18)
+  mine.pulse=makePulse(mineTex,.25,.95,.40)  -- 2.5.5: 내 담당 강조도 부드럽게 (예전 0.18초 깜빡임)
 
   ind.mine=mine
   applyVisualStyle(ind)
@@ -278,12 +300,12 @@ local function startImportantEffect(ind)
   ind.effectToken=(ind.effectToken or 0)+1
   ind.effectMode="start"
   ind.effectStartedAt=GetTime()
+  ind.finishAt=nil
+  ind.deactivateNow=nil
   ind.visual:SetScale(1)
   ind.visual:SetAlpha(0)
-  local r,g,b=alertVisual(GetTime())
-  ind.tex:SetVertexColor(r,g,b,1)
-  if ind.glow then ind.glow:SetVertexColor(r,g,b,1) end
   activateVisual(ind)
+  visualTick(ind,GetTime())
 end
 
 local function finishImportantEffect(ind)
@@ -296,17 +318,12 @@ local function finishImportantEffect(ind)
     return
   end
 
-  ind.effectMode="finish"
-  ind.effectStartedAt=GetTime()
-  C_Timer.After(0.1,function()
-    if not ind or ind.effectToken~=token then return end
-    ind:SetAlpha(0)
-    ind.effectMode="main"
-    ind.effectStartedAt=GetTime()
-    ind.visual:SetAlpha(1)
-    ind.visual:SetScale(1)
-    deactivateVisual(ind)
-  end)
+  -- 2.5.5: 0.18초 동안 부드럽게 사라진 뒤 애니메이션 목록에서 빠진다 (visualTick이 처리)
+  if ind.effectMode~="finish" then
+    ind.effectMode="finish"
+    ind.finishAt=GetTime()
+  end
+  local _=token
 end
 
 local function updateAssignmentOverlay(unit,ind)
@@ -415,7 +432,8 @@ local function updateDisplay(unit,preferChannel,restartEffect)
   if handled then
     if restartEffect~=true and not ind.visualActive then
       ind.effectMode="main"
-      ind.effectStartedAt=GetTime()
+      ind.effectStartedAt=GetTime()-1   -- 시전 도중 보인 이름표는 튀어나오는 연출 없이
+      ind.finishAt=nil
       ind.visual:SetAlpha(1)
       ind.visual:SetScale(1)
       activateVisual(ind)
