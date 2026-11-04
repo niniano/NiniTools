@@ -1,4 +1,4 @@
-﻿NiniTools 2.5.4
+﻿NiniTools 2.5.7
 
 NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운드/Navi, Naowh Smart Reminders 연동을 한 창에 모은 WoW 통합 편의 애드온입니다.
 
@@ -35,6 +35,11 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - NiniTools 자체 Media/Sounds/Sonar.ogg를 포함합니다.
 - 테스트: /nininsr sonar
 - 상태: /nininsr status 또는 /nininsr fallbackstatus
+- (2.5.7) 내가 고른 Smart Reminders 프로필은 건드리지 않습니다.
+  - 기본(auto): 활성 프로필이 비었거나 기본·니니 프로필일 때만 니니 프로필로 맞춥니다. 다른 프로필이 켜져 있으면 그대로 두고, 니니 생존기 알림도 끕니다.
+  - /nininsr use (또는 설정 「니니 프로필 쓰기」): 늘 니니 프로필을 씁니다 (예전 동작).
+  - /nininsr off (또는 설정 「안 씀」): 니니 프로필을 설치·전환하지 않습니다. /nininsr auto 로 기본으로 돌아갑니다.
+  - 니니 프로필 안의 관리 항목(presets·규칙·전문화 연결)은 접속 때마다 NiniTools 기본값으로 다시 맞춰집니다. 내 설정은 니니 프로필을 복사한 다른 이름의 프로필에 하세요.
 
 [전용 매크로]
 - NiniTools는 차단 흐름에 필요한 NiniKickFocus / NiniKickAuto 두 개만 관리합니다.
@@ -58,8 +63,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
 
 [배포]
-- 현재 정식 버전: 2.5.6
-- 최신 변경사항: CHANGELOG_2.5.6.txt (2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
+- 현재 정식 버전: 2.5.7
+- 최신 변경사항: CHANGELOG_2.5.7.txt (2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
 
 [공대 메모 캡처 (2.5.3)]
 - 기본은 꺼짐. /nini memo on 을 입력한 캐릭터만 저장합니다.
@@ -76,7 +81,9 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 [EXBoss · Nini_S2 (2.5.5)]
 - 니니의 EXBoss 쐐기 프로필(Naowh 프로필 바탕, 음성만 EXBoss 음성팩으로 교체)을 고를 수 있습니다. 처음 접속 때 한 번 묻습니다.
 - /nini exboss (창) · /nini exboss on · off · status · eng
-- off 를 쓰면 쓰기 전 쐐기 선택과 음성팩으로 돌아갑니다.
+- off 를 쓰면 쓰기 전 쐐기 선택과 음성팩으로 돌아갑니다. 예전 선택이 없던 역할은 EXBoss 설정에서 직접 골라 주세요.
+- (2.5.7) 가져온 뒤 새로 생긴 Nini_S2를 이름으로 찾아 탱커·딜러·힐러 세 칸을 직접 맞추고 확인합니다. 이름이 Nini_S2가 아닌 프로필은 절대 이름을 바꾸지 않습니다.
+- (2.5.7) 영어 음성팩(EXBOSS-ENG)이 애드온 목록에서 꺼져 있으면 바꾸지 않고 알려 줍니다.
 - 한국어 클라이언트는 EXBoss 음성이 기본 중국어입니다. /nini exboss eng 로 영어로 바꿀 수 있습니다.
 
 [나오 프로필 전부 (2.5.5)]

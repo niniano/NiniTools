@@ -82,6 +82,12 @@ function M:IsEnglishPackInstalled()
   return s and s.installed and true or false
 end
 
+-- 2.5.7: 설치만 돼 있고 애드온 목록에서 꺼져 있으면 영어 음성이 안 나온다.
+function M:IsEnglishPackUsable()
+  local s = addonState(ENGLISH_PACK_ADDON)
+  return s and s.installed and (s.loaded or s.enabled) and true or false
+end
+
 -- Korean clients start on EXBoss's Chinese pack (EXBoss only auto-picks English on enUS/enGB).
 function M:IsChineseDefaultPack()
   return self:GetVoicePack() == CHINESE_DEFAULT_PACK
@@ -92,6 +98,9 @@ function M:SetVoicePack(pack)
   if not g then return false, "EXBoss 음성 설정을 찾지 못했습니다." end
   if pack == ENGLISH_PACK and not self:IsEnglishPackInstalled() then
     return false, "EXBoss 영어 음성팩(EXBOSS-ENG)이 설치돼 있지 않습니다."
+  end
+  if pack == ENGLISH_PACK and not self:IsEnglishPackUsable() then
+    return false, "EXBoss 영어 음성팩(EXBOSS-ENG)이 애드온 목록에서 꺼져 있습니다. 켜고 /reload 한 뒤 다시 해 주세요."
   end
   if g.selectedVoicePack == pack then return true end
   g.selectedVoicePack = pack
@@ -148,10 +157,57 @@ local function effectiveSelected(slot)
   return ok and id or nil
 end
 
+local function publish()
+  call(boss(), "PublishRuntimeSelection")
+end
+
+local function isS2Name(name)
+  return type(name) == "string" and name:sub(1, #PROFILE_NAME) == PROFILE_NAME
+end
+
 function M:GetS2AuthorID()
   local d = db()
-  if authorExists(d.authorID) then return d.authorID end
+  -- 2.5.7: ID만 맞고 이름이 Nini_S2가 아니면 (2.5.5~2.5.6에서 잘못 기억한 경우) 니니 프로필로 보지 않는다.
+  if authorExists(d.authorID) and isS2Name(authorName(d.authorID)) then return d.authorID end
   return nil
+end
+
+local function authorIDSet()
+  local out = {}
+  for _, row in ipairs(authorRows()) do if row.id then out[row.id] = true end end
+  return out
+end
+
+-- 2.5.7: 가져오기 전후 목록을 비교해 새로 생긴 Nini_S2를 찾는다 (선택된 칸을 짐작하지 않음).
+local function findImportedS2(before)
+  local fresh, named = {}, {}
+  for _, row in ipairs(authorRows()) do
+    if row.id and not before[row.id] then
+      fresh[#fresh + 1] = row
+      if isS2Name(row.name) then named[#named + 1] = row end
+    end
+  end
+  if #named == 1 then return named[1].id end
+  if #named > 1 then return nil, "새 Nini_S2가 " .. #named .. "개라 고르지 못했습니다" end
+  if #fresh == 0 then return nil, "가져온 프로필을 목록에서 찾지 못했습니다" end
+  return nil, "새 프로필 이름이 Nini_S2가 아닙니다 (" .. tostring(fresh[1].name) .. ")"
+end
+
+-- 쐐기 탱커·딜러·힐러 세 칸을 모두 id로 맞추고, 실제로 바뀌었는지 확인한다.
+local function selectAllSlots(id)
+  for _, slot in ipairs(SLOTS) do
+    if baseSelected(slot) ~= id then
+      local ok, res, why = call(boss(), "SetSelectedAuthor", slot, id)
+      if not ok or res == false then return false, SLOT_KO[slot] .. " 선택 실패 · " .. tostring(why or res) end
+    end
+  end
+  publish()
+  local bad = {}
+  for _, slot in ipairs(SLOTS) do
+    if baseSelected(slot) ~= id then bad[#bad + 1] = SLOT_KO[slot] end
+  end
+  if #bad > 0 then return false, "선택 확인 실패 · " .. table.concat(bad, "·") .. " 칸이 Nini_S2가 아닙니다" end
+  return true
 end
 
 function M:IsActive()
@@ -161,10 +217,6 @@ function M:IsActive()
     if baseSelected(slot) ~= id then return false end
   end
   return true
-end
-
-local function publish()
-  call(boss(), "PublishRuntimeSelection")
 end
 
 function M:Apply()
@@ -185,27 +237,28 @@ function M:Apply()
 
   local reload = false
   if existing and tonumber(d.rev) == PROFILE_REV then
-    for _, slot in ipairs(SLOTS) do
-      local ok, res, why = call(boss(), "SetSelectedAuthor", slot, existing)
-      if not ok or res == false then NT:Print("선택 실패 · " .. tostring(why or res)); return false end
-    end
-    publish()
+    local ok, why = selectAllSlots(existing)
+    if not ok then NT:Print(why); return false end
     reload = true
   else
-    if existing then
+    if existing and isS2Name(authorName(existing)) then
       -- New Nini_S2 revision: keep the old copy (never delete player data), just rename it.
+      -- 2.5.7: 이름이 Nini_S2로 시작하는 프로필만 이름을 바꾼다 (길드원 본인 프로필은 절대 안 건드림).
       local oldName = PROFILE_NAME .. " r" .. tostring(d.rev or 0)
       call(boss(), "RenameAuthorConfiguration", CATEGORY, existing, oldName)
     end
+    local before = authorIDSet()
     local okCall, ok, result = pcall(_G.EXBossWagoAPI.ImportProfile, _G.EXBossWagoAPI, DATA)
     if not okCall or not ok then
       NT:Print("Nini_S2 가져오기 실패 · " .. tostring(okCall and result or ok))
       return false
     end
-    local newID = baseSelected("mplus_dps")
-    if not authorExists(newID) then NT:Print("Nini_S2 가져온 뒤 선택을 확인하지 못했습니다."); return false end
+    local newID, why = findImportedS2(before)
+    if not newID then NT:Print("Nini_S2 가져온 뒤 확인 실패 · " .. tostring(why) .. " · EXBoss 설정에서 직접 확인해 주세요."); return false end
     d.authorID, d.rev, d.importedAt = newID, PROFILE_REV, now()
-    reload = type(result) ~= "table" or result.reloadRequired ~= false
+    local okSel, whySel = selectAllSlots(newID)
+    if not okSel then NT:Print(whySel .. " · /nini exboss off 로 되돌릴 수 있습니다."); return false end
+    reload = true
   end
 
   if self:GetVoicePack() ~= ENGLISH_PACK then
@@ -285,6 +338,7 @@ function M:Status()
     pack = self:VoicePackLabel(),
     chinese = self:IsChineseDefaultPack(),
     english = self:IsEnglishPackInstalled(),
+    englishUsable = self:IsEnglishPackUsable(),
   }
 end
 
@@ -299,6 +353,9 @@ function M:Warnings()
   if not self:IsReady() then return out end
   if self:IsChineseDefaultPack() then
     out[#out + 1] = "EXBoss 음성이 중국어(EXWIND 기본)입니다 · /nini exboss eng 로 영어 전환"
+  end
+  if self:GetVoicePack() == ENGLISH_PACK and self:IsEnglishPackInstalled() and not self:IsEnglishPackUsable() then
+    out[#out + 1] = "EXBoss 음성팩이 영어로 돼 있지만 EXBOSS-ENG 애드온이 꺼져 있습니다 · 애드온 목록에서 켜 주세요"
   end
   return out
 end

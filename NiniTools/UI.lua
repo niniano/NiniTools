@@ -1632,14 +1632,19 @@ function UI:BuildKick()
   local openNSR=self:Button(defensive.body,"Naowh 리마인더 열기",160,26,function()
     if NT.NSRBridge then NT.NSRBridge:OpenNaowh() end
   end); openNSR:SetPoint("BOTTOMLEFT",22,12)
-  local reinstallNSR=self:Button(defensive.body,"프로필 다시 설치",138,26,function()
+  local reinstallNSR=self:Button(defensive.body,"니니 프로필 쓰기",138,26,function()
     if NT.NSRBridge then NT.NSRBridge:Reinstall() end
     UI:RefreshVisiblePage()
   end); reinstallNSR:SetPoint("LEFT",openNSR,"RIGHT",8,0)
   local sonarTest=self:Button(defensive.body,"Sonar 테스트",116,26,function()
     if NT.NSRBridge then NT.NSRBridge:TestSonar() end
   end); sonarTest:SetPoint("LEFT",reinstallNSR,"RIGHT",8,0)
-  p.smartOpenButton=openNSR; p.smartReinstallButton=reinstallNSR; p.smartSonarButton=sonarTest
+  -- 2.5.7: 내 Smart Reminders 프로필을 쓰는 사람은 니니 프로필 관리를 끈다.
+  local stopNSR=self:Button(defensive.body,"안 씀",72,26,function()
+    if NT.NSRBridge and NT.NSRBridge.StopManaging then NT.NSRBridge:StopManaging() end
+    UI:RefreshVisiblePage()
+  end); stopNSR:SetPoint("LEFT",sonarTest,"RIGHT",8,0)
+  p.smartOpenButton=openNSR; p.smartReinstallButton=reinstallNSR; p.smartSonarButton=sonarTest; p.smartStopButton=stopNSR
 
   -- 5) Combat overlays -----------------------------------------------------------------
   local combat=self:AccordionSection(p,"combat","전투 시간 / 주변 적 숫자","전투 중 필요한 정보만 화면에 간단히 표시",206,false)

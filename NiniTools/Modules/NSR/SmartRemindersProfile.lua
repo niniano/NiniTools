@@ -7325,10 +7325,49 @@ local function IsEXBossLoaded()
     return false
 end
 
+-- 2.5.7: 길드원이 직접 고른 Smart Reminders 프로필은 건드리지 않는다.
+--   mode nil(기본) = 활성 프로필이 비었거나 기본/니니 프로필일 때만 니니 프로필로 맞춘다.
+--   mode "use"     = /nininsr use 또는 「프로필 다시 설치」를 누른 사람 → 예전처럼 늘 니니 프로필.
+--   mode "never"   = /nininsr off → 니니 프로필을 설치·전환하지 않는다.
+local NINI_PROFILES = { [ROGUE_PROFILE_NAME] = true, [GENERIC_PROFILE_NAME] = true }
+local DEFAULT_PROFILE_NAMES = { [""] = true, ["default"] = true, ["Default"] = true, ["기본"] = true, ["기본값"] = true }
+local userProfileKept = nil
+
+local function nsrDB()
+    local root = NT and type(NT.GetDB) == "function" and NT:GetDB() or nil
+    if type(root) ~= "table" then return {} end
+    root.nsrBridge = type(root.nsrBridge) == "table" and root.nsrBridge or {}
+    return root.nsrBridge
+end
+
+local function ManageMode()
+    local m = nsrDB().mode
+    return (m == "use" or m == "never") and m or nil
+end
+
+local function OwnsActiveProfile(ns)
+    if ManageMode() == "use" then return true end
+    local active = type(ns.ActiveProfileName) == "function" and ns.ActiveProfileName() or nil
+    if active == nil or DEFAULT_PROFILE_NAMES[tostring(active)] or NINI_PROFILES[tostring(active)] then return true end
+    return false, tostring(active)
+end
+
 local function ApplyProfileForCurrentSpec(forceSwitch)
     local ns = NSR(); if not ns then return false end
     local specID = CurrentSpecID()
     if specID == 0 then return false end
+    if ManageMode() == "never" then
+        userProfileKept = nil
+        statusText = "니니 생존기 프로필 안 씀 (/nininsr use 로 다시 켜기)"
+        return false
+    end
+    local owns, userProfile = OwnsActiveProfile(ns)
+    if not owns then
+        userProfileKept = userProfile
+        statusText = "내 Smart Reminders 프로필 「" .. userProfile .. "」 유지 · 니니 프로필로 바꾸지 않음"
+        return false
+    end
+    userProfileKept = nil
 
     InstallRogueProfile()
     if type(ns.SetSpecProfile) == "function" then
@@ -7595,14 +7634,18 @@ local function HandleVoiceTriggeredAoE(info, sid)
     end)
 end
 
+local function NiniProfileInUse()
+    return ManageMode() ~= "never" and userProfileKept == nil
+end
+
 local function OnTrashVoiceTriggered(info)
-    if type(info) ~= "table" then return end
+    if type(info) ~= "table" or not NiniProfileInUse() then return end
     local sid = tonumber(info.spellID)
     if sid and AOE18[sid] then HandleVoiceTriggeredAoE(info, sid) end
 end
 
 local function OnTrashObservedCast(info)
-    if type(info) ~= "table" then return end
+    if type(info) ~= "table" or not NiniProfileInUse() then return end
     local sid = tonumber(info.spellID)
     local rule = sid and TargetRule(sid) or nil
     if not rule then return end
@@ -7644,7 +7687,26 @@ function M:Refresh(forceSwitch)
 end
 
 function M:Reinstall()
+    -- 「프로필 다시 설치」/ /nininsr use = 니니 프로필을 쓰겠다는 명시적 선택
+    nsrDB().mode = "use"
     return self:Refresh(true)
+end
+
+function M:StopManaging()
+    nsrDB().mode = "never"
+    userProfileKept = nil
+    statusText = "니니 생존기 프로필 안 씀 (/nininsr use 로 다시 켜기)"
+    print("|cff66ff99[NiniSR]|r 니니 생존기 프로필을 더 이상 설치·전환하지 않습니다. Smart Reminders에서 원하는 프로필을 고르세요. 다시 쓰려면 /nininsr use")
+    return true
+end
+
+function M:AutoManaging()
+    nsrDB().mode = nil
+    return self:Refresh(false)
+end
+
+function M:ManageMode()
+    return ManageMode() or "auto"
 end
 
 function M:GetStatus()
@@ -7656,6 +7718,12 @@ function M:GetStatus()
     local ns = NSR()
     if not ns then return string.format("%s · %s", tostring(owner), tostring(ownerDetail)) end
     local active = type(ns.ActiveProfileName) == "function" and ns.ActiveProfileName() or "?"
+    if ManageMode() == "never" then
+        return string.format("%s · 니니 생존기 프로필 안 씀 · 활성 %s · /nininsr use", tostring(owner), tostring(active))
+    end
+    if userProfileKept then
+        return string.format("%s · 내 프로필 「%s」 유지 (니니 프로필로 안 바꿈) · /nininsr use", tostring(owner), tostring(userProfileKept))
+    end
     local specID = CurrentSpecID()
     local exboss = IsEXBossLoaded()
     local mode
@@ -7681,6 +7749,7 @@ end
 
 function M:PrintStatus()
     print("|cff66ff99[NiniSR]|r " .. self:GetStatus())
+    print("|cff66ff99[NiniSR]|r 프로필 관리 = " .. (ManageMode() or "auto") .. " (auto: 내 프로필이 켜져 있으면 안 바꿈 · use: 늘 니니 프로필 · off: 안 씀)")
     print(string.format("|cff66ff99[NiniSR]|r v%s bridge=%s exboss=%s PlayerIsSpellTarget=%s SecretVisualAPI=%s", PROFILE_VERSION,
         tostring(targetBridgeRegistered), tostring(IsEXBossLoaded()), tostring(type(_G.PlayerIsSpellTarget)=="function"),
         tostring(type(CreateFrame("Frame").SetAlphaFromBoolean)=="function")))
@@ -7724,11 +7793,15 @@ SlashCmdList.NINISR = function(msg)
         if M.FallbackAoE and type(M.FallbackAoE.PrintStatus) == "function" then M.FallbackAoE:PrintStatus() end
     elseif msg == "reinstall" or msg == "reset" or msg == "use" then
         M:Reinstall(); M:PrintStatus()
+    elseif msg == "off" or msg == "never" then
+        M:StopManaging(); M:PrintStatus()
+    elseif msg == "auto" then
+        M:AutoManaging(); M:PrintStatus()
     elseif msg == "sonar" or msg == "test" then
         M:TestSonar()
     elseif msg == "open" then
         M:OpenNaowh()
     else
-        print("|cff66ff99[NiniSR]|r /nininsr status | reinstall | open | sonar | targetdebug | fallbackdebug | fallbackstatus")
+        print("|cff66ff99[NiniSR]|r /nininsr status | use | off | auto | open | sonar | targetdebug | fallbackdebug | fallbackstatus")
     end
 end
