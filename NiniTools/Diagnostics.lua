@@ -400,7 +400,7 @@ function D:Run(arg)
   end
 
   NT:Print(string.format("Kick %s · Important %s · Enemy %s · Navi %s", onOff(modules.kick), onOff(modules.importantCast), onOff(modules.enemyCount), onOff(modules.naviCursor)))
-  do -- 2.6.2: 중요몹 「!」 지금 뜨는지 (쐐기 / 추종자 던전)
+  do -- 2.6.2: 중요몹 「!」 지금 뜨는지 (쐐기 / 추종자 던전 / 2.6.9 레이드)
     local K=_G.NiniKick
     if K and type(K.ImportantCastStatus)=="function" then
       local ok,line=pcall(K.ImportantCastStatus)

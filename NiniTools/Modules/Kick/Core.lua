@@ -17,7 +17,7 @@ local defaults = {
   focusMacroEnabled=true, focusMacroName="NiniKickFocus", freeFocusSolo=false,
   autoInterruptMacroEnabled=true, autoInterruptMacroName="NiniKickAuto",
   defensiveEnabled=false, keepDefensiveWithNaowh=false, displayStyle="ICON", simpleShowMechanic=true, importantCastMarkerEnabled=true,
-  importantCastMarkerStyle="PREMIUM", importantCastMarkerScale=1.0, importantCastMarkerPosition="HEAD", importantCastFollowerEnabled=true,
+  importantCastMarkerStyle="PREMIUM", importantCastMarkerScale=1.0, importantCastMarkerPosition="HEAD", importantCastFollowerEnabled=true, importantCastRaidEnabled=true,
   -- 2.0.23: 아이콘/텍스트 각각 끌 수 있다. 기존 사용자는 둘 다 켜진 상태로 시작한다.
   alertIconEnabled=true, alertTextEnabled=true,
   iconSize=40, timerTextSize=18, alertTextSize=18, textGap=8,

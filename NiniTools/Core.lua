@@ -2,7 +2,7 @@ local ADDON_NAME, NT = ...
 NT = NT or {}
 _G.NiniTools = NT
 
-NT.VERSION = "2.6.8"
+NT.VERSION = "2.6.9"
 local function resolveClassAccent()
   local classFile
   if UnitClass then

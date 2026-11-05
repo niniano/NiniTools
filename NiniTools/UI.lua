@@ -1584,7 +1584,7 @@ function UI:BuildKick()
   autoNote:SetPoint("BOTTOMLEFT",216,18); autoNote:SetPoint("RIGHT",-18,0); autoNote:SetJustifyH("LEFT")
 
   -- 3) Important mob marker -------------------------------------------------------------
-  local important=self:AccordionSection(p,"important","중요몹 ! 표시","쐐기 · 추종자 던전 중요 시전을 이름표 느낌표로 강조",472,false)
+  local important=self:AccordionSection(p,"important","중요몹 ! 표시","쐐기 · 추종자 던전 · 레이드 중요 시전을 이름표 느낌표로 강조",494,false)
   local impLeft=CreateFrame("Frame",nil,important.body)
   impLeft:SetPoint("TOPLEFT",0,0); impLeft:SetPoint("BOTTOMLEFT",0,0); impLeft:SetWidth(570)
   p.importantRow=self:Toggle(impLeft,"중요몹 ! 표시 사용","importantCastMarkerEnabled",get,function(v)
@@ -1647,10 +1647,14 @@ function UI:BuildKick()
   p.importantFollowerRow=self:Toggle(impLeft,"추종자 던전에서도 표시","importantCastFollowerEnabled",get,function()
     if _G.NiniKick and _G.NiniKick.ImportantCastRefreshAll then pcall(_G.NiniKick.ImportantCastRefreshAll) end
   end,-390)
+  -- 2.6.9: 레이드에서도 표시 (게임이 「중요」로 표시한 시전 · 차단 순번·음성은 쐐기에서만)
+  p.importantRaidRow=self:Toggle(impLeft,"레이드에서도 표시","importantCastRaidEnabled",get,function()
+    if _G.NiniKick and _G.NiniKick.ImportantCastRefreshAll then pcall(_G.NiniKick.ImportantCastRefreshAll) end
+  end,-412)
   local bangTest=self:Button(impLeft,"이름표에 띄워 보기 (10초)",186,24,function()
     NT:CallSlash("NINIKICK","bang test 10")
   end)
-  bangTest:SetPoint("TOPLEFT",22,-436)
+  bangTest:SetPoint("TOPLEFT",22,-458)
   local posReset=self:Button(impLeft,"위치 초기화",96,24,function()
     local d=get(); if not d then return end
     d.importantCastOffsetX,d.importantCastOffsetY=0,0
@@ -1858,6 +1862,7 @@ function UI:BuildKick()
       if self.importantShapeRow then self.importantShapeRow:Refresh() end
     end
     if self.importantFollowerRow then self.importantFollowerRow:Refresh() end
+    if self.importantRaidRow then self.importantRaidRow:Refresh() end
     self.combatTimerRow:Refresh(); self.combatSize:Refresh(); self.enemyCountRow:Refresh(); self.enemyCountSize:Refresh(); self.enemyGarroteRow:Refresh()
 
     local nsrStatus=(NT.NSRBridge and NT.NSRBridge:GetStatus()) or "Naowh Smart Reminders 연결 대기"

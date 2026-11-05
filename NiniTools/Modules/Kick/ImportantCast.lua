@@ -59,11 +59,22 @@ local function inFollowerDungeon()
 end
 RDE.IsFollowerDungeon=inFollowerDungeon
 
+-- 2.6.9: 레이드에서도 「!」를 켤 수 있다 (설정 · 기본 켬). 표시 기준은 쐐기와 같다 (게임이 「중요」로 표시한 시전 · secret 그대로).
+-- 차단 순번 · 파티 쿨 추적 · 차단 음성은 지금처럼 쐐기에서만 돈다.
+local function inRaidInstance()
+  if type(GetInstanceInfo)~="function" then return false end
+  local ok,_,instanceType=pcall(GetInstanceInfo)
+  if not ok or isSecret(instanceType) then return false end
+  return instanceType=="raid"
+end
+RDE.IsRaidInstance=inRaidInstance
+
 local function enabled()
   local d=db()
   if not d or d.enabled==false or d.importantCastMarkerEnabled==false then return false end
   if type(RDE.IsActiveMythicPlus)=="function" and RDE.IsActiveMythicPlus() then return true end
-  return d.importantCastFollowerEnabled~=false and inFollowerDungeon()
+  if d.importantCastFollowerEnabled~=false and inFollowerDungeon() then return true end
+  return d.importantCastRaidEnabled~=false and inRaidInstance()
 end
 
 local function stylePreset()
@@ -731,7 +742,8 @@ RDE.ImportantCastStatus=function()
   local where
   if type(RDE.IsActiveMythicPlus)=="function" and RDE.IsActiveMythicPlus() then where="쐐기 진행 중 → 표시"
   elseif inFollowerDungeon() then where=(d.importantCastFollowerEnabled~=false) and "추종자 던전 → 표시" or "추종자 던전 → 설정에서 꺼 둠"
-  else where="쐐기·추종자 던전 밖 → 표시 안 함 (/nini bang test 로 모양만 확인)" end
+  elseif inRaidInstance() then where=(d.importantCastRaidEnabled~=false) and "레이드 → 표시" or "레이드 → 설정에서 꺼 둠"
+  else where="쐐기·추종자 던전·레이드 밖 → 표시 안 함 (/nini bang test 로 모양만 확인)" end
   local preset=select(1,stylePreset())
   return string.format("중요몹 「!」 %s · %s · %s",(d.importantCastMarkerEnabled==false) and "꺼짐" or "켜짐",preset and preset.label or "기본형",where)
 end
@@ -748,7 +760,7 @@ frame:RegisterEvent("PLAYER_REGEN_DISABLED")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("CHALLENGE_MODE_START")
 frame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
-frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")   -- 2.6.2: 추종자 던전 입장 확인
+frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")   -- 2.6.2: 추종자 던전 입장 확인 · 2.6.9: 레이드 입장 확인
 frame:SetScript("OnEvent",function(_,event,unit)
   if event=="PLAYER_LOGIN" then
     local d=db()
