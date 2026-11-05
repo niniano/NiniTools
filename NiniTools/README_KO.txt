@@ -1,4 +1,4 @@
-﻿NiniTools 2.6.9
+﻿NiniTools 2.7.0
 
 NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운드/Navi, Naowh Smart Reminders 연동을 한 창에 모은 WoW 통합 편의 애드온입니다.
 
@@ -65,8 +65,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
 
 [배포]
-- 현재 정식 버전: 2.6.9
-- 최신 변경사항: CHANGELOG_2.6.9.txt (2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
+- 현재 정식 버전: 2.7.0
+- 최신 변경사항: CHANGELOG_2.7.0.txt (2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
 
 [계정 달력 (2.5.8)]
 - NiniTools 창 「계정 달력」 탭 · /nini cal

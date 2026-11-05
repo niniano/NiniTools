@@ -1092,10 +1092,11 @@ function UI:BuildFrame()
     f:StopMovingOrSizing()
   end)
 
-  -- Brand wordmark: text only, transparent background.
+  -- Brand wordmark (2.7.0 Brand Kit R3): round N + "NiniTools", transparent background.
+  -- Texture is 1024x256 (4:1) → 128x32 keeps the shape (148 stretched it sideways).
   local brand=titleBar:CreateTexture(nil,"ARTWORK")
   brand:SetTexture((NT.GetBrandWordmark and NT:GetBrandWordmark()) or NT:GetBrandIcon(true))
-  brand:SetSize(148,32)
+  brand:SetSize(128,32)
   brand:SetPoint("LEFT",4,0)
   brand:SetTexCoord(0,1,0,1)
   brand:SetAlpha(1)
