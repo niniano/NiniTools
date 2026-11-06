@@ -1522,24 +1522,22 @@ function UI:BuildNSRT()
   guideFlow:SetPoint("RIGHT",-14,0)
   guideFlow:SetJustifyH("LEFT")
 
-  -- 2.7.2: [Nini] 메모 보관함. 나오 프로필을 새로 받아 NSRT 프로필이 바뀌어도 접속 · /reload 때 자동으로 다시 넣는다.
+  -- 2.7.2: NSRT 메모 보관함 (개인 + 공용). 나오 프로필을 새로 받아 NSRT 프로필이 바뀌면 넣을지 고르는 창을 띄운다.
   local vault=CreateFrame("Frame",nil,p,"BackdropTemplate")
   vault:SetPoint("TOPLEFT",16,-480); vault:SetPoint("TOPRIGHT",-16,-480); vault:SetHeight(46)
   self:Backdrop(vault,C.panel,C.border)
   vault:SetBackdropColor(C.panel[1],C.panel[2],C.panel[3],0.60)
-  local vaultTitle=self:Font(vault,9,"니니 메모 보관함",C.text); vaultTitle:SetPoint("LEFT",14,0)
+  local vaultTitle=self:Font(vault,9,"메모 보관함",C.text); vaultTitle:SetPoint("LEFT",14,0)
   local vaultText=self:Font(vault,8,"",C.muted)
   vaultText:SetPoint("LEFT",vaultTitle,"RIGHT",24,0)
   vaultText:SetPoint("RIGHT",-150,0)
   vaultText:SetJustifyH("LEFT")
   p.nsrtVaultText=vaultText
-  local vaultBtn=self:Button(vault,"지금 다시 넣기",120,24,function()
-    if not NR or type(NR.SyncVault)~="function" then return end
-    local ok,saved,restored=pcall(NR.SyncVault,NR)
-    if ok then
-      if type(NR.SyncActivePointers)=="function" then pcall(NR.SyncActivePointers) end
-      NT:Print(restored>0 and string.format("니니 메모 %d개를 지금 NSRT 프로필에 다시 넣었어요.",restored) or "지금 NSRT 프로필에 니니 메모가 모두 있어요.")
-    end
+  local vaultBtn=self:Button(vault,"메모 고르기",120,24,function()
+    if not NR or type(NR.OpenRestorePicker)~="function" or not NR:IsNSRTLoaded() then return end
+    pcall(NR.SnapshotVault,NR)
+    local ok,n=pcall(NR.OpenRestorePicker,NR,true)
+    if ok and n==0 then NT:Print("지금 NSRT 프로필에 보관한 메모가 모두 있어요.") end
     if p.RefreshVault then p.RefreshVault() end
   end)
   vaultBtn:SetPoint("RIGHT",-14,0)
@@ -1548,8 +1546,9 @@ function UI:BuildNSRT()
       vaultText:SetText("NSRT가 켜져 있을 때 사용할 수 있어요.")
       return
     end
-    local n,prof=NR:VaultCount()
-    vaultText:SetText(string.format("%d개 보관 중 · 지금 NSRT 프로필: %s · 프로필이 바뀌면 접속 · /reload 때 자동으로 다시 넣어요",n,tostring(prof)))
+    local personal,shared,prof=NR:VaultCount()
+    local missing=#NR:MissingNotes(true)
+    vaultText:SetText(string.format("개인 %d · 공용 %d 보관 중 · NSRT 프로필: %s · 이 프로필에 없는 메모 %d개",personal,shared,tostring(prof),missing))
   end
 
   p.Refresh=function()
@@ -1558,6 +1557,102 @@ function UI:BuildNSRT()
   end
   refreshPreview(false)
   p.RefreshVault()
+end
+
+-- 2.7.2: NSRT 메모 넣기 창. 지금 NSRT 프로필에 없는 보관 메모를 골라서 넣는다.
+function UI:ShowNoteRestore(list, profileName)
+  local NR=NT.NSRTImport
+  if not NR or type(list)~="table" or #list==0 then return end
+  local f=self.noteRestoreFrame
+  if not f then
+    f=CreateFrame("Frame","NiniToolsNoteRestore",UIParent,"BackdropTemplate")
+    f:SetSize(460,420); f:SetPoint("CENTER",0,60)
+    f:SetFrameStrata("DIALOG"); f:SetToplevel(true)
+    f:EnableMouse(true); f:SetMovable(true); f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart",f.StartMoving); f:SetScript("OnDragStop",f.StopMovingOrSizing)
+    self:Backdrop(f,C.bg,C.border)
+    tinsert(UISpecialFrames,"NiniToolsNoteRestore")
+    f.title=self:Font(f,13,"NSRT 메모 넣기",C.text); f.title:SetPoint("TOPLEFT",16,-14)
+    f.sub=self:Font(f,8,"",C.muted); f.sub:SetPoint("TOPLEFT",16,-36); f.sub:SetPoint("RIGHT",-16,0); f.sub:SetJustifyH("LEFT")
+    local close=CreateFrame("Button",nil,f,"UIPanelCloseButton"); close:SetPoint("TOPRIGHT",-2,-2)
+
+    local box=CreateFrame("Frame",nil,f,"BackdropTemplate")
+    box:SetPoint("TOPLEFT",14,-58); box:SetPoint("BOTTOMRIGHT",-14,86)
+    self:Backdrop(box,C.panel,C.border)
+    local scroll=CreateFrame("ScrollFrame",nil,box,"UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT",6,-6); scroll:SetPoint("BOTTOMRIGHT",-28,6)
+    local content=CreateFrame("Frame",nil,scroll); content:SetSize(380,10)
+    scroll:SetScrollChild(content)
+    f.content=content; f.rows={}
+
+    f.allBtn=self:Button(f,"모두 선택",96,24,function()
+      local any=false
+      for _,r in ipairs(f.rows) do if r:IsShown() and not r.check:GetChecked() then any=true end end
+      for _,r in ipairs(f.rows) do if r:IsShown() then r.check:SetChecked(any) end end
+      f.UpdateCount()
+    end)
+    f.allBtn:SetPoint("BOTTOMLEFT",14,52)
+    f.count=self:Font(f,8,"",C.muted); f.count:SetPoint("LEFT",f.allBtn,"RIGHT",12,0)
+
+    f.okBtn=self:Button(f,"선택한 메모 넣기",200,30,function()
+      local chosen={}
+      for i,item in ipairs(f.items or {}) do
+        local r=f.rows[i]
+        if r and r.check:GetChecked() then chosen[item.key]=true end
+      end
+      local ok,put,skip=pcall(NR.RestoreNotes,NR,chosen,f.items)
+      if ok then
+        NT:Print(string.format("NSRT 프로필 「%s」에 메모 %d개를 넣었어요%s.",tostring(f.profile),put,skip>0 and (" · "..skip.."개는 이 프로필에서 안 넣기로 둠") or ""))
+        if type(NR.SyncActivePointers)=="function" then pcall(NR.SyncActivePointers) end
+      else
+        NT:Print("메모 넣기 실패: "..tostring(put))
+      end
+      f:Hide()
+      local page=UI.pages and UI.pages.NSRT
+      if page and page.RefreshVault then page.RefreshVault() end
+    end)
+    f.okBtn:SetPoint("BOTTOMRIGHT",-14,14)
+    f.laterBtn=self:Button(f,"나중에",96,30,function() f:Hide() end)
+    f.laterBtn:SetPoint("RIGHT",f.okBtn,"LEFT",-8,0)
+    f.hint=self:Font(f,7,"체크 해제한 메모는 이 프로필에서 다시 묻지 않아요 · 「나중에」는 다음 접속 때 다시 물어요",C.muted)
+    f.hint:SetPoint("BOTTOMLEFT",14,20); f.hint:SetPoint("RIGHT",f.laterBtn,"LEFT",-8,0); f.hint:SetJustifyH("LEFT")
+    f:SetScript("OnHide",function(self) if NR.DismissPrompt then NR.DismissPrompt(self.profile) end end)
+
+    f.UpdateCount=function()
+      local n=0
+      for _,r in ipairs(f.rows) do if r:IsShown() and r.check:GetChecked() then n=n+1 end end
+      f.count:SetText(string.format("%d / %d개 선택",n,#(f.items or {})))
+    end
+    self.noteRestoreFrame=f
+  end
+
+  local DIFF={[14]="일반",[15]="영웅",[16]="신화"}
+  f.items=list; f.profile=profileName
+  f.sub:SetText(string.format("지금 NSRT 프로필 「%s」에 없는 메모예요. 넣을 메모만 체크하세요. 같은 이름 메모는 덮어쓰지 않아요.",tostring(profileName)))
+  local ROW=24
+  for i,item in ipairs(list) do
+    local r=f.rows[i]
+    if not r then
+      r=CreateFrame("Frame",nil,f.content); r:SetSize(380,ROW)
+      r:SetPoint("TOPLEFT",0,-(i-1)*ROW)
+      r.check=CreateFrame("CheckButton",nil,r,"UICheckButtonTemplate")
+      r.check:SetSize(22,22); r.check:SetPoint("LEFT",2,0)
+      r.check:SetScript("OnClick",function() f.UpdateCount() end)
+      r.tag=self:Font(r,8,"",C.muted); r.tag:SetPoint("LEFT",30,0); r.tag:SetWidth(34); r.tag:SetJustifyH("LEFT")
+      r.name=self:Font(r,9,"",C.text); r.name:SetPoint("LEFT",66,0); r.name:SetPoint("RIGHT",-4,0); r.name:SetJustifyH("LEFT")
+      f.rows[i]=r
+    end
+    r.tag:SetText(item.kind=="s" and self:ColorText("공용",C.warn) or self:ColorText("개인",C.accent))
+    local extra=item.diff and DIFF[item.diff] and (" |cff7d94a8· "..DIFF[item.diff].."|r") or ""
+    if item.skipped then extra=extra.." |cff7d94a8· 안 넣기로 둔 메모|r" end
+    r.name:SetText(item.name..extra)
+    r.check:SetChecked(not item.skipped)
+    r:Show()
+  end
+  for i=#list+1,#f.rows do f.rows[i]:Hide() end
+  f.content:SetHeight(math.max(10,#list*ROW))
+  f.UpdateCount()
+  f:Show()
 end
 
 function UI:BuildKick()

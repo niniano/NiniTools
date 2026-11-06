@@ -392,14 +392,22 @@ local function refreshNSRTPersonalReminderUI(noteName)
 end
 
 -- ---------------------------------------------------------------------------
--- 2.7.2: [Nini] 메모 보관함
--- NSRT는 개인 메모를 프로필마다 따로 저장한다. 나오 프로필을 새로 받으면(/nui install)
--- 빈 프로필로 바뀌어 [Nini] 메모가 안 보이게 된다. NiniTools가 계정 공용 DB에 사본을 두고,
--- 지금 NSRT 프로필에 없으면 다시 넣는다.
---   · 다른 이름의 메모(나오 · 사용자 메모)는 읽지도 쓰지도 않는다.
+-- 2.7.2: NSRT 메모 보관함 (개인 + 공용)
+-- NSRT는 메모를 프로필마다 따로 저장한다. 나오 프로필을 새로 받으면(/nui install) 빈 프로필로
+-- 바뀌어 메모가 안 보이게 된다. NiniTools가 계정 공용 DB에 사본을 두고, 지금 프로필에 없는
+-- 메모가 있으면 「넣을지」 고르게 한다 (자동으로 넣지 않음).
+--   · 개인 = NSRT.PersonalReminders, 공용 = NSRT.Reminders. 키는 "p:이름" / "s:이름".
 --   · 이미 같은 이름이 있으면 절대 덮어쓰지 않는다 (NSRT에서 고친 내용이 이긴다 → 사본도 그 내용으로 갱신).
---   · 같은 NSRT 프로필에서 사용자가 지운 메모는 되살리지 않고 보관함에서도 뺀다.
+--   · 같은 NSRT 프로필에 있던 메모가 없어졌으면 사용자가 지운 것 → 보관함에서도 뺀다.
+--   · 「안 넣기」로 고른 메모는 그 프로필에서 다시 묻지 않는다 (다른 프로필에선 다시 물음).
 -- ---------------------------------------------------------------------------
+local VAULT_KINDS = {
+  { kind = "p", field = "PersonalReminders", label = "개인" },
+  { kind = "s", field = "Reminders",         label = "공용" },
+}
+local VAULT_FIELD = { p = "PersonalReminders", s = "Reminders" }
+local VAULT_LABEL = { p = "개인", s = "공용" }
+
 local function isOwnedName(db, name)
   if type(name) ~= "string" then return false end
   return name:sub(1, #NOTE_PREFIX) == NOTE_PREFIX or isMappedName(db, name)
@@ -408,81 +416,160 @@ end
 local function vaultTables(db)
   db.vault = type(db.vault) == "table" and db.vault or {}
   db.vaultSeen = type(db.vaultSeen) == "table" and db.vaultSeen or {}
-  return db.vault, db.vaultSeen
+  db.vaultSkipped = type(db.vaultSkipped) == "table" and db.vaultSkipped or {}
+  -- 2.7.2 개발판(접두어 없는 키 = 개인 메모) → "p:" 키로 옮김
+  local old = {}
+  for k, v in pairs(db.vault) do
+    if type(k) == "string" and not k:find("^[ps]:") then old[#old + 1] = k end
+  end
+  for _, k in ipairs(old) do
+    if db.vault["p:" .. k] == nil then db.vault["p:" .. k] = db.vault[k] end
+    db.vault[k] = nil
+  end
+  if #old > 0 then db.vaultSeen = {} end
+  return db.vault, db.vaultSeen, db.vaultSkipped
 end
 
 local function nsrtProfileName()
   return tostring((type(_G.NSRT) == "table" and NSRT.CurrentProfile) or "default")
 end
 
-local function rememberInVault(db, noteName, text)
-  if not isOwnedName(db, noteName) or type(text) ~= "string" then return end
-  local vault, seen = vaultTables(db)
-  local prof = nsrtProfileName()
-  seen[prof] = type(seen[prof]) == "table" and seen[prof] or {}
-  vault[noteName] = text
-  seen[prof][noteName] = true
+local function splitKey(key)
+  local kind, name = key:match("^([ps]):(.*)$")
+  return kind, name
 end
 
--- 반환: 사본 갱신 수, 다시 넣은 수, 보관함에서 뺀 수
-function M:SyncVault()
-  if type(_G.NSRT) ~= "table" or type(NSRT.PersonalReminders) ~= "table" then return 0, 0, 0 end
-  local db = self:GetDB()
+local function profTable(t, prof)
+  t[prof] = type(t[prof]) == "table" and t[prof] or {}
+  return t[prof]
+end
+
+local function rememberInVault(db, kind, noteName, text)
+  if type(noteName) ~= "string" or type(text) ~= "string" then return end
   local vault, seen = vaultTables(db)
+  local key = kind .. ":" .. noteName
+  vault[key] = text
+  profTable(seen, nsrtProfileName())[key] = true
+end
+
+-- 지금 프로필의 메모로 사본을 맞춘다. 반환: 사본 갱신 수, 보관함에서 뺀 수
+function M:SnapshotVault()
+  if type(_G.NSRT) ~= "table" then return 0, 0 end
+  local db = self:GetDB()
+  local vault, seen, skipped = vaultTables(db)
   local prof = nsrtProfileName()
-  seen[prof] = type(seen[prof]) == "table" and seen[prof] or {}
-  local seenHere = seen[prof]
-  local saved, restored, dropped = 0, 0, 0
+  local seenHere = profTable(seen, prof)
+  local saved, dropped = 0, 0
 
-  -- 1) 지금 프로필에 있는 니니 메모 → 사본 갱신
-  for name, text in pairs(NSRT.PersonalReminders) do
-    if type(text) == "string" and isOwnedName(db, name) then
-      if vault[name] ~= text then vault[name] = text; saved = saved + 1 end
-      seenHere[name] = true
-    end
-  end
-
-  -- 2) 보관함에는 있는데 지금 프로필에 없는 메모
-  local missing = {}
-  for name in pairs(vault) do
-    if NSRT.PersonalReminders[name] == nil then missing[#missing + 1] = name end
-  end
-  for _, name in ipairs(missing) do
-    if seenHere[name] then
-      -- 이 프로필에서 사용자가 지웠다 → 되살리지 않는다
-      vault[name] = nil
-      for _, s in pairs(seen) do if type(s) == "table" then s[name] = nil end end
-      dropped = dropped + 1
-    else
-      NSRT.PersonalReminders[name] = vault[name]
-      if NSRT.PersonalReminders[name] == vault[name] then
-        seenHere[name] = true
-        restored = restored + 1
+  for _, def in ipairs(VAULT_KINDS) do
+    local src = NSRT[def.field]
+    if type(src) == "table" then
+      for name, text in pairs(src) do
+        if type(name) == "string" and type(text) == "string" and text ~= "" then
+          local key = def.kind .. ":" .. name
+          if vault[key] ~= text then vault[key] = text; saved = saved + 1 end
+          seenHere[key] = true
+        end
       end
     end
   end
 
-  -- 3) 보스 · 난이도 연결이 빠진 메모는 메모 머리글(EncounterID / Difficulty)로 채운다.
-  --    이미 다른 메모가 연결된 칸은 건드리지 않는다.
-  for name, text in pairs(vault) do
-    local enc = tonumber(text:match("EncounterID:(%d+)"))
-    local diff = normalizeDifficulty(text:match("Difficulty:([^;\n]+)"))
-    if enc and diff and not isMappedName(db, name) then
-      db.map[enc] = type(db.map[enc]) == "table" and db.map[enc] or {}
-      if db.map[enc][diff] == nil then db.map[enc][diff] = name end
-    end
+  -- 이 프로필에 있던 메모가 없어짐 → 사용자가 지운 것
+  local gone = {}
+  for key in pairs(seenHere) do
+    local kind, name = splitKey(key)
+    local src = kind and NSRT[VAULT_FIELD[kind]]
+    if kind and (type(src) ~= "table" or src[name] == nil) then gone[#gone + 1] = key end
+  end
+  for _, key in ipairs(gone) do
+    if vault[key] ~= nil then dropped = dropped + 1 end
+    vault[key] = nil
+    for _, t in pairs(seen) do if type(t) == "table" then t[key] = nil end end
+    for _, t in pairs(skipped) do if type(t) == "table" then t[key] = nil end end
   end
 
-  if restored > 0 then refreshNSRTPersonalReminderUI() end
-  return saved, restored, dropped
+  -- [Nini] 개인 메모의 보스 · 난이도 연결이 빠졌으면 메모 머리글로 채운다 (이미 연결된 칸은 그대로).
+  for key, text in pairs(vault) do
+    local kind, name = splitKey(key)
+    if kind == "p" and isOwnedName(db, name) and not isMappedName(db, name) then
+      local enc = tonumber(text:match("EncounterID:(%d+)"))
+      local diff = normalizeDifficulty(text:match("Difficulty:([^;\n]+)"))
+      if enc and diff then
+        db.map[enc] = type(db.map[enc]) == "table" and db.map[enc] or {}
+        if db.map[enc][diff] == nil then db.map[enc][diff] = name end
+      end
+    end
+  end
+  return saved, dropped
+end
+
+-- 지금 프로필에 없는 보관 메모. includeSkipped면 「안 넣기」 고른 것도 포함.
+-- 반환: { {key, kind, label, name, enc, diff, skipped}, ... } (공용 → 개인, 이름순)
+function M:MissingNotes(includeSkipped)
+  local list = {}
+  if type(_G.NSRT) ~= "table" then return list end
+  local db = self:GetDB()
+  local vault, _, skipped = vaultTables(db)
+  local skippedHere = profTable(skipped, nsrtProfileName())
+  for key, text in pairs(vault) do
+    local kind, name = splitKey(key)
+    local src = kind and NSRT[VAULT_FIELD[kind]]
+    if kind and not (type(src) == "table" and src[name] ~= nil) and (includeSkipped or not skippedHere[key]) then
+      list[#list + 1] = {
+        key = key, kind = kind, label = VAULT_LABEL[kind], name = name,
+        enc = tonumber(text:match("EncounterID:(%d+)")),
+        diff = normalizeDifficulty(text:match("Difficulty:([^;\n]+)")),
+        skipped = skippedHere[key] and true or false,
+      }
+    end
+  end
+  table.sort(list, function(a, b)
+    if a.kind ~= b.kind then return a.kind == "s" end
+    return a.name < b.name
+  end)
+  return list
+end
+
+-- chosen[key] = true 인 메모만 넣고, 나머지(목록에 있던 것)는 이 프로필에서 「안 넣기」로 기억.
+-- 반환: 넣은 수, 안 넣기로 둔 수
+function M:RestoreNotes(chosen, listed)
+  if type(_G.NSRT) ~= "table" then return 0, 0 end
+  local db = self:GetDB()
+  local vault, seen, skipped = vaultTables(db)
+  local prof = nsrtProfileName()
+  local seenHere, skippedHere = profTable(seen, prof), profTable(skipped, prof)
+  local put, skip = 0, 0
+  for _, item in ipairs(listed or {}) do
+    local key = item.key
+    local kind, name = splitKey(key)
+    local field = kind and VAULT_FIELD[kind]
+    if field and vault[key] then
+      if chosen and chosen[key] then
+        NSRT[field] = type(NSRT[field]) == "table" and NSRT[field] or {}
+        if NSRT[field][name] == nil then
+          NSRT[field][name] = vault[key]
+          if NSRT[field][name] == vault[key] then put = put + 1 end
+        end
+        seenHere[key] = true
+        skippedHere[key] = nil
+      else
+        skippedHere[key] = true
+        skip = skip + 1
+      end
+    end
+  end
+  if put > 0 then refreshNSRTPersonalReminderUI() end
+  return put, skip
 end
 
 function M:VaultCount()
   local db = self:GetDB()
   local vault = vaultTables(db)
-  local n = 0
-  for _ in pairs(vault) do n = n + 1 end
-  return n, nsrtProfileName()
+  local p, sh = 0, 0
+  for key in pairs(vault) do
+    if key:sub(1, 2) == "s:" then sh = sh + 1 else p = p + 1 end
+  end
+  return p, sh, nsrtProfileName()
 end
 
 function M:Apply(text)
@@ -531,7 +618,7 @@ function M:Apply(text)
     return false, "저장 검증 실패 · NSRT 개인메모에 반영되지 않았습니다."
   end
   refreshNSRTPersonalReminderUI(noteName)
-  rememberInVault(db, noteName, merged)   -- 2.7.2: 프로필이 바뀌어도 다시 넣을 수 있게 사본 보관
+  rememberInVault(db, "p", noteName, merged)   -- 2.7.2: 프로필이 바뀌어도 다시 넣을 수 있게 사본 보관
 
   local kept = {}
   for otherTag in pairs(otherTags) do
@@ -752,17 +839,37 @@ runner:RegisterEvent("READY_CHECK")
 runner:RegisterEvent("START_PLAYER_COUNTDOWN")
 runner:RegisterEvent("ENCOUNTER_START")
 runner:RegisterEvent("PLAYER_LOGOUT")
--- 2.7.2: 접속 · /reload 때 보관함 먼저 맞추고 (NSRT 프로필이 바뀌었으면 [Nini] 메모를 다시 넣고) 포인터 동기화.
+-- 2.7.2: 접속 · /reload 때 보관함 사본을 맞추고, 지금 NSRT 프로필에 없는 메모가 있으면 넣을지 고르는 창을 띄운다.
 -- NSRT는 ADDON_LOADED / PLAYER_LOGIN에서 프로필을 읽으므로 PLAYER_ENTERING_WORLD 뒤에 돌린다.
+-- 창을 그냥 닫으면 이번 접속 동안은 다시 띄우지 않는다 (NSRT 페이지 「메모 고르기」로 언제든 열 수 있음).
 local lastVaultProfile
-local function syncVaultAndPointers()
+local dismissedThisSession = {}
+M.DismissPrompt = function(prof) dismissedThisSession[tostring(prof)] = true end
+
+function M:OpenRestorePicker(includeSkipped)
+  local list = self:MissingNotes(includeSkipped)
+  if #list == 0 then return 0 end
+  if NT.UI and type(NT.UI.ShowNoteRestore) == "function" then
+    NT.UI:ShowNoteRestore(list, nsrtProfileName())
+  end
+  return #list
+end
+
+local function syncVaultAndPointers(allowPrompt)
   if type(_G.NSRT) == "table" then
-    local prof = tostring(NSRT.CurrentProfile or "default")
-    local ok, _, restored = pcall(M.SyncVault, M)
-    if ok and (restored or 0) > 0 then
-      NT:Print(string.format("NSRT 프로필 「%s」에 니니 메모 %d개를 다시 넣었어요.", prof, restored))
-    end
+    local prof = nsrtProfileName()
+    pcall(M.SnapshotVault, M)
     lastVaultProfile = prof
+    local ok, list = pcall(M.MissingNotes, M, false)
+    if ok and #list > 0 and not dismissedThisSession[prof] then
+      local inCombat = type(InCombatLockdown) == "function" and InCombatLockdown()
+      if allowPrompt and not inCombat then
+        M:OpenRestorePicker(false)
+      else
+        NT:Print(string.format("NSRT 프로필 「%s」에 없는 메모 %d개 · NiniTools NSRT 페이지 「메모 고르기」에서 넣을 수 있어요.", prof, #list))
+        dismissedThisSession[prof] = true
+      end
+    end
   end
   syncActivePointersForCurrentDifficulty()
 end
@@ -775,7 +882,7 @@ runner:SetScript("OnEvent", function(_, event, ...)
       C_Timer.After(0, syncActivePointersForCurrentDifficulty)
     end
   elseif event == "PLAYER_ENTERING_WORLD" then
-    C_Timer.After(1, syncVaultAndPointers)
+    C_Timer.After(1, function() syncVaultAndPointers(true) end)
   elseif event == "PLAYER_LEAVING_WORLD" or event == "PLAYER_LOGOUT" then
     restoreAllOverrides()
   elseif event == "ENCOUNTER_START" then
@@ -785,7 +892,7 @@ runner:SetScript("OnEvent", function(_, event, ...)
     -- 게임 안에서 NSRT 프로필을 바꿨으면(Load Profile) 다음 지역 이동 · 레디체크 · 풀카운트 때 보관함도 맞춘다.
     local prof = type(_G.NSRT) == "table" and tostring(NSRT.CurrentProfile or "default") or nil
     if prof and prof ~= lastVaultProfile then
-      C_Timer.After(0, syncVaultAndPointers)
+      C_Timer.After(0, function() syncVaultAndPointers(false) end)
     else
       C_Timer.After(0, syncActivePointersForCurrentDifficulty)
     end
