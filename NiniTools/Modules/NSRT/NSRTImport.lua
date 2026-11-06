@@ -391,6 +391,100 @@ local function refreshNSRTPersonalReminderUI(noteName)
   end
 end
 
+-- ---------------------------------------------------------------------------
+-- 2.7.2: [Nini] 메모 보관함
+-- NSRT는 개인 메모를 프로필마다 따로 저장한다. 나오 프로필을 새로 받으면(/nui install)
+-- 빈 프로필로 바뀌어 [Nini] 메모가 안 보이게 된다. NiniTools가 계정 공용 DB에 사본을 두고,
+-- 지금 NSRT 프로필에 없으면 다시 넣는다.
+--   · 다른 이름의 메모(나오 · 사용자 메모)는 읽지도 쓰지도 않는다.
+--   · 이미 같은 이름이 있으면 절대 덮어쓰지 않는다 (NSRT에서 고친 내용이 이긴다 → 사본도 그 내용으로 갱신).
+--   · 같은 NSRT 프로필에서 사용자가 지운 메모는 되살리지 않고 보관함에서도 뺀다.
+-- ---------------------------------------------------------------------------
+local function isOwnedName(db, name)
+  if type(name) ~= "string" then return false end
+  return name:sub(1, #NOTE_PREFIX) == NOTE_PREFIX or isMappedName(db, name)
+end
+
+local function vaultTables(db)
+  db.vault = type(db.vault) == "table" and db.vault or {}
+  db.vaultSeen = type(db.vaultSeen) == "table" and db.vaultSeen or {}
+  return db.vault, db.vaultSeen
+end
+
+local function nsrtProfileName()
+  return tostring((type(_G.NSRT) == "table" and NSRT.CurrentProfile) or "default")
+end
+
+local function rememberInVault(db, noteName, text)
+  if not isOwnedName(db, noteName) or type(text) ~= "string" then return end
+  local vault, seen = vaultTables(db)
+  local prof = nsrtProfileName()
+  seen[prof] = type(seen[prof]) == "table" and seen[prof] or {}
+  vault[noteName] = text
+  seen[prof][noteName] = true
+end
+
+-- 반환: 사본 갱신 수, 다시 넣은 수, 보관함에서 뺀 수
+function M:SyncVault()
+  if type(_G.NSRT) ~= "table" or type(NSRT.PersonalReminders) ~= "table" then return 0, 0, 0 end
+  local db = self:GetDB()
+  local vault, seen = vaultTables(db)
+  local prof = nsrtProfileName()
+  seen[prof] = type(seen[prof]) == "table" and seen[prof] or {}
+  local seenHere = seen[prof]
+  local saved, restored, dropped = 0, 0, 0
+
+  -- 1) 지금 프로필에 있는 니니 메모 → 사본 갱신
+  for name, text in pairs(NSRT.PersonalReminders) do
+    if type(text) == "string" and isOwnedName(db, name) then
+      if vault[name] ~= text then vault[name] = text; saved = saved + 1 end
+      seenHere[name] = true
+    end
+  end
+
+  -- 2) 보관함에는 있는데 지금 프로필에 없는 메모
+  local missing = {}
+  for name in pairs(vault) do
+    if NSRT.PersonalReminders[name] == nil then missing[#missing + 1] = name end
+  end
+  for _, name in ipairs(missing) do
+    if seenHere[name] then
+      -- 이 프로필에서 사용자가 지웠다 → 되살리지 않는다
+      vault[name] = nil
+      for _, s in pairs(seen) do if type(s) == "table" then s[name] = nil end end
+      dropped = dropped + 1
+    else
+      NSRT.PersonalReminders[name] = vault[name]
+      if NSRT.PersonalReminders[name] == vault[name] then
+        seenHere[name] = true
+        restored = restored + 1
+      end
+    end
+  end
+
+  -- 3) 보스 · 난이도 연결이 빠진 메모는 메모 머리글(EncounterID / Difficulty)로 채운다.
+  --    이미 다른 메모가 연결된 칸은 건드리지 않는다.
+  for name, text in pairs(vault) do
+    local enc = tonumber(text:match("EncounterID:(%d+)"))
+    local diff = normalizeDifficulty(text:match("Difficulty:([^;\n]+)"))
+    if enc and diff and not isMappedName(db, name) then
+      db.map[enc] = type(db.map[enc]) == "table" and db.map[enc] or {}
+      if db.map[enc][diff] == nil then db.map[enc][diff] = name end
+    end
+  end
+
+  if restored > 0 then refreshNSRTPersonalReminderUI() end
+  return saved, restored, dropped
+end
+
+function M:VaultCount()
+  local db = self:GetDB()
+  local vault = vaultTables(db)
+  local n = 0
+  for _ in pairs(vault) do n = n + 1 end
+  return n, nsrtProfileName()
+end
+
 function M:Apply(text)
   local parsed, err = self:ParsePaste(text)
   if not parsed then return false, err end
@@ -437,6 +531,7 @@ function M:Apply(text)
     return false, "저장 검증 실패 · NSRT 개인메모에 반영되지 않았습니다."
   end
   refreshNSRTPersonalReminderUI(noteName)
+  rememberInVault(db, noteName, merged)   -- 2.7.2: 프로필이 바뀌어도 다시 넣을 수 있게 사본 보관
 
   local kept = {}
   for otherTag in pairs(otherTags) do
@@ -657,19 +752,43 @@ runner:RegisterEvent("READY_CHECK")
 runner:RegisterEvent("START_PLAYER_COUNTDOWN")
 runner:RegisterEvent("ENCOUNTER_START")
 runner:RegisterEvent("PLAYER_LOGOUT")
+-- 2.7.2: 접속 · /reload 때 보관함 먼저 맞추고 (NSRT 프로필이 바뀌었으면 [Nini] 메모를 다시 넣고) 포인터 동기화.
+-- NSRT는 ADDON_LOADED / PLAYER_LOGIN에서 프로필을 읽으므로 PLAYER_ENTERING_WORLD 뒤에 돌린다.
+local lastVaultProfile
+local function syncVaultAndPointers()
+  if type(_G.NSRT) == "table" then
+    local prof = tostring(NSRT.CurrentProfile or "default")
+    local ok, _, restored = pcall(M.SyncVault, M)
+    if ok and (restored or 0) > 0 then
+      NT:Print(string.format("NSRT 프로필 「%s」에 니니 메모 %d개를 다시 넣었어요.", prof, restored))
+    end
+    lastVaultProfile = prof
+  end
+  syncActivePointersForCurrentDifficulty()
+end
+M.SyncVaultAndPointers = syncVaultAndPointers
+
 runner:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
     local addon = ...
     if addon == "NorthernSkyRaidTools" or addon == ADDON_NAME then
       C_Timer.After(0, syncActivePointersForCurrentDifficulty)
     end
+  elseif event == "PLAYER_ENTERING_WORLD" then
+    C_Timer.After(1, syncVaultAndPointers)
   elseif event == "PLAYER_LEAVING_WORLD" or event == "PLAYER_LOGOUT" then
     restoreAllOverrides()
   elseif event == "ENCOUNTER_START" then
     local encounterID, _, difficultyID = ...
     applyActiveForEncounter(encounterID, difficultyID)
   else
-    C_Timer.After(0, syncActivePointersForCurrentDifficulty)
+    -- 게임 안에서 NSRT 프로필을 바꿨으면(Load Profile) 다음 지역 이동 · 레디체크 · 풀카운트 때 보관함도 맞춘다.
+    local prof = type(_G.NSRT) == "table" and tostring(NSRT.CurrentProfile or "default") or nil
+    if prof and prof ~= lastVaultProfile then
+      C_Timer.After(0, syncVaultAndPointers)
+    else
+      C_Timer.After(0, syncActivePointersForCurrentDifficulty)
+    end
   end
 end)
 M.runner = runner

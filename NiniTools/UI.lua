@@ -1323,7 +1323,7 @@ end
 
 function UI:BuildNSRT()
   local p=self:NewPage("NSRT")
-  p.contentHeight=505
+  p.contentHeight=540
   local NR=NT.NSRTImport
   local DIFF_LABEL={[14]="일반",[15]="영웅",[16]="신화"}
 
@@ -1522,10 +1522,42 @@ function UI:BuildNSRT()
   guideFlow:SetPoint("RIGHT",-14,0)
   guideFlow:SetJustifyH("LEFT")
 
+  -- 2.7.2: [Nini] 메모 보관함. 나오 프로필을 새로 받아 NSRT 프로필이 바뀌어도 접속 · /reload 때 자동으로 다시 넣는다.
+  local vault=CreateFrame("Frame",nil,p,"BackdropTemplate")
+  vault:SetPoint("TOPLEFT",16,-480); vault:SetPoint("TOPRIGHT",-16,-480); vault:SetHeight(46)
+  self:Backdrop(vault,C.panel,C.border)
+  vault:SetBackdropColor(C.panel[1],C.panel[2],C.panel[3],0.60)
+  local vaultTitle=self:Font(vault,9,"니니 메모 보관함",C.text); vaultTitle:SetPoint("LEFT",14,0)
+  local vaultText=self:Font(vault,8,"",C.muted)
+  vaultText:SetPoint("LEFT",vaultTitle,"RIGHT",24,0)
+  vaultText:SetPoint("RIGHT",-150,0)
+  vaultText:SetJustifyH("LEFT")
+  p.nsrtVaultText=vaultText
+  local vaultBtn=self:Button(vault,"지금 다시 넣기",120,24,function()
+    if not NR or type(NR.SyncVault)~="function" then return end
+    local ok,saved,restored=pcall(NR.SyncVault,NR)
+    if ok then
+      if type(NR.SyncActivePointers)=="function" then pcall(NR.SyncActivePointers) end
+      NT:Print(restored>0 and string.format("니니 메모 %d개를 지금 NSRT 프로필에 다시 넣었어요.",restored) or "지금 NSRT 프로필에 니니 메모가 모두 있어요.")
+    end
+    if p.RefreshVault then p.RefreshVault() end
+  end)
+  vaultBtn:SetPoint("RIGHT",-14,0)
+  p.RefreshVault=function()
+    if not NR or type(NR.VaultCount)~="function" or not NR:IsNSRTLoaded() then
+      vaultText:SetText("NSRT가 켜져 있을 때 사용할 수 있어요.")
+      return
+    end
+    local n,prof=NR:VaultCount()
+    vaultText:SetText(string.format("%d개 보관 중 · 지금 NSRT 프로필: %s · 프로필이 바뀌면 접속 · /reload 때 자동으로 다시 넣어요",n,tostring(prof)))
+  end
+
   p.Refresh=function()
     refreshPreview(false)
+    p.RefreshVault()
   end
   refreshPreview(false)
+  p.RefreshVault()
 end
 
 function UI:BuildKick()
