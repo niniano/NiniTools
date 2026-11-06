@@ -1,4 +1,4 @@
-﻿NiniTools 2.7.1
+﻿NiniTools 2.7.2
 
 NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운드/Navi, Naowh Smart Reminders 연동을 한 창에 모은 WoW 통합 편의 애드온입니다.
 
@@ -18,6 +18,7 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - NiniTools N 브랜드: 설정창 왼쪽 상단은 배경 없는 Wordmark, 우측 설정 버튼은 배경 없는 Round, 미니맵은 설정 버튼과 같은 두 줄 N(미니맵용 굵은 선) 사용
 - 전투시간 및 주변 적 숫자 표시
 - Lorrgs 등 메모를 NSRT 개인 메모로 가져오기
+- NSRT 메모 보관함: NSRT 프로필이 바뀌어도(나오 /nui install 등) 개인·공용 메모를 골라서 다시 넣기
 - 목적지 안내, 채팅 말풍선, 던전 검색, 미니맵/창 설정
 - GTFO, 효과음, CallMe 이름 호출, Navi 마우스 커서
 - Gold History: 현재 소지금 스냅샷, 거래 기록, 필터/검색, 전투부대 은행
@@ -65,8 +66,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
 
 [배포]
-- 현재 정식 버전: 2.7.1
-- 최신 변경사항: CHANGELOG_2.7.1.txt (2.7.0: CHANGELOG_2.7.0.txt · 2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
+- 현재 정식 버전: 2.7.2
+- 최신 변경사항: CHANGELOG_2.7.2.txt (2.7.1: CHANGELOG_2.7.1.txt · 2.7.0: CHANGELOG_2.7.0.txt · 2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
 
 [계정 달력 (2.5.8)]
 - NiniTools 창 「계정 달력」 탭 · /nini cal
@@ -79,6 +80,13 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - 로그 주소: 길드 일정은 길드 로그, 개인 초대는 초대한 사람 로그 · 참가자 이름을 누르면 그 캐릭 로그 (복사 창).
 - 날짜 메모는 계정 공용입니다. 지난 초대는 120일까지 남깁니다.
 - 와우 기본 달력 창이 열려 있거나 전투 중에는 달력을 건드리지 않고, 닫히거나 전투가 끝나면 읽습니다.
+
+[NSRT 메모 보관함 (2.7.2)]
+- NSRT는 메모를 프로필마다 따로 저장합니다. 나오 프로필을 새로 받으면 빈 프로필로 바뀌어 메모가 안 보입니다 (지워진 것은 아님).
+- NiniTools가 접속 · /reload 때 지금 NSRT 프로필의 개인 메모 · 공용 메모 사본을 NiniTools.lua(계정 공용)에 남깁니다.
+- 지금 프로필에 없는 메모가 있으면 「NSRT 메모 넣기」 창이 뜹니다. 넣을 메모만 체크하고 「선택한 메모 넣기」.
+- 같은 이름 메모는 덮어쓰지 않습니다 · 그 프로필에서 지운 메모는 보관함에서도 빠집니다 · 체크 해제한 메모는 그 프로필에서 다시 묻지 않습니다.
+- NiniTools 「NSRT」 페이지 아래 「메모 고르기」로 언제든 열 수 있습니다.
 
 [공대 메모 캡처 (2.5.3)]
 - 기본은 꺼짐. /nini memo on 을 입력한 캐릭터만 저장합니다.
