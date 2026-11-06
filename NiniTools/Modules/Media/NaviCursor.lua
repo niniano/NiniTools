@@ -23,8 +23,8 @@ local function getDB()
   local db = NiniToolsDB and NiniToolsDB.modules and NiniToolsDB.modules.media
   if type(db)~="table" then return nil end
   if db.naviCursorEnabled==nil then db.naviCursorEnabled=true end
-  if db.naviCursorRingEnabled==nil then db.naviCursorRingEnabled=true end
-  if db.naviCursorGlowEnabled==nil then db.naviCursorGlowEnabled=true end
+  db.naviCursorRingEnabled=true   -- 2.7.1: 링 · 반짝임은 항상 켬 (예전에 꺼 둔 값도 켬)
+  db.naviCursorGlowEnabled=true
   if db.naviCursorScale==nil then db.naviCursorScale=100 end
   db.naviCursorScale=math.floor(clamp(db.naviCursorScale,70,140)+0.5)
   return db

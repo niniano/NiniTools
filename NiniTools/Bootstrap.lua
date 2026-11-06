@@ -22,8 +22,8 @@ if NiniMediaDB.callMeEnabled==nil then NiniMediaDB.callMeEnabled=true end
 if type(NiniMediaDB.callMeAliases)~="string" then NiniMediaDB.callMeAliases="" end
 if NiniMediaDB.callMeVolume==nil then NiniMediaDB.callMeVolume=160 end
 if NiniMediaDB.naviCursorEnabled==nil then NiniMediaDB.naviCursorEnabled=true end
-if NiniMediaDB.naviCursorRingEnabled==nil then NiniMediaDB.naviCursorRingEnabled=true end
-if NiniMediaDB.naviCursorGlowEnabled==nil then NiniMediaDB.naviCursorGlowEnabled=true end
+NiniMediaDB.naviCursorRingEnabled=true   -- 2.7.1: 항상 켬
+NiniMediaDB.naviCursorGlowEnabled=true
 if NiniMediaDB.naviCursorScale==nil then NiniMediaDB.naviCursorScale=100 end
 if NiniMediaDB.naviChatEnabled==nil then NiniMediaDB.naviChatEnabled=true end
 if NiniMediaDB.naviChatFontSize==nil then NiniMediaDB.naviChatFontSize=14 end

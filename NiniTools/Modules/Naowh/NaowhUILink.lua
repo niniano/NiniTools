@@ -1,7 +1,7 @@
 local ADDON_NAME, NT = ...
 if not NT then return end
 
--- 2.5.5: 「나오 프로필 전부」 = NaowhUI 자체 설치기를 연다.
+-- 2.5.5: 「/nui install」 (2.7.1 전 이름 「나오 프로필 전부」) = NaowhUI 자체 설치기를 연다.
 -- NiniTools는 Naowh 프로필 문자열을 담지 않는다. 각자 설치한 NaowhUI가
 -- EXBoss · BigWigs · EllesmereUI · NSRT · Smart Reminders · 편집 모드 · 쿨다운 뷰어 ·
 -- 직업 설정을 자기 방식(해상도 선택, 가져오기 확인창 등)으로 적용한다.
@@ -54,7 +54,7 @@ end
 
 function M:StatusLine()
   local s = self:Status()
-  if not s.installed then return "NaowhUI · 미설치 (나오 프로필 전부를 쓰려면 설치 필요)" end
+  if not s.installed then return "NaowhUI · 미설치 (/nui install 을 쓰려면 설치 필요)" end
   if not s.enabled then return "NaowhUI · 설치됨 · 꺼져 있음" end
   if not s.loaded then return "NaowhUI · 켜짐 · /reload 후 사용" end
   local applied = #s.applied > 0 and table.concat(s.applied, ", ") or "아직 없음"

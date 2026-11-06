@@ -672,7 +672,7 @@ local function applyOptimizationPreset(preset,label)
 end
 
 local function applyNaowhGraphicsPreset()
-  return applyOptimizationPreset(NAOWH_GRAPHICS_PRESET,"Naowh 그래픽 최적화 적용")
+  return applyOptimizationPreset(NAOWH_GRAPHICS_PRESET,"그래픽 최적화 적용")
 end
 
 local function applyNaowhCombatPreset()
@@ -720,7 +720,8 @@ RDE.GetOptimizationSummary=function()
   local cm,ct=presetMatchCount(NAOWH_COMBAT_PRESET)
   local backupN=0
   if type(db.graphicsBackup)=="table" then for _ in pairs(db.graphicsBackup) do backupN=backupN+1 end end
-  local last=db.graphicsLastAction and (" · 최근: "..db.graphicsLastAction) or ""
+  local lastText=db.graphicsLastAction and tostring(db.graphicsLastAction):gsub("^Naowh 그래픽 최적화 적용","그래픽 최적화 적용")   -- 2.7.1 이름 변경 (예전 저장값)
+  local last=lastText and (" · 최근: "..lastText) or ""
   return string.format("그래픽 %d/%d · 전투 %d/%d · 백업 %d개%s",gm,gt,cm,ct,backupN,last)
 end
 

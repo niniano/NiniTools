@@ -258,16 +258,35 @@ local function findHealthBar(plate,skip)
   return best
 end
 
+-- 2.7.1: EllesmereUI 이름표는 체력바를 직접 알려 준다 (EUI 차단 추적기와 같은 방법).
+-- 이름표 텍스처 · 크기가 바뀌어도 「!」가 체력바 위에 그대로 붙는다. EUI가 없거나 못 찾으면 nil → 예전 방식.
+local function euiHealthBar(unit)
+  if type(unit)~="string" then return nil end
+  local eui=_G.EllesmereUI
+  local reg=type(eui)=="table" and eui._ModuleNS
+  local np=type(reg)=="table" and reg.EllesmereUINameplates
+  local plates=type(np)=="table" and np.plates
+  local plate=type(plates)=="table" and plates[unit]
+  local bar=type(plate)=="table" and plate.health
+  if type(bar)=="table" and safeCall(bar,"IsShown")==true then return bar end
+  return nil
+end
+
 local function anchorVisual(ind)
   if not ind or not ind.visual then return end
   local iconSize=ind.iconBase or 68
   local visual=ind.visual
   local ox,oy=markerOffsets()
   visual:ClearAllPoints()
-  local bar=ind.barRef
-  if not bar or safeCall(bar,"IsShown")~=true then
-    bar=findHealthBar(ind.plate,ind)
+  local bar=euiHealthBar(ind.unit)
+  if bar then
     ind.barRef=bar
+  else
+    bar=ind.barRef
+    if not bar or safeCall(bar,"IsShown")~=true then
+      bar=findHealthBar(ind.plate,ind)
+      ind.barRef=bar
+    end
   end
   if bar then
     -- 그림 아래 여백(점 아래 14%)만큼 내려서, X·Y가 0이면 느낌표 점이 체력바 윗변에 딱 닿게
@@ -562,6 +581,7 @@ local function updateDisplay(unit,preferChannel,restartEffect)
   local ok,plate=pcall(C_NamePlate.GetNamePlateForUnit,unit)
   if not ok or not plate then return end
   local ind=getIndicator(plate)
+  if ind.unit~=unit then ind.unit=unit; ind.barRef=nil end   -- 2.7.1: EUI 이름표 체력바를 찾으려고 유닛 토큰 기억
   ind:SetAlpha(0)
 
   -- START 자체는 공개 이벤트다. 중요 여부는 계속 secret-safe alpha 체인만 결정한다.
@@ -700,6 +720,10 @@ local function runTest(seconds)
   local plate,where=testTarget()
   local realPlate=(plate~=fakePlate)
   local ind=getIndicator(plate)
+  if realPlate then
+    local tok=type(plate.namePlateUnitToken)=="string" and plate.namePlateUnitToken or nil   -- 2.7.1: EUI 이름표 체력바용
+    if ind.unit~=tok then ind.unit=tok; ind.barRef=nil end
+  end
   applyVisualStyle(ind)
   if ind.mine then ind.mine:Hide() end
   testState.ind=ind

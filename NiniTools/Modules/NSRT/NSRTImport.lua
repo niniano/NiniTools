@@ -475,6 +475,36 @@ local function getCharOverrides(db, ck)
   return db.overrides[ck]
 end
 
+local specPointerMap
+-- 2.7.1: NSRT 12.1.33 부터 개인 메모를 전문화별로도 고른다 (NSRT.ActivePersonalReminderSpecs[캐릭][전문화][보스]).
+-- NSRT는 「전문화 칸 → (전문화에 안 묶인 메모만) 예전 칸」 순서로 읽으므로, 전문화 칸에 다른 메모가 있으면 우리 메모가 묻힌다.
+local function mySpecID()
+  local api = _G.C_SpecializationInfo
+  if type(api) == "table" and type(api.GetSpecialization) == "function" and type(api.GetSpecializationInfo) == "function" then
+    local ok, idx = pcall(api.GetSpecialization)
+    if ok and idx then
+      local ok2, id = pcall(api.GetSpecializationInfo, idx)
+      if ok2 and type(id) == "number" and id > 0 then return id end
+    end
+  end
+  return nil
+end
+
+specPointerMap = function(ck, specID, create)
+  if type(_G.NSRT) ~= "table" or type(NSRT.ActivePersonalReminderSpecs) ~= "table" or not specID then return nil end
+  local byChar = NSRT.ActivePersonalReminderSpecs[ck]
+  if type(byChar) ~= "table" then
+    if not create then return nil end
+    byChar = {}; NSRT.ActivePersonalReminderSpecs[ck] = byChar
+  end
+  local map = byChar[specID]
+  if type(map) ~= "table" then
+    if not create then return nil end
+    map = {}; byChar[specID] = map
+  end
+  return map
+end
+
 local function restoreOverride(db, ck, encounterID)
   if type(_G.NSRT) ~= "table" then return end
   local charOverrides = db.overrides and db.overrides[ck]
@@ -490,6 +520,14 @@ local function restoreOverride(db, ck, encounterID)
       NSRT.ActivePersonalReminder[ck][encounterID] = nil
     else
       NSRT.ActivePersonalReminder[ck][encounterID] = state.previous
+    end
+  end
+  -- 2.7.1: NSRT 12.1.33+ 전문화 칸도 우리가 바꾼 그대로일 때만 되돌린다.
+  local sp = state.spec
+  if type(sp) == "table" and sp.id then
+    local map = specPointerMap(ck, sp.id, false)
+    if map and map[encounterID] == (sp.applied or nil) then
+      if sp.previous == false then map[encounterID] = nil else map[encounterID] = sp.previous end
     end
   end
   charOverrides[encounterID] = nil
@@ -531,6 +569,24 @@ local function applyOverride(db, ck, encounterID, noteName)
   end
 
   NSRT.ActivePersonalReminder[ck][encounterID] = noteName
+
+  -- 2.7.1: 전문화 칸 (NSRT 12.1.33+). 우리 메모가 이 전문화에 묶여 있으면 전문화 칸에 넣고,
+  -- 안 묶여 있으면 전문화 칸을 비워서 NSRT가 예전 칸(= 우리 메모)을 읽게 한다. 처음 값은 기억해 두고 끝나면 되돌린다.
+  local specID = mySpecID()
+  local bound = type(NSRT.PersonalReminderSpecs) == "table" and NSRT.PersonalReminderSpecs[noteName] or nil
+  local map = specPointerMap(ck, specID, bound == specID)
+  if map then
+    if type(state.spec) ~= "table" or state.spec.id ~= specID then
+      local prev = map[encounterID]
+      state.spec = { id = specID, previous = prev ~= nil and prev or false }
+    end
+    local want = (bound == specID) and noteName or nil
+    map[encounterID] = want
+    state.spec.applied = want or false
+  end
+
+  if bound ~= nil and bound ~= specID then return false end   -- 다른 전문화에 묶인 메모는 NSRT가 이 전문화에서 안 읽음
+  if bound == specID then return map ~= nil and map[encounterID] == noteName end
   return NSRT.ActivePersonalReminder[ck][encounterID] == noteName
 end
 

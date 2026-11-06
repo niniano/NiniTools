@@ -675,8 +675,8 @@ function UI:DropdownRow(parent, label, y, items, getValue, onPick)
   end)
   btn:SetPoint("RIGHT",-4,0)
   row.button=btn
-  local arrow=self:Font(btn,10,"⌄",C.muted)
-  arrow:SetPoint("RIGHT",-8,0)
+  local arrow=self:Font(btn,8,"▼",C.muted)   -- 2.7.1: ⌄ 는 게임 글꼴에 없어 □ 로 보였음
+  arrow:SetPoint("RIGHT",-9,0)
   btn.label:ClearAllPoints(); btn.label:SetPoint("LEFT",10,0); btn.label:SetPoint("RIGHT",-26,0); btn.label:SetJustifyH("LEFT")
 
   row.Refresh=function(self)
@@ -1492,7 +1492,7 @@ function UI:BuildNSRT()
   applyBtn:SetScript("OnClick",function()
     local text=edit:GetText() or ""
     local ok,msg=NR:Apply(text)
-    p.nsrtResult=(ok and "|cff3fdb6c✓|r " or "|cffff5555✕|r ")..tostring(msg or "")
+    p.nsrtResult=(ok and "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t " or "|TInterface\\RaidFrame\\ReadyCheck-NotReady:12:12|t ")..tostring(msg or "")   -- 2.7.1: ✓ ✕ → 준비 확인 아이콘
     p.nsrtLastOK=ok and true or false
     p.nsrtAppliedText=ok and text or nil
     if ok then
@@ -2119,7 +2119,9 @@ function UI:BuildGold()
   local searchBg=CreateFrame("Frame",nil,right,"BackdropTemplate")
   searchBg:SetPoint("TOPLEFT",14,-104); searchBg:SetPoint("TOPRIGHT",-14,-104); searchBg:SetHeight(28)
   self:Backdrop(searchBg,C.panel2,C.border)
-  local searchIcon=self:Font(searchBg,10,"⌕",C.muted); searchIcon:SetPoint("LEFT",8,0)
+  -- 2.7.1: ⌕ 는 게임 글꼴에 없어 □ 로 보였음 → 게임 검색 아이콘
+  local searchIcon=searchBg:CreateTexture(nil,"ARTWORK"); searchIcon:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
+  searchIcon:SetSize(14,14); searchIcon:SetPoint("LEFT",7,-1); searchIcon:SetVertexColor(.7,.74,.8,1)
   local search=CreateFrame("EditBox",nil,searchBg)
   search:SetPoint("LEFT",searchIcon,"RIGHT",6,0); search:SetPoint("RIGHT",-8,0); search:SetHeight(24)
   search:SetAutoFocus(false); search:SetFontObject("GameFontHighlight")
@@ -2419,15 +2421,12 @@ function UI:BuildMedia()
   local navi=self:AccordionSection(p,"navi","Navi · 마우스 커서","커서 강조 효과 · 실시간 미리보기 · Navi 채팅",320,false)
   p.naviCursorRow=self:Toggle(navi.body,"마우스 Navi 사용","naviCursorEnabled",mediaDB,function(v) NT:SetNaviCursorEnabled(v) end,-10)
   p.naviCursorRow:ClearAllPoints(); p.naviCursorRow:SetPoint("TOPLEFT",18,-8); p.naviCursorRow:SetSize(420,36)
-  p.naviRingRow=self:Toggle(navi.body,"커서 링","naviCursorRingEnabled",mediaDB,function(v) if NT.SetNaviCursorRingEnabled then NT:SetNaviCursorRingEnabled(v) end end,-48)
-  p.naviRingRow:ClearAllPoints(); p.naviRingRow:SetPoint("TOPLEFT",18,-46); p.naviRingRow:SetSize(420,36)
-  p.naviGlowRow=self:Toggle(navi.body,"반짝임 효과","naviCursorGlowEnabled",mediaDB,function(v) if NT.SetNaviCursorGlowEnabled then NT:SetNaviCursorGlowEnabled(v) end end,-86)
-  p.naviGlowRow:ClearAllPoints(); p.naviGlowRow:SetPoint("TOPLEFT",18,-84); p.naviGlowRow:SetSize(420,36)
-  p.naviScaleRow=self:SliderRow(navi.body,"크기",-126,70,140,5,
+  -- 2.7.1: 커서 링 · 반짝임 효과는 항상 켬 (토글 없음)
+  p.naviScaleRow=self:SliderRow(navi.body,"크기",-50,70,140,5,
     function() return NT.GetNaviCursorScale and NT:GetNaviCursorScale() or (mediaDB().naviCursorScale or 100) end,
     function(v) if NT.SetNaviCursorScale then NT:SetNaviCursorScale(v) else mediaDB().naviCursorScale=math.floor(v+.5) end end,
     function(v) return math.floor(v+.5).."%" end)
-  p.naviScaleRow:ClearAllPoints(); p.naviScaleRow:SetPoint("TOPLEFT",18,-122); p.naviScaleRow:SetSize(420,34)
+  p.naviScaleRow:ClearAllPoints(); p.naviScaleRow:SetPoint("TOPLEFT",18,-46); p.naviScaleRow:SetSize(420,34)
 
   -- Animated preview using the same geometry/offsets as NaviCursor.lua.
   -- Keep a dedicated preview scale instead of collapsing every layer onto one center point.
@@ -2474,13 +2473,15 @@ function UI:BuildMedia()
   local pvOrb=makePreviewTexture("orb",60,60,53.602864837646,43.95361328125,"Artifacts-Anim-Orb",{0.462745,0.549020,1,.65},1)
   local pvCircle=makePreviewTexture("circle",55,55,53.602864837646,45.025573730469,"BonusChest-CircleGlow",{0,0.262745,1,1},1)
   pvBackground:SetFrameLevel(center:GetFrameLevel()+1); pvModelRegion:SetFrameLevel(center:GetFrameLevel()+2); pvOrb:SetFrameLevel(center:GetFrameLevel()+3); pvCircle:SetFrameLevel(center:GetFrameLevel()+4)
-  local cursorGlyph=self:Font(preview,18,"✥",C.text); cursorGlyph:SetPoint("CENTER",center,"CENTER",0,0); cursorGlyph:SetAlpha(.88)
+  -- 2.7.1: ✥ 는 게임 글꼴에 없어 □ 로 보였음 → 실제 마우스 커서 그림 (커서 끝이 가운데)
+  local cursorHolder=CreateFrame("Frame",nil,preview); cursorHolder:SetAllPoints(preview); cursorHolder:SetFrameLevel(center:GetFrameLevel()+10)
+  local cursorGlyph=cursorHolder:CreateTexture(nil,"OVERLAY"); cursorGlyph:SetTexture("Interface\\Cursor\\Point")
+  cursorGlyph:SetSize(24,24); cursorGlyph:SetPoint("TOPLEFT",center,"CENTER",-1,1); cursorGlyph:SetAlpha(.88)
   local pvBorn=GetTime()
   preview:SetScript("OnUpdate",function()
     local db=mediaDB(); if not db then return end
     local enabled=db.naviCursorEnabled~=false
-    local ring=db.naviCursorRingEnabled~=false
-    local glow=db.naviCursorGlowEnabled~=false
+    local ring,glow=true,true   -- 2.7.1: 항상 켬
     local scale=math.max(.7,math.min(1.4,(tonumber(db.naviCursorScale) or 100)/100))*PREVIEW_SCALE
     local age=GetTime()-pvBorn
     local progress=((age%0.75)/0.75)
@@ -2541,12 +2542,12 @@ function UI:BuildMedia()
     setControlEnabled(self.callMeVolumeRow,callEnabled)
     aliasEdit:SetAlpha(callEnabled and 1 or .34); aliasEdit:EnableMouse(callEnabled); aliasSave:SetAlpha(callEnabled and 1 or .34); aliasSave:EnableMouse(callEnabled)
 
-    self.naviCursorRow:Refresh(); self.naviRingRow:Refresh(); self.naviGlowRow:Refresh(); self.naviScaleRow:Refresh(); self.naviChatRow:Refresh(); self.naviFontRow:Refresh()
+    self.naviCursorRow:Refresh(); self.naviScaleRow:Refresh(); self.naviChatRow:Refresh(); self.naviFontRow:Refresh()
     local cursorOn=db.naviCursorEnabled~=false
     local chatOn=db.naviChatEnabled~=false
     navi:SetEnabledState(cursorOn)
     navi:SetState(string.format("커서 %d%% · 채팅 %s",tonumber(db.naviCursorScale) or 100,chatOn and "ON" or "OFF"),cursorOn and "accent" or nil)
-    setControlEnabled(self.naviRingRow,cursorOn); setControlEnabled(self.naviGlowRow,cursorOn); setControlEnabled(self.naviScaleRow,cursorOn)
+    setControlEnabled(self.naviScaleRow,cursorOn)
     setControlEnabled(self.naviFontRow,chatOn); self.naviMove:SetAlpha(chatOn and 1 or .34); self.naviMove:EnableMouse(chatOn); naviTest:SetAlpha(chatOn and 1 or .34); naviTest:EnableMouse(chatOn); naviReset:SetAlpha(chatOn and 1 or .34); naviReset:EnableMouse(chatOn)
     if self.naviMove and self.naviMove.label then self.naviMove.label:SetText(NT:IsNaviChatUnlocked() and "채팅 위치 고정" or "채팅 위치 이동") end
   end
@@ -2569,13 +2570,13 @@ function UI:BuildQOL()
   end
 
   -- 1) Graphics / display -------------------------------------------------------------
-  local graphics=self:AccordionSection(p,"graphics","그래픽 / 표시","Naowh 기준 그래픽 · 전투 CVar 프리셋과 현재값 백업",116,false)
+  local graphics=self:AccordionSection(p,"graphics","그래픽 / 표시","그래픽 최적화 · 전투 CVar 프리셋과 현재값 백업",116,false)
   p.optimizeStatus=self:Font(graphics.body,9,"",C.muted)
   p.optimizeStatus:SetPoint("TOPLEFT",22,-12)
   p.optimizeStatus:SetPoint("RIGHT",-22,0)
   p.optimizeStatus:SetJustifyH("LEFT")
 
-  local g1=self:Button(graphics.body,"Naowh 그래픽 적용",160,32,function()
+  local g1=self:Button(graphics.body,"그래픽 최적화",160,32,function()
     if _G.NiniKick and _G.NiniKick.ApplyNaowhGraphicsPreset then _G.NiniKick.ApplyNaowhGraphicsPreset() end
     C_Timer.After(.1,function() UI:RefreshVisiblePage() end)
   end)
@@ -2825,7 +2826,7 @@ function UI:BuildTools()
   local b1=self:Button(actions,"UI 다시 불러오기",150,32,function() ReloadUI() end); b1:SetPoint("TOPLEFT",16,-58)
   local back=self:Button(actions,"메인 설정으로",150,32,function() UI:ShowPage(NT:GetDB().lastPage or "GOLD") end); back:SetPoint("LEFT",b1,"RIGHT",10,0)
   local exb=self:Button(actions,"EXBoss 프로필",150,32,function() if NT.ExbossS2 then NT.ExbossS2:OpenDialog() end end); exb:SetPoint("LEFT",back,"RIGHT",10,0)
-  local nui=self:Button(actions,"나오 프로필 전부",150,32,function() if NT.NaowhUILink then NT.NaowhUILink:OpenInstaller() end end); nui:SetPoint("LEFT",exb,"RIGHT",10,0)
+  local nui=self:Button(actions,"/nui install",150,32,function() if NT.NaowhUILink then NT.NaowhUILink:OpenInstaller() end end); nui:SetPoint("LEFT",exb,"RIGHT",10,0)
   local note=self:Font(actions,9,"명령어 목록은 제거했습니다. 주요 설정은 NiniTools 창에서 바로 조작합니다.",C.muted)
   note:SetPoint("BOTTOMLEFT",16,18); note:SetPoint("RIGHT",-16,0)
 
@@ -2905,7 +2906,7 @@ SlashCmdList.NINITOOLS=function(msg)
     return
   end
   if msg=="naowh" or msg:match("^naowh%s+") or msg=="나오" then
-    -- 2.5.5: 나오 프로필 전부 = 각자 설치한 NaowhUI 설치기 열기
+    -- 2.5.5: /nui install = 각자 설치한 NaowhUI 설치기 열기 (2.7.1 버튼 이름 변경)
     if NT.NaowhUILink and type(NT.NaowhUILink.Slash)=="function" then
       NT.NaowhUILink:Slash(msg:match("^naowh%s*(.-)%s*$") or "")
     else

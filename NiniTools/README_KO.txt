@@ -1,4 +1,4 @@
-﻿NiniTools 2.7.0
+﻿NiniTools 2.7.1
 
 NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운드/Navi, Naowh Smart Reminders 연동을 한 창에 모은 WoW 통합 편의 애드온입니다.
 
@@ -65,8 +65,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
 
 [배포]
-- 현재 정식 버전: 2.7.0
-- 최신 변경사항: CHANGELOG_2.7.0.txt (2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
+- 현재 정식 버전: 2.7.1
+- 최신 변경사항: CHANGELOG_2.7.1.txt (2.7.0: CHANGELOG_2.7.0.txt · 2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
 
 [계정 달력 (2.5.8)]
 - NiniTools 창 「계정 달력」 탭 · /nini cal
@@ -100,8 +100,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - (2.5.7) 영어 음성팩(EXBOSS-ENG)이 애드온 목록에서 꺼져 있으면 바꾸지 않고 알려 줍니다.
 - 한국어 클라이언트는 EXBoss 음성이 기본 중국어입니다. /nini exboss eng 로 영어로 바꿀 수 있습니다.
 
-[나오 프로필 전부 (2.5.5)]
-- NaowhUI를 설치한 사람은 /nini naowh 로 NaowhUI 설치기를 열어 나오 프로필 전부(EXBoss·BigWigs·Ellesmere·NSRT·Smart Reminders·편집 모드 등)를 적용할 수 있습니다.
+[/nui install (2.5.5 · 2.7.1 버튼 이름 변경)]
+- NaowhUI를 설치한 사람은 「/nui install」 버튼 또는 /nini naowh 로 NaowhUI 설치기를 열어 프로필(EXBoss·BigWigs·Ellesmere·NSRT·Smart Reminders·편집 모드 등)을 적용할 수 있습니다.
 - NiniTools에는 Naowh 프로필이 들어 있지 않습니다. NaowhUI(와 NaowhUI_Media)를 먼저 설치하세요.
 
 [진단]
