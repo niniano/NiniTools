@@ -133,7 +133,10 @@ def main() -> int:
     if not hook.startswith(("https://discord.com/api/webhooks/", "https://discordapp.com/api/webhooks/")):
         print("::error::Secret DISCORD_DOWNLOAD_WEBHOOK 이 비었거나 디스코드 웹훅 주소가 아닙니다.")
         return 1
-    if not ids or not all(i.isdigit() for i in ids):
+    new_msg = os.environ.get("NEW_MESSAGE") == "true"
+    if new_msg:
+        ids = []
+    elif not ids or not all(i.isdigit() for i in ids):
         print("::error::Variable DOWNLOAD_MESSAGE_ID 에 고정 메시지 번호(또는 메시지 링크)를 넣어 주세요. 여러 개면 쉼표로 구분.")
         return 1
     base, _, query = hook.partition("?")
@@ -142,6 +145,20 @@ def main() -> int:
     payload = {"embeds": [embed], "allowed_mentions": {"parse": []},
                "attachments": [{"id": i, "filename": n} for i, (n, _) in enumerate(files)]}
     failed = 0
+    if new_msg:
+        # 새 메시지 올리기 (Actions 「Run workflow」 → new_message 체크) · 번호를 로그에 남김
+        url = f"{base}?wait=true" + (f"&{query}" if query else "")
+        body, ctype = multipart(payload, files)
+        req = urllib.request.Request(url, data=body, method="POST", headers={"Content-Type": ctype, "User-Agent": UA})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                mid = json.load(r).get("id")
+        except urllib.error.HTTPError as e:
+            print(f"::error::새 메시지 올리기 실패 · Discord HTTP {e.code}: {e.read().decode('utf-8', 'replace')[:300]}")
+            return 1
+        print(f"::notice title=새 메시지 번호::{mid} → Settings · Variables 의 DOWNLOAD_MESSAGE_ID 를 이 번호로 바꾸고, 디스코드에서 이 메시지를 고정하세요.")
+        print("새 메시지 번호:", mid)
+        return 0
     for msg in ids:
         url = f"{base}/messages/{msg}" + (f"?{query}" if query else "")
         body, ctype = multipart(payload, files)

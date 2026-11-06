@@ -14,6 +14,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      new_message:
+        description: "새 메시지로 올리기 (고칠 메시지를 못 찾을 때 · 올린 뒤 번호를 DOWNLOAD_MESSAGE_ID 에 넣고 고정)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -38,4 +43,5 @@ jobs:
           DISCORD_DOWNLOAD_WEBHOOK: ${{ secrets.DISCORD_DOWNLOAD_WEBHOOK }}
           DOWNLOAD_MESSAGE_ID: ${{ vars.DOWNLOAD_MESSAGE_ID }}
           GITHUB_TOKEN: ${{ github.token }}
+          NEW_MESSAGE: ${{ inputs.new_message }}
         run: python .github/discord/update_download_embed.py
