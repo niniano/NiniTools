@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -126,30 +127,35 @@ def main() -> int:
         print(json.dumps(embed, ensure_ascii=False, indent=2))
         return 0
     hook = (os.environ.get("DISCORD_DOWNLOAD_WEBHOOK") or "").strip()
-    msg = (os.environ.get("DOWNLOAD_MESSAGE_ID") or "").strip().rstrip("/").split("/")[-1]
+    # 메시지 여러 개면 쉼표 · 띄어쓰기 · 줄바꿈으로 구분 (메시지 링크도 됨) · 모두 같은 웹훅이 올린 것이어야 함
+    raw = os.environ.get("DOWNLOAD_MESSAGE_ID") or ""
+    ids = [t.rstrip("/").split("/")[-1] for t in re.split(r"[\s,;]+", raw.strip()) if t]
     if not hook.startswith(("https://discord.com/api/webhooks/", "https://discordapp.com/api/webhooks/")):
         print("::error::Secret DISCORD_DOWNLOAD_WEBHOOK 이 비었거나 디스코드 웹훅 주소가 아닙니다.")
         return 1
-    if not msg.isdigit():
-        print("::error::Variable DOWNLOAD_MESSAGE_ID 에 고정 메시지 번호(또는 메시지 링크)를 넣어 주세요.")
+    if not ids or not all(i.isdigit() for i in ids):
+        print("::error::Variable DOWNLOAD_MESSAGE_ID 에 고정 메시지 번호(또는 메시지 링크)를 넣어 주세요. 여러 개면 쉼표로 구분.")
         return 1
     base, _, query = hook.partition("?")
-    url = f"{base}/messages/{msg}" + (f"?{query}" if query else "")
     files = [("nini_download_banner.png", (HERE / "nini_download_banner.png").read_bytes()),
              ("nini_icon_256.png", (HERE / "nini_icon_256.png").read_bytes())]
     payload = {"embeds": [embed], "allowed_mentions": {"parse": []},
                "attachments": [{"id": i, "filename": n} for i, (n, _) in enumerate(files)]}
-    body, ctype = multipart(payload, files)
-    req = urllib.request.Request(url, data=body, method="PATCH", headers={"Content-Type": ctype, "User-Agent": UA})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            print("고침:", json.load(r).get("id"))
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", "replace")
-        if e.code == 404:
-            print("::error::메시지를 못 찾았습니다. 그 메시지를 올린 웹훅과 같은 웹훅이어야 고칠 수 있습니다 (메시지 번호 · 웹훅 확인).")
-        print(f"::error::Discord HTTP {e.code}: {detail[:300]}")
-        return 1
+    failed = 0
+    for msg in ids:
+        url = f"{base}/messages/{msg}" + (f"?{query}" if query else "")
+        body, ctype = multipart(payload, files)
+        req = urllib.request.Request(url, data=body, method="PATCH", headers={"Content-Type": ctype, "User-Agent": UA})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                print("고침:", json.load(r).get("id"))
+        except urllib.error.HTTPError as e:
+            failed += 1
+            detail = e.read().decode("utf-8", "replace")
+            if e.code == 404:
+                print(f"::error::메시지 {msg} 를 못 찾았습니다. 그 메시지를 올린 웹훅과 같은 웹훅이어야 고칠 수 있습니다 (지워졌거나 다른 웹훅).")
+            print(f"::error::메시지 {msg} · Discord HTTP {e.code}: {detail[:300]}")
+    return 1 if failed else 0
     return 0
 
 

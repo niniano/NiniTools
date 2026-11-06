@@ -5,6 +5,7 @@
 # 필요한 설정 (Settings → Secrets and variables → Actions):
 #   Secret   DISCORD_DOWNLOAD_WEBHOOK : 고정 메시지를 올린 그 웹훅 주소
 #   Variable DOWNLOAD_MESSAGE_ID      : 고정 메시지 번호 (pinned_message_id.txt 안 숫자 또는 메시지 링크)
+#                                       여러 개면 쉼표로 구분 (예: 111,222) · 모두 위 웹훅이 올린 메시지여야 함
 name: Discord download embed
 
 on:
