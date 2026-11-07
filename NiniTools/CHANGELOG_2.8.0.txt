@@ -15,6 +15,11 @@ NiniTools 2.8.0
   · 목적지 안내: NaowhForever 웨이포인트 핀과 겹쳐서 뺌
 - 포에버 기능은 해 보면서 하나씩 더할 예정입니다.
 
+[수정]
+- 「LibSharedMedia-3.0: Attempt to register an invalid file (BigWigs ... spell_on_you.ogg)」 오류 수정
+  · BigWigs 가 없을 때(포에버 등) BigWigs 소리를 등록하지 않음. 모든 소리는 파일이 있는지 먼저 확인 후 등록.
+  · GTFO 높은 피해 소리도 BigWigs 발밑음 파일이 있을 때만 바꾸고, 없으면 GTFO 기본음 유지.
+
 [업데이트]
 - 본섭: 게임 종료 후 Interface\AddOns\NiniTools 폴더 교체 (2.7.x 에서는 덮어써도 됨)
 - 포에버: 포에버 설치 폴더의 Interface\AddOns 에 NiniTools 폴더 넣기

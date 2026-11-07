@@ -5,6 +5,14 @@ local NINI_KICK_PATH = "Interface\\AddOns\\NiniTools\\Media\\Sounds\\Kick.ogg"
 local NINI_OHNO_PATH = "Interface\\AddOns\\NiniTools\\Media\\Sounds\\OhNo.ogg"
 local GTFO_HIGH = 1
 
+-- 2.8.0: GTFO 높은 피해 소리를 BigWigs 발밑음으로 바꾸는 건 그 파일이 있을 때만 (포에버 · BigWigs 미설치면 GTFO 기본음 유지)
+local function FloorSoundAvailable()
+  local known = C_UIFileAsset and C_UIFileAsset.IsKnownFile
+  if type(known) ~= "function" then return true end
+  local ok, isKnown = pcall(known, FLOOR_PATH)
+  return (not ok) or (isKnown and true or false)
+end
+
 local bridge = {
   hooked = false,
   applied = false,
@@ -16,22 +24,44 @@ local function GetLSM()
   return LibStub("LibSharedMedia-3.0", true)
 end
 
+local function bigWigsLoaded()
+  local f = (C_AddOns and C_AddOns.IsAddOnLoaded) or _G.IsAddOnLoaded
+  if type(f) ~= "function" then return type(BigWigsAPI) == "table" end
+  local ok, loaded = pcall(f, "BigWigs")
+  return ok and loaded and true or false
+end
+
+local function safeRegister(LSM, mediaType, key, path)
+  -- 최신 LSM 은 없는 파일을 geterrorhandler 로 알린다(pcall 로 못 막음) → 등록 전에 직접 확인
+  local known = C_UIFileAsset and C_UIFileAsset.IsKnownFile
+  if type(known) == "function" then
+    local okKnown, isKnown = pcall(known, path)
+    if okKnown and not isKnown then return false end
+  end
+  local ok = pcall(LSM.Register, LSM, mediaType, key, path)
+  return ok
+end
+
 local function RegisterMedia()
   local LSM = GetLSM()
   if not LSM then return false end
   local SOUND = LSM.MediaType and LSM.MediaType.SOUND or "sound"
-  LSM:Register(SOUND, "BigWigs: Spell on you",
-    "Interface\\AddOns\\BigWigs\\Media\\Sounds\\spell_on_you.ogg")
-  LSM:Register(SOUND, "뜌미 승리",
+  -- 2.8.0: 최신 LibSharedMedia 는 없는 파일을 등록하면 오류를 낸다 (포에버 · BigWigs 미설치).
+  -- BigWigs 소리는 BigWigs 가 켜져 있을 때만 등록하고, 등록은 모두 pcall 로 감싼다.
+  if bigWigsLoaded() then
+    safeRegister(LSM, SOUND, "BigWigs: Spell on you",
+      "Interface\\AddOns\\BigWigs\\Media\\Sounds\\spell_on_you.ogg")
+  end
+  safeRegister(LSM, SOUND, "뜌미 승리",
     "Interface\\AddOns\\NiniTools\\Media\\Victory\\Victory.ogg")
 
   -- 2.0.11: keep the two personal sounds inside NiniTools itself.
   -- The compatibility aliases preserve existing NiniKick/BigWigs profiles.
-  LSM:Register(SOUND, "NiniTools: Naowh Kick", NINI_KICK_PATH)
-  LSM:Register(SOUND, "Kick -Naowh", NINI_KICK_PATH)
-  LSM:Register(SOUND, "|cff0091edKick -Naowh|r", NINI_KICK_PATH)
-  LSM:Register(SOUND, "Oh No", NINI_OHNO_PATH)
-  LSM:Register(SOUND, "NiniTools: Oh No", NINI_OHNO_PATH)
+  safeRegister(LSM, SOUND, "NiniTools: Naowh Kick", NINI_KICK_PATH)
+  safeRegister(LSM, SOUND, "Kick -Naowh", NINI_KICK_PATH)
+  safeRegister(LSM, SOUND, "|cff0091edKick -Naowh|r", NINI_KICK_PATH)
+  safeRegister(LSM, SOUND, "Oh No", NINI_OHNO_PATH)
+  safeRegister(LSM, SOUND, "NiniTools: Oh No", NINI_OHNO_PATH)
   return true
 end
 
@@ -71,7 +101,11 @@ local function SyncGTFOData()
   GTFOData.Sounds = type(GTFOData.Sounds) == "table"
     and GTFOData.Sounds or {true,true,true,true}
 
-  GTFOData.SoundOverrides[GTFO_HIGH] = FLOOR_PATH
+  if FloorSoundAvailable() then
+    GTFOData.SoundOverrides[GTFO_HIGH] = FLOOR_PATH
+  elseif GTFOData.SoundOverrides[GTFO_HIGH] == FLOOR_PATH then
+    GTFOData.SoundOverrides[GTFO_HIGH] = ""
+  end
   for i=1,4 do
     GTFOData.Sounds[i] = GTFO.Settings.Sounds[i]
   end
@@ -95,8 +129,13 @@ local function ApplyGTFOBridge(fromSaveHook)
     changed = true
   end
 
-  if GTFO.Settings.SoundOverrides[GTFO_HIGH] ~= FLOOR_PATH then
-    GTFO.Settings.SoundOverrides[GTFO_HIGH] = FLOOR_PATH
+  if FloorSoundAvailable() then
+    if GTFO.Settings.SoundOverrides[GTFO_HIGH] ~= FLOOR_PATH then
+      GTFO.Settings.SoundOverrides[GTFO_HIGH] = FLOOR_PATH
+      changed = true
+    end
+  elseif GTFO.Settings.SoundOverrides[GTFO_HIGH] == FLOOR_PATH then
+    GTFO.Settings.SoundOverrides[GTFO_HIGH] = ""   -- 없는 파일 → GTFO 기본음으로
     changed = true
   end
 
