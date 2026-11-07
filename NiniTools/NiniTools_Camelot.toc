@@ -12,7 +12,7 @@
 ## AddonCompartmentFuncOnLeave: NiniTools_AddonCompartmentOnLeave
 
 # 2.8.0: WoW Forever (Classic+) 전용 목록. 본섭은 NiniTools.toc 를 읽는다.
-# 빠진 것: 차단 · 쐐기 · 중요몹 · 주변 적 숫자 · NSRT · Smart Reminders · EXBoss · NaowhUI 연동 · 계정 달력 · 목적지 안내(NaowhForever 핀과 겹침) · 던전 검색 · 전투부대 은행 · 진단
+# 빠진 것: 차단 · 쐐기 · 중요몹 · 주변 적 숫자 · NSRT · Smart Reminders · EXBoss · NaowhUI 연동 · 계정 달력 · 던전 검색 · 전투부대 은행 · 진단
 Libs\LibStub-1.0\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
 EventDispatcher.lua
@@ -28,4 +28,5 @@ Modules\Media\Jump.lua
 Modules\Media\NaviCursor.lua
 Modules\Media\NaviChat.lua
 Modules\Media\CallMe.lua
+Waypoints.lua
 UI.lua

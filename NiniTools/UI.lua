@@ -2739,6 +2739,10 @@ function UI:BuildQOL()
   -- 2) Waypoint guide ----------------------------------------------------------------
   local waypoint=self:AccordionSection(p,"waypoint","목적지 안내","지도 목적지를 이름 · 금빛 기둥으로 더 잘 보이게 표시",278,true)
   waypoint.forceHidden=not NT.Waypoints
+  if NT.FOREVER then
+    local wn=self:Font(waypoint.body,8,"포에버: NaowhForever 웨이포인트 핀이 있으면 처음엔 꺼져 있어요. 켜면 두 표시가 겹칠 수 있어요.",C.muted)
+    wn:SetPoint("BOTTOMLEFT",22,10); wn:SetWidth(510); wn:SetJustifyH("LEFT")
+  end
   local wayLeft=CreateFrame("Frame",nil,waypoint.body)
   wayLeft:SetPoint("TOPLEFT",0,0); wayLeft:SetPoint("BOTTOMLEFT",0,0); wayLeft:SetWidth(548)
 
@@ -2923,6 +2927,9 @@ function UI:BuildQOL()
     if wdb.glow~=false then parts[#parts+1]="기둥" end
     parts[#parts+1]=math.floor((tonumber(wdb.scale) or 1)*100+.5).."%"
     waypoint:SetEnabledState(wayEnabled)
+    if NT.FOREVER and NT.Waypoints and NT.Waypoints.NaowhForeverPinLoaded and NT.Waypoints.NaowhForeverPinLoaded() then
+      parts[#parts+1]="NaowhForever 핀 있음"
+    end
     waypoint:SetState(table.concat(parts," · "),wayEnabled and "accent" or "warn")
 
     local m=NT:GetMediaStatus()

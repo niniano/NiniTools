@@ -83,9 +83,21 @@ if Enum and Enum.HousingPlotOwnerType then
   HOUSING_ATLAS_MAP[Enum.HousingPlotOwnerType.Stranger] = "housing-map-plot-occupied"
 end
 
+-- 2.8.0: 포에버에서 NaowhForever(QoL) 웨이포인트 핀이 켜져 있으면 겹치므로 처음엔 꺼 둔다 (설정에서 켤 수 있음).
+local function naowhForeverPinLoaded()
+  local f = (C_AddOns and C_AddOns.IsAddOnLoaded) or _G.IsAddOnLoaded
+  if type(f) ~= "function" then return false end
+  local ok, loaded = pcall(f, "NaowhForever_QoL")
+  return ok and loaded and true or false
+end
+W.NaowhForeverPinLoaded = naowhForeverPinLoaded
+
 function W:GetDB()
   local db = NT:GetDB()
   if type(db.waypoints) ~= "table" then db.waypoints = {} end
+  if db.waypoints.enabled == nil then
+    db.waypoints.enabled = not (NT.FOREVER and naowhForeverPinLoaded())
+  end
   for k,v in pairs(defaults) do
     if db.waypoints[k] == nil then db.waypoints[k] = v end
   end
@@ -487,3 +499,10 @@ function W:UpdateWatcher()
 end
 
 W:UpdateWatcher()
+
+-- 2.8.0: 저장값(NiniToolsDB)은 파일을 다 읽은 뒤에 들어오므로 접속 후 한 번 더 맞춘다.
+if NT.EventDispatcher and NT.EventDispatcher.CreateProxy then
+  local login = NT.EventDispatcher:CreateProxy("Waypoints")
+  login:RegisterEvent("PLAYER_LOGIN")
+  login:SetScript("OnEvent", function() W:UpdateWatcher(); W:Refresh() end)
+end
