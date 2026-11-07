@@ -8,6 +8,8 @@ UI.pages = {}
 UI.navButtons = {}
 -- 2.3.0: five primary tabs only.  Maintenance lives behind the title-bar gear.
 UI.pageOrder = {"GOLD","KICK","NSRT","QOL","MEDIA","CAL"}
+-- 2.8.0: 포에버에는 차단 · NSRT · 달력 모듈이 없다.
+if NT.FOREVER then UI.pageOrder = {"GOLD","QOL","MEDIA"} end
 UI.pageNames = {
   KICK="Interrupt & M+",
   GOLD="Gold History",
@@ -908,6 +910,10 @@ function UI:PrepareAccordionPage(page)
     local y=-8
     for _,section in ipairs(self.accordions) do
       section:ClearAllPoints()
+      if section.forceHidden then
+        section:Hide()
+      else
+      section:Show()
       section:SetPoint("TOPLEFT",16,y)
       section:SetPoint("TOPRIGHT",-16,y)
       local h=section.headerHeight+(section.expanded and section.bodyHeight or 0)
@@ -919,6 +925,7 @@ function UI:PrepareAccordionPage(page)
       section:SetBackdropBorderColor(C.border[1],C.border[2],C.border[3],section.expanded and 0.50 or 0.58)
       if section.arrow then section.arrow:SetText(section.expanded and "▲" or "▼") end
       y=y-h-self.accordionGap
+      end
     end
     self.contentHeight=math.max(1,-y+8)
     if self.Layout then self:Layout() end
@@ -1311,14 +1318,14 @@ function UI:NewPage(id)
 end
 
 function UI:BuildPages()
-  self:BuildKick()
+  if not NT.FOREVER then self:BuildKick() end
   self:BuildGold()
-  self:BuildNSRT()
+  if not NT.FOREVER then self:BuildNSRT() end
   self:BuildMedia()
   self:BuildQOL()
   self:BuildTools()
   -- 2.5.8: 계정 달력 (Modules/Calendar/CalendarUI.lua)
-  if type(self.BuildCalendar)=="function" then self:BuildCalendar() end
+  if not NT.FOREVER and type(self.BuildCalendar)=="function" then self:BuildCalendar() end
 end
 
 function UI:BuildNSRT()
@@ -2686,7 +2693,9 @@ function UI:BuildQOL()
   local p=self:NewPage("QOL")
   self:PrepareAccordionPage(p)
   local mainDB=function() return NT:GetDB() end
-  local waypointDB=function() return NT.Waypoints:GetDB() end
+  -- 2.8.0: 포에버는 Waypoints 모듈을 싣지 않는다 (NaowhForever 웨이포인트 핀과 겹침) → 빈 설정으로 대신
+  local waypointStub={enabled=false,showName=true,glow=true,alwaysShow=false,scale=1}
+  local waypointDB=function() return NT.Waypoints and NT.Waypoints:GetDB() or waypointStub end
 
   local function setControlEnabled(control,enabled)
     if not control then return end
@@ -2725,9 +2734,11 @@ function UI:BuildQOL()
   g4:SetPoint("LEFT",g3,"RIGHT",10,0)
   local optNote=self:Font(graphics.body,8,"100% 렌더 · D3D12 · 저지연 3 · 레이드 그래픽 최적화 / 전투 옵션은 별도 적용",C.muted)
   optNote:SetPoint("BOTTOMLEFT",22,10); optNote:SetPoint("RIGHT",-22,0)
+  graphics.forceHidden=NT.FOREVER   -- 2.8.0: 그래픽 프리셋은 차단 모듈(본섭) 기능
 
   -- 2) Waypoint guide ----------------------------------------------------------------
   local waypoint=self:AccordionSection(p,"waypoint","목적지 안내","지도 목적지를 이름 · 금빛 기둥으로 더 잘 보이게 표시",278,true)
+  waypoint.forceHidden=not NT.Waypoints
   local wayLeft=CreateFrame("Frame",nil,waypoint.body)
   wayLeft:SetPoint("TOPLEFT",0,0); wayLeft:SetPoint("BOTTOMLEFT",0,0); wayLeft:SetWidth(548)
 
@@ -2845,6 +2856,7 @@ function UI:BuildQOL()
   p.finderReset:SetPoint("BOTTOMLEFT",22,16)
   local finderNote=self:Font(finder.body,8,"기본 검색 필터는 유지하고, 던전 선택만 빠르게 바꿉니다.",C.muted)
   finderNote:SetPoint("LEFT",p.finderReset,"RIGHT",14,0); finderNote:SetPoint("RIGHT",-20,0); finderNote:SetJustifyH("LEFT")
+  finder.forceHidden=NT.FOREVER     -- 2.8.0: 던전 검색 패널은 본섭 파티 찾기용
 
   -- 5) Minimap button -----------------------------------------------------------------
   local mini=self:AccordionSection(p,"minimap","미니맵 버튼","NiniTools 바로가기 버튼 표시 여부와 현재 상태",90,false)
@@ -2954,6 +2966,7 @@ function UI:BuildTools()
   local back=self:Button(actions,"메인 설정으로",150,32,function() UI:ShowPage(NT:GetDB().lastPage or "GOLD") end); back:SetPoint("LEFT",b1,"RIGHT",10,0)
   local exb=self:Button(actions,"EXBoss 프로필",150,32,function() if NT.ExbossS2 then NT.ExbossS2:OpenDialog() end end); exb:SetPoint("LEFT",back,"RIGHT",10,0)
   local nui=self:Button(actions,"/nui install",150,32,function() if NT.NaowhUILink then NT.NaowhUILink:OpenInstaller() end end); nui:SetPoint("LEFT",exb,"RIGHT",10,0)
+  if NT.FOREVER then exb:Hide(); nui:Hide() end   -- 2.8.0: 포에버에는 EXBoss · NaowhUI 연동 모듈이 없음
   local note=self:Font(actions,9,"명령어 목록은 제거했습니다. 주요 설정은 NiniTools 창에서 바로 조작합니다.",C.muted)
   note:SetPoint("BOTTOMLEFT",16,18); note:SetPoint("RIGHT",-16,0)
 
@@ -2977,7 +2990,7 @@ function UI:BuildTools()
 end
 
 function UI:ShowPage(id)
-  id=self.pages[id] and id or "KICK"
+  id=self.pages[id] and id or (self.pages.KICK and "KICK" or "GOLD")
   local changed=(self.currentPage~=id)
   for pid,p in pairs(self.pages) do p.viewport:SetShown(pid==id) end
   self.currentPage=id

@@ -1,4 +1,4 @@
-﻿NiniTools 2.7.2
+﻿NiniTools 2.8.0
 
 NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운드/Navi, Naowh Smart Reminders 연동을 한 창에 모은 WoW 통합 편의 애드온입니다.
 
@@ -66,8 +66,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
 
 [배포]
-- 현재 정식 버전: 2.7.2
-- 최신 변경사항: CHANGELOG_2.7.2.txt (2.7.1: CHANGELOG_2.7.1.txt · 2.7.0: CHANGELOG_2.7.0.txt · 2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
+- 현재 정식 버전: 2.8.0
+- 최신 변경사항: CHANGELOG_2.8.0.txt (2.7.2: CHANGELOG_2.7.2.txt · 2.7.1: CHANGELOG_2.7.1.txt · 2.7.0: CHANGELOG_2.7.0.txt · 2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
 
 [계정 달력 (2.5.8)]
 - NiniTools 창 「계정 달력」 탭 · /nini cal
@@ -80,6 +80,12 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - 로그 주소: 길드 일정은 길드 로그, 개인 초대는 초대한 사람 로그 · 참가자 이름을 누르면 그 캐릭 로그 (복사 창).
 - 날짜 메모는 계정 공용입니다. 지난 초대는 120일까지 남깁니다.
 - 와우 기본 달력 창이 열려 있거나 전투 중에는 달력을 건드리지 않고, 닫히거나 전투가 끝나면 읽습니다.
+
+[WoW 포에버 (2.8.0)]
+- 같은 NiniTools 폴더를 포에버 AddOns 폴더에도 넣으면 됩니다. 포에버에서는 NiniTools_Camelot.toc 가 대신 읽힙니다.
+- 포에버에서 되는 것: Gold History · 사운드 & Navi(GTFO · 효과음 · CallMe · Navi 커서 · Navi 채팅) · 화면 & 편의(채팅 말풍선 · 미니맵 버튼 · 창 설정)
+- 포에버에서 빠진 것: 차단 · 쐐기 · 중요몹 · 주변 적 숫자 · NSRT · Smart Reminders · EXBoss · NaowhUI 연동 · 계정 달력 · 목적지 안내 · 던전 검색 · 전투부대 은행 · 진단
+- 목적지 안내는 NaowhForever 웨이포인트 핀과 겹쳐서 포에버에서는 뺐습니다.
 
 [NSRT 메모 보관함 (2.7.2)]
 - NSRT는 메모를 프로필마다 따로 저장합니다. 나오 프로필을 새로 받으면 빈 프로필로 바뀌어 메모가 안 보입니다 (지워진 것은 아님).
