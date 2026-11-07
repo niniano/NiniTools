@@ -412,7 +412,9 @@ function W:Refresh()
     return
   end
 
-  if C_CVar and C_CVar.GetCVar and C_CVar.GetCVar("showInGameNavigation") == "0" then
+  -- 2.8.1: 포에버는 「게임 내 길안내」(showInGameNavigation) 기본값이 0 이어도 목적지 표시 프레임이 뜬다
+  -- (확인: 포에버 0 · SuperTrackedFrame 표시 · 추적 중). 포에버에서는 이 옵션으로 막지 않는다.
+  if not NT.FOREVER and C_CVar and C_CVar.GetCVar and C_CVar.GetCVar("showInGameNavigation") == "0" then
     if self.highlightFrame then self.highlightFrame:Hide() end
     if self.label then self.label:Hide() end
     return

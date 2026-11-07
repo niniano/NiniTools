@@ -2,6 +2,9 @@
 
 배포 ZIP에는 안 들어가는 메모입니다 (`NiniTools/` 폴더 밖).
 
+## 2.8.1
+- 포에버 목적지 안내: showInGameNavigation=0 이어도 표시 (포에버 기본 0)
+
 ## 2.8.0
 - WoW 포에버 지원: NiniTools_Camelot.toc (16001 · camelot) · NT.FOREVER · 포에버 메뉴 = Gold · 화면&편의 · 사운드&Navi
 - 포에버 기능 추가는 플레이하면서 결정 (사용자 2026-11-07)
