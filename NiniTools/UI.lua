@@ -28,7 +28,7 @@ UI.pageHints = {
   CAL="캐릭별 달력 초대 모아보기 · 날짜 메모 · 각 캐릭 접속할 때 자동 동기화",
   TOOLS="버전 · 연동 상태 · 유지관리",
 }
-if NT.FOREVER then UI.pageHints.QOL = "목적지 · 전투 시간 · 파티 인사 · 말풍선 · 미니맵 · 창 설정" end   -- 2.8.1: 포에버에 없는 그래픽 · 던전 검색 제외
+if NT.FOREVER then UI.pageHints.QOL = "목적지 · 전투 시간 · 파티 인사 · 주시 매크로 · 말풍선 · 미니맵" end   -- 2.8.1: 포에버에 없는 그래픽 · 던전 검색 제외
 
 local function RGB(hex)
   hex=hex:gsub("#","")
@@ -2852,12 +2852,27 @@ function UI:BuildQOL()
 
   -- 2.8.3: 포에버 파티 입장 인사 (본섭은 차단 → 쐐기 자동화의 같은 기능)
   local PGM=NT.PartyGreeting
-  local greet=self:AccordionSection(p,"greet","파티 입장 인사","혼자에서 파티가 되면 1초 뒤 파티 채팅에 「안녕하세요.」 · 공격대는 제외",90,false)
+  local greet=self:AccordionSection(p,"greet","파티 입장 인사","남의 파티에 들어가면 1초 뒤 파티 채팅에 「안녕하세요.」 · 내가 만든 파티 · 공격대는 제외",90,false)
   greet.forceHidden=not PGM
   if PGM then
     p.greetRow=self:Toggle(greet.body,"파티 입장 인사 · 안녕하세요.","enabled",function() return PGM:GetDB() end,function(v) PGM:SetEnabled(v); UI:RefreshVisiblePage() end,-12)
-    local greetNote=self:Font(greet.body,8,"/reload · 지역 이동 · 파티↔공격대 전환으로는 다시 인사하지 않아요.",C.muted)
+    local greetNote=self:Font(greet.body,8,"내가 초대해서 만든 파티(내가 파티장)는 인사 안 함 · 던전 찾기 그룹은 인사 · /reload · 지역 이동으로는 다시 안 함",C.muted)
     greetNote:SetPoint("BOTTOMLEFT",22,12); greetNote:SetPoint("RIGHT",-22,0); greetNote:SetJustifyH("LEFT")
+  end
+
+  -- 2.8.4: 포에버 주시 · 차단 매크로 자동 생성 (본섭은 차단 모듈이 관리)
+  local FMM=NT.ForeverMacros
+  local fmac=self:AccordionSection(p,"fmacro","주시 · 차단 매크로","NiniKickFocus(주시 + 징표) · NiniKickAuto(주시 차단 → 없으면 가까운 적) 캐릭터 전용 자동 생성",136,false)
+  fmac.forceHidden=not FMM
+  if FMM then
+    p.fmacRow=self:Toggle(fmac.body,"매크로 자동 생성 · 갱신","enabled",function() return FMM:GetDB() end,function(v) FMM:SetEnabled(v); UI:RefreshVisiblePage() end,-12)
+    p.fmacMarker=self:AdjustRow(fmac.body,"주시 징표",-50,function()
+      local m=FMM:GetDB().marker; return string.format("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_%d:14|t %s",m,FMM.MARKER_NAMES[m] or m)
+    end,function(dir) local db=FMM:GetDB(); FMM:SetMarker(((db.marker-1+(dir>=0 and 1 or -1))%8)+1); UI:RefreshVisiblePage() end)
+    p.fmacMake=self:Button(fmac.body,"지금 만들기 / 갱신",150,26,function() FMM:Ensure(false); UI:RefreshVisiblePage() end)
+    p.fmacMake:SetPoint("BOTTOMLEFT",22,12)
+    p.fmacStatus=self:Font(fmac.body,8,"",C.muted)
+    p.fmacStatus:SetPoint("LEFT",p.fmacMake,"RIGHT",12,0); p.fmacStatus:SetPoint("RIGHT",-22,0); p.fmacStatus:SetJustifyH("LEFT")
   end
 
   -- 3) Chat bubbles -------------------------------------------------------------------
@@ -2945,6 +2960,13 @@ function UI:BuildQOL()
       if self.ctimerMove.label then self.ctimerMove.label:SetText(CTM:IsUnlocked() and "위치 고정" or "위치 이동") end
       ctimer:SetEnabledState(CTM:IsEnabled())
       ctimer:SetState((CTM:IsEnabled() and "ON" or "OFF").." · "..CTM:GetSize().."px",CTM:IsEnabled() and "accent" or "warn")
+    end
+    if FMM and self.fmacRow then
+      self.fmacRow:Refresh(); self.fmacMarker:Refresh()
+      self.fmacStatus:SetText(FMM:Status())
+      local on=FMM:GetDB().enabled~=false
+      fmac:SetEnabledState(on)
+      fmac:SetState(on and (FMM.MARKER_NAMES[FMM:GetDB().marker] or "ON") or "OFF",on and "accent" or "warn")
     end
     if PGM and self.greetRow then
       self.greetRow:Refresh()

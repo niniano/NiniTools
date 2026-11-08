@@ -1,7 +1,9 @@
 -- NiniTools 2.8.3: WoW 포에버용 파티 입장 인사 「안녕하세요.」
 -- 본섭은 차단 모듈(Modules/Kick/Core.lua · 2.0.7)의 같은 기능을 쓰고, 이 파일은 NiniTools_Camelot.toc 에만 들어간다.
--- 규칙은 본섭과 같다:
---   · 혼자 → 파티가 될 때만 1초 뒤 한 번 (파티 채팅, 인스턴스 그룹이면 인스턴스 채팅)
+-- 규칙:
+--   · 혼자 → 파티가 될 때 1초 뒤 한 번 (파티 채팅, 인스턴스 그룹이면 인스턴스 채팅)
+--   · 2.8.4: 「남의 파티에 들어갈 때만」 — 내가 파티장이면(내가 초대해서 만든 파티) 인사하지 않음.
+--     던전 찾기처럼 자동으로 모인 인스턴스 그룹은 파티장이 누구든 인사함.
 --   · 공격대는 인사하지 않음 · 파티 ↔ 공격대 전환, /reload, 지역 이동으로는 다시 인사하지 않음
 local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
@@ -33,6 +35,13 @@ local function call(fn, ...)
 end
 
 local function inAnyGroup() return call(IsInGroup) or call(IsInRaid) end
+local function inInstanceGroup() return LE_PARTY_CATEGORY_INSTANCE ~= nil and call(IsInGroup, LE_PARTY_CATEGORY_INSTANCE) end
+-- 2.8.4: 내가 만든 파티(내가 파티장)는 인사 안 함 · 인스턴스 그룹은 예외
+local function joinedSomeoneElses()
+  if inInstanceGroup() then return true end
+  return not call(UnitIsGroupLeader, "player")
+end
+PG.JoinedSomeoneElses = joinedSomeoneElses
 local function eligible() return inAnyGroup() and not call(IsInRaid) end
 
 local function update(initializing)
@@ -50,9 +59,10 @@ local function update(initializing)
   serial = serial + 1
   local mine = serial
   C_Timer.After(DELAY, function()
-    if mine ~= serial or not PG:IsEnabled() or not eligible() then return end
+    -- 파티장 정보가 늦게 들어올 수 있어 1초 뒤 보내기 직전에 판단한다
+    if mine ~= serial or not PG:IsEnabled() or not eligible() or not joinedSomeoneElses() then return end
     local channel = "PARTY"
-    if LE_PARTY_CATEGORY_INSTANCE and call(IsInGroup, LE_PARTY_CATEGORY_INSTANCE) then channel = "INSTANCE_CHAT" end
+    if inInstanceGroup() then channel = "INSTANCE_CHAT" end
     if type(SendChatMessage) == "function" then pcall(SendChatMessage, GREETING, channel) end
   end)
 end
