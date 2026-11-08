@@ -28,7 +28,7 @@ UI.pageHints = {
   CAL="캐릭별 달력 초대 모아보기 · 날짜 메모 · 각 캐릭 접속할 때 자동 동기화",
   TOOLS="버전 · 연동 상태 · 유지관리",
 }
-if NT.FOREVER then UI.pageHints.QOL = "목적지 · 말풍선 · 미니맵 · 창 설정" end   -- 2.8.1: 포에버에 없는 그래픽 · 던전 검색 제외
+if NT.FOREVER then UI.pageHints.QOL = "목적지 · 전투 시간 · 말풍선 · 미니맵 · 창 설정" end   -- 2.8.1: 포에버에 없는 그래픽 · 던전 검색 제외
 
 local function RGB(hex)
   hex=hex:gsub("#","")
@@ -2835,6 +2835,21 @@ function UI:BuildQOL()
   end
   p.waypointPreview=wayPreview
 
+  -- 2.8.2: 포에버 전투 시간 (본섭은 차단 모듈의 「전투 시간 / 주변 적 숫자」를 씀)
+  local CTM=NT.CombatTimer
+  local ctimer=self:AccordionSection(p,"ctimer","전투 시간","전투를 시작하면 화면에 경과 시간 표시 · 끝나면 2.5초 유지",136,false)
+  ctimer.forceHidden=not CTM
+  if CTM then
+    p.ctimerRow=self:Toggle(ctimer.body,"전투 시간 표시","enabled",function() return CTM:GetDB() end,function(v) CTM:SetEnabled(v) end,-12)
+    p.ctimerSize=self:AdjustRow(ctimer.body,"글자 크기",-50,function() return CTM:GetSize().." px" end,function(dir) CTM:AdjustSize(dir); UI:RefreshVisiblePage() end)
+    p.ctimerMove=self:Button(ctimer.body,"위치 이동",94,26,function() CTM:SetUnlocked(not CTM:IsUnlocked()); UI:RefreshVisiblePage() end)
+    p.ctimerMove:SetPoint("BOTTOMLEFT",22,12)
+    p.ctimerReset=self:Button(ctimer.body,"초기화",78,26,function() CTM:ResetPosition() end)
+    p.ctimerReset:SetPoint("LEFT",p.ctimerMove,"RIGHT",8,0)
+    p.ctimerTest=self:Button(ctimer.body,"테스트",78,26,function() CTM:Test() end)
+    p.ctimerTest:SetPoint("LEFT",p.ctimerReset,"RIGHT",8,0)
+  end
+
   -- 3) Chat bubbles -------------------------------------------------------------------
   local bubble=self:AccordionSection(p,"bubble","채팅 말풍선","머리 위 채팅 말풍선 글자 크기를 8~20px 사이에서 조절",100,false)
   p.bubbleSlider=self:SliderRow(bubble.body,"말풍선 글자 크기",-16,8,20,1,function()
@@ -2915,6 +2930,12 @@ function UI:BuildQOL()
     if self.waypointPreview then self.waypointPreview:Refresh() end
 
     if self.bubbleSlider then self.bubbleSlider:Refresh() end
+    if CTM and self.ctimerRow then
+      self.ctimerRow:Refresh(); self.ctimerSize:Refresh()
+      if self.ctimerMove.label then self.ctimerMove.label:SetText(CTM:IsUnlocked() and "위치 고정" or "위치 이동") end
+      ctimer:SetEnabledState(CTM:IsEnabled())
+      ctimer:SetState((CTM:IsEnabled() and "ON" or "OFF").." · "..CTM:GetSize().."px",CTM:IsEnabled() and "accent" or "warn")
+    end
     if self.finderRow then self.finderRow:Refresh() end
     if self.miniRow then self.miniRow:Refresh() end
 

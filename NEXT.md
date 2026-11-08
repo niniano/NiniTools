@@ -2,6 +2,9 @@
 
 배포 ZIP에는 안 들어가는 메모입니다 (`NiniTools/` 폴더 밖).
 
+## 2.8.2
+- 포에버 전투 시간 (Modules/Combat/CombatTimer.lua · Camelot TOC 전용 · 화면&편의 「전투 시간」)
+
 ## 2.8.1
 - 포에버 목적지 안내: showInGameNavigation=0 이어도 표시 (포에버 기본 0)
 
