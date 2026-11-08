@@ -3,10 +3,11 @@
 배포 ZIP에는 안 들어가는 메모입니다 (`NiniTools/` 폴더 밖).
 
 ## 2.8.5 (예약)
-- 인던 네임드 킬 → 「뜌미 승리」 소리 (사용자 요청 · 2.8.4 의 「인던 관련」 한 가지가 이것)
-  · 조건: 던전(instanceType party)에서 ENCOUNTER_END 성공일 때만 · 레이드 · 실패는 제외
-  · 소리: 이미 들어 있는 Media/Victory/Victory.ogg (LSM 이름 「뜌미 승리」 · NT:TestVictorySound 와 같은 소리)
-  · 만들 때 확인: BigWigs 승리 소리와 겹쳐 두 번 나지 않게 · 끄고 켜는 스위치(사운드&Navi 「효과음」) · 본섭/포에버 둘 다 넣을지
+- 포에버 인던 네임드 킬 → 「뜌미 승리」 소리 (사용자 요청 · 2.8.4 의 「인던 관련」 한 가지가 이것)
+  · 본섭은 이미 됨: 니니툴은 LSM 에 「뜌미 승리」만 등록하고, 소리는 BigWigs 승리 소리 설정이 냄 → 본섭은 건드리지 않음
+  · 포에버 먼저 확인: BigWigs 옵션 승리 소리를 「뜌미 승리」로 고르면 되는지 (니니툴이 포에버에서도 등록함)
+  · 인던 보스 모듈(LittleWigs)이 없어 BigWigs 가 안 울리면 → 니니툴 Camelot 전용으로 ENCOUNTER_END 성공 + 던전(party)일 때 재생
+  · BigWigs 가 이미 울린 킬은 건너뛰어 두 번 안 나게 · 켜고 끄는 스위치
 
 ## 2.8.4
 - 포에버 주시 · 차단 매크로 자동 생성 (Modules/Kick/ForeverMacros.lua · NiniKickFocus 징표 아이콘 고정 · NiniKickAuto)
