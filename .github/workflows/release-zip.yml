@@ -1,0 +1,98 @@
+# NiniTools 릴리스 ZIP 자동 첨부
+# - GitHub 「Releases」에서 릴리스를 Publish 하면: 버전 확인 → Lua 문법 검사 → NiniTools_<버전>.zip 을 만들어 그 릴리스에 첨부
+#   → 다 붙으면 디스코드 다운로드 임베드(discord-download.yml)를 바로 한 번 돌림
+# - Actions 탭 「Run workflow」: ZIP 만 만들어 Artifacts 로 받기 (릴리스에는 안 올림)
+# 릴리스 태그는 v + 애드온 버전(NiniTools/NiniTools.toc 의 ## Version)과 같아야 함 (예: v2.8.2)
+# ZIP 을 직접 붙여 올렸어도 같은 이름이면 이 ZIP 으로 바꿔 붙임 (내용은 같은 태그의 NiniTools 폴더)
+name: Release ZIP
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: release-zip-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Version check
+        id: ver
+        run: |
+          set -euo pipefail
+          toc=$(sed -n 's/^## Version: *\([0-9.]*\).*/\1/p' NiniTools/NiniTools.toc | head -1)
+          camelot=$(sed -n 's/^## Version: *\([0-9.]*\).*/\1/p' NiniTools/NiniTools_Camelot.toc | head -1)
+          core=$(sed -n 's/^NT.VERSION = "\([0-9.]*\)".*/\1/p' NiniTools/Core.lua | head -1)
+          echo "toc=$toc camelot=$camelot core=$core"
+          [ -n "$toc" ] || { echo "::error::NiniTools.toc 에서 버전을 못 찾음"; exit 1; }
+          [ "$toc" = "$core" ] || { echo "::error::NiniTools.toc($toc) 와 Core.lua($core) 버전이 다름"; exit 1; }
+          [ "$toc" = "$camelot" ] || { echo "::error::NiniTools.toc($toc) 와 NiniTools_Camelot.toc($camelot) 버전이 다름"; exit 1; }
+          if [ "${{ github.event_name }}" = "release" ]; then
+            tag="${{ github.event.release.tag_name }}"
+            [ "$tag" = "v$toc" ] || { echo "::error::릴리스 태그 $tag 가 애드온 버전 v$toc 와 다름"; exit 1; }
+          fi
+          echo "version=$toc" >> "$GITHUB_OUTPUT"
+
+      - name: Lua syntax check (Lua 5.1)
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq lua5.1 >/dev/null
+          bad=0
+          while IFS= read -r -d '' f; do
+            luac5.1 -p "$f" || { echo "::error file=$f::Lua 문법 오류"; bad=1; }
+          done < <(find NiniTools -name '*.lua' -not -path '*/Libs/*' -print0)
+          [ "$bad" = 0 ]
+
+      - name: TOC files exist
+        run: |
+          set -euo pipefail
+          missing=0
+          for toc in NiniTools/NiniTools.toc NiniTools/NiniTools_Camelot.toc; do
+            while IFS= read -r line; do
+              line="${line%$'\r'}"
+              case "$line" in ""|\#*) continue ;; esac
+              path="NiniTools/${line//\\//}"
+              [ -f "$path" ] || { echo "::error::$toc → 없는 파일 $line"; missing=1; }
+            done < "$toc"
+          done
+          [ "$missing" = 0 ]
+
+      - name: Build ZIP
+        id: zip
+        run: |
+          set -euo pipefail
+          name="NiniTools_${{ steps.ver.outputs.version }}.zip"
+          git archive --format=zip -o "$name" HEAD NiniTools
+          unzip -l "$name" | tail -1
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "${{ steps.zip.outputs.name }}" --clobber --repo "${{ github.repository }}"
+
+      - name: Keep as artifact
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.zip.outputs.name }}
+          path: ${{ steps.zip.outputs.name }}
+
+      - name: Refresh Discord download embed
+        if: github.event_name == 'release' && !github.event.release.prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run discord-download.yml --repo "${{ github.repository }}" || echo "::warning::디스코드 임베드 실행 요청 실패 (4시간 주기 실행 때 반영됨)"
