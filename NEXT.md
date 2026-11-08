@@ -2,10 +2,15 @@
 
 배포 ZIP에는 안 들어가는 메모입니다 (`NiniTools/` 폴더 밖).
 
+## 2.8.5 (예약)
+- 인던 네임드 킬 → 「뜌미 승리」 소리 (사용자 요청 · 2.8.4 의 「인던 관련」 한 가지가 이것)
+  · 조건: 던전(instanceType party)에서 ENCOUNTER_END 성공일 때만 · 레이드 · 실패는 제외
+  · 소리: 이미 들어 있는 Media/Victory/Victory.ogg (LSM 이름 「뜌미 승리」 · NT:TestVictorySound 와 같은 소리)
+  · 만들 때 확인: BigWigs 승리 소리와 겹쳐 두 번 나지 않게 · 끄고 켜는 스위치(사운드&Navi 「효과음」) · 본섭/포에버 둘 다 넣을지
+
 ## 2.8.4
 - 포에버 주시 · 차단 매크로 자동 생성 (Modules/Kick/ForeverMacros.lua · NiniKickFocus 징표 아이콘 고정 · NiniKickAuto)
 - 포에버 파티 인사: 남의 파티에 들어갈 때만 (내가 파티장이면 안 함 · 인스턴스 그룹은 함)
-- 할 예정: 사용자가 떠올리면 알려 줄 「인던 관련」 한 가지
 
 ## 2.8.3
 - 포에버 파티 입장 인사 「안녕하세요.」 (Modules/Social/PartyGreeting.lua · Camelot TOC 전용 · 본섭 규칙과 같음)
