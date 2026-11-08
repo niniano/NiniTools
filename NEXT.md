@@ -2,6 +2,9 @@
 
 배포 ZIP에는 안 들어가는 메모입니다 (`NiniTools/` 폴더 밖).
 
+## 2.8.3
+- 포에버 파티 입장 인사 「안녕하세요.」 (Modules/Social/PartyGreeting.lua · Camelot TOC 전용 · 본섭 규칙과 같음)
+
 ## 2.8.2
 - 포에버 전투 시간 (Modules/Combat/CombatTimer.lua · Camelot TOC 전용 · 화면&편의 「전투 시간」)
 

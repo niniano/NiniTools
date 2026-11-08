@@ -28,7 +28,7 @@ UI.pageHints = {
   CAL="캐릭별 달력 초대 모아보기 · 날짜 메모 · 각 캐릭 접속할 때 자동 동기화",
   TOOLS="버전 · 연동 상태 · 유지관리",
 }
-if NT.FOREVER then UI.pageHints.QOL = "목적지 · 전투 시간 · 말풍선 · 미니맵 · 창 설정" end   -- 2.8.1: 포에버에 없는 그래픽 · 던전 검색 제외
+if NT.FOREVER then UI.pageHints.QOL = "목적지 · 전투 시간 · 파티 인사 · 말풍선 · 미니맵 · 창 설정" end   -- 2.8.1: 포에버에 없는 그래픽 · 던전 검색 제외
 
 local function RGB(hex)
   hex=hex:gsub("#","")
@@ -2850,6 +2850,16 @@ function UI:BuildQOL()
     p.ctimerTest:SetPoint("LEFT",p.ctimerReset,"RIGHT",8,0)
   end
 
+  -- 2.8.3: 포에버 파티 입장 인사 (본섭은 차단 → 쐐기 자동화의 같은 기능)
+  local PGM=NT.PartyGreeting
+  local greet=self:AccordionSection(p,"greet","파티 입장 인사","혼자에서 파티가 되면 1초 뒤 파티 채팅에 「안녕하세요.」 · 공격대는 제외",90,false)
+  greet.forceHidden=not PGM
+  if PGM then
+    p.greetRow=self:Toggle(greet.body,"파티 입장 인사 · 안녕하세요.","enabled",function() return PGM:GetDB() end,function(v) PGM:SetEnabled(v); UI:RefreshVisiblePage() end,-12)
+    local greetNote=self:Font(greet.body,8,"/reload · 지역 이동 · 파티↔공격대 전환으로는 다시 인사하지 않아요.",C.muted)
+    greetNote:SetPoint("BOTTOMLEFT",22,12); greetNote:SetPoint("RIGHT",-22,0); greetNote:SetJustifyH("LEFT")
+  end
+
   -- 3) Chat bubbles -------------------------------------------------------------------
   local bubble=self:AccordionSection(p,"bubble","채팅 말풍선","머리 위 채팅 말풍선 글자 크기를 8~20px 사이에서 조절",100,false)
   p.bubbleSlider=self:SliderRow(bubble.body,"말풍선 글자 크기",-16,8,20,1,function()
@@ -2935,6 +2945,11 @@ function UI:BuildQOL()
       if self.ctimerMove.label then self.ctimerMove.label:SetText(CTM:IsUnlocked() and "위치 고정" or "위치 이동") end
       ctimer:SetEnabledState(CTM:IsEnabled())
       ctimer:SetState((CTM:IsEnabled() and "ON" or "OFF").." · "..CTM:GetSize().."px",CTM:IsEnabled() and "accent" or "warn")
+    end
+    if PGM and self.greetRow then
+      self.greetRow:Refresh()
+      greet:SetEnabledState(PGM:IsEnabled())
+      greet:SetState(PGM:IsEnabled() and "ON" or "OFF",PGM:IsEnabled() and "accent" or "warn")
     end
     if self.finderRow then self.finderRow:Refresh() end
     if self.miniRow then self.miniRow:Refresh() end
