@@ -896,6 +896,11 @@ function UI:Section(parent, title, subtitle, y, h)
     s:SetPoint("RIGHT",-16,0)
     s:SetJustifyH("LEFT")
   end
+  -- 2.8.5: 설정 검색 대상으로 등록
+  f.searchTitle, f.searchSub = title, subtitle
+  local owner=parent
+  while owner and not owner.pageId do owner=owner.GetParent and owner:GetParent() or nil end
+  if owner then owner.searchSections=owner.searchSections or {}; owner.searchSections[#owner.searchSections+1]=f end
   return f
 end
 
@@ -1114,6 +1119,19 @@ function UI:BuildFrame()
   ver:SetPoint("RIGHT",-82,0)
   ver:SetJustifyH("RIGHT")
 
+  -- 2.8.5: 버전 글자를 누르면 새 소식 · 그 왼쪽에 위치 편집
+  local verButton=CreateFrame("Button",nil,titleBar)
+  verButton:SetPoint("TOPLEFT",ver,"TOPLEFT",-4,4); verButton:SetPoint("BOTTOMRIGHT",ver,"BOTTOMRIGHT",4,-4)
+  verButton:SetScript("OnClick",function() if NT.News then NT.News:Show(true) end end)
+  verButton:SetScript("OnEnter",function(self)
+    ver:SetTextColor(C.accent[1],C.accent[2],C.accent[3],1)
+    GameTooltip:SetOwner(self,"ANCHOR_BOTTOM"); GameTooltip:AddLine("새 소식 보기",1,1,1); GameTooltip:Show()
+  end)
+  verButton:SetScript("OnLeave",function() ver:SetTextColor(C.muted[1],C.muted[2],C.muted[3],1); GameTooltip:Hide() end)
+  local editButton=self:Button(titleBar,"위치 편집",88,24,function() if NT.EditMode then NT.EditMode:Toggle() end end)
+  editButton:SetPoint("RIGHT",ver,"LEFT",-14,0)
+  self.editButton=editButton
+
   local gear=self:GearButton(titleBar,"설정 & 진단",function() UI:ShowPage("TOOLS") end)
   gear:SetPoint("RIGHT",-40,0)
   gear:SetSize(28,28)
@@ -1170,6 +1188,7 @@ function UI:BuildFrame()
     b:SetScript("OnLeave",function() UI:RefreshNav() end)
     self.navButtons[id]=b
   end
+  self:BuildSearchBox(navBar)
 
   local content=CreateFrame("Frame",nil,f)
   content:SetPoint("TOPLEFT",0,-TITLE_H-NAV_H)
@@ -1249,6 +1268,170 @@ function UI:ApplyWindowScale(value)
   end
 end
 
+-- 2.8.5: 설정 검색 ---------------------------------------------------------
+-- 메뉴 줄 오른쪽 검색 칸. 모든 페이지의 접는 항목(제목 · 설명)과 섹션 제목에서 찾아
+-- 아래 목록으로 보여 주고, 누르면 그 페이지로 가서 항목을 펼치고 그 위치로 스크롤한다.
+local SEARCH_MAX=8
+-- 제목 · 설명에 없는 말로도 찾을 수 있게 (접는 항목 id → 덧붙일 검색어)
+local SEARCH_KEYWORDS={
+  assign="차단 담당 로테이션 순서",
+  automation="주시 매크로 차단 매크로 인사 안녕하세요 오토 브리핑",
+  important="느낌표 ! bang 중요 시전",
+  defensive="생존기 쿨기 Naowh",
+  combat="전투시간 전투 시간 타이머 적 숫자",
+  gtfo="바닥 경고음 GTFO BigWigs",
+  effects="뜌미 승리 초읽기 점프 소리",
+  callme="이름 호출 니니 별명",
+  navi="커서 마우스 Navi 채팅",
+  graphics="그래픽 CVar 최적화",
+  waypoint="웨이포인트 길안내 기둥 목적지 핀",
+  ctimer="전투 시간 타이머",
+  greet="안녕하세요 인사 파티",
+  fmacro="주시 차단 매크로 징표 focus",
+  bubble="말풍선 채팅 글자",
+  finder="던전 찾기 LFG 참가 신청",
+  minimap="미니맵 버튼 아이콘",
+  window="창 배율 크기 스케일 초기화",
+}
+
+local function searchNorm(text)
+  return (tostring(text or ""):lower():gsub("%s+",""))
+end
+
+function UI:CollectSearchEntries()
+  local entries={}
+  for _,id in ipairs(self.pageOrder) do
+    local p=self.pages[id]
+    if p then
+      entries[#entries+1]={page=id,title=self.pageNames[id] or id,sub=self.pageHints[id] or ""}
+      for _,section in ipairs(p.accordions or {}) do
+        if not section.forceHidden then
+          entries[#entries+1]={page=id,frame=section,accordion=section.id,keys=SEARCH_KEYWORDS[section.id],
+            title=section.title and section.title:GetText() or "",sub=section.subtitle and section.subtitle:GetText() or ""}
+        end
+      end
+      for _,section in ipairs(p.searchSections or {}) do
+        entries[#entries+1]={page=id,frame=section,title=section.searchTitle or "",sub=section.searchSub or ""}
+      end
+    end
+  end
+  -- 설정 & 진단(톱니바퀴)도 찾을 수 있게
+  local tools=self.pages.TOOLS
+  if tools then
+    entries[#entries+1]={page="TOOLS",title=self.pageNames.TOOLS,sub=self.pageHints.TOOLS or ""}
+    for _,section in ipairs(tools.searchSections or {}) do
+      entries[#entries+1]={page="TOOLS",frame=section,title=section.searchTitle or "",sub=section.searchSub or ""}
+    end
+  end
+  return entries
+end
+
+function UI:RunSearch(text)
+  local q=searchNorm(text)
+  if q=="" then return {} end
+  local hits={}
+  for _,e in ipairs(self:CollectSearchEntries()) do
+    local t,sub=searchNorm(e.title),searchNorm(e.sub)
+    local score=t:find(q,1,true) and (t:sub(1,#q)==q and 0 or 1) or (sub:find(q,1,true) and 2 or nil)
+    if not score and e.keys and searchNorm(e.keys):find(q,1,true) then score=2 end
+    if not score and searchNorm(self.pageNames[e.page]):find(q,1,true) and e.frame then score=3 end
+    if score then e.score=score; hits[#hits+1]=e end
+  end
+  table.sort(hits,function(a,b)
+    if a.score~=b.score then return a.score<b.score end
+    return (a.title or "")<(b.title or "")
+  end)
+  return hits
+end
+
+function UI:GoToSearch(entry)
+  if not entry then return end
+  self:ShowPage(entry.page)
+  local p=self.pages[entry.page]
+  if not (p and entry.frame) then return end
+  if entry.accordion and p.SetAccordion and not entry.frame.expanded then p:SetAccordion(entry.accordion) end
+  if p.ScrollTo and p.GetTop and entry.frame.GetTop then
+    local top,frameTop=p:GetTop(),entry.frame:GetTop()
+    if top and frameTop then p.ScrollTo(top-frameTop-8) end
+  end
+  -- 잠깐 강조해서 어디로 왔는지 보이게
+  local f=entry.frame
+  if f.SetBackdropBorderColor then
+    f:SetBackdropBorderColor(C.accent[1],C.accent[2],C.accent[3],1)
+    C_Timer.After(1.2,function() if p.LayoutAccordions and entry.accordion then p:LayoutAccordions() elseif f.SetBackdropBorderColor then f:SetBackdropBorderColor(C.border[1],C.border[2],C.border[3],.54) end end)
+  end
+end
+
+function UI:BuildSearchBox(navBar)
+  local bg=CreateFrame("Frame",nil,navBar,"BackdropTemplate")
+  bg:SetPoint("RIGHT",-12,0); bg:SetSize(160,26)   -- 본섭 메뉴 6개(약 840px) 오른쪽 빈자리에 맞춤
+  self:Backdrop(bg,C.panel2,C.border)
+  local icon=bg:CreateTexture(nil,"ARTWORK"); icon:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
+  icon:SetSize(14,14); icon:SetPoint("LEFT",7,-1); icon:SetVertexColor(.7,.74,.8,1)
+  local box=CreateFrame("EditBox",nil,bg)
+  box:SetPoint("LEFT",icon,"RIGHT",6,0); box:SetPoint("RIGHT",-8,0); box:SetHeight(24)
+  box:SetAutoFocus(false); box:SetFontObject("GameFontHighlight"); box:SetTextInsets(0,0,0,0)
+  local hint=self:Font(bg,9,"설정 검색",C.muted); hint:SetPoint("LEFT",icon,"RIGHT",7,0)
+  self.searchBox=box
+
+  local list=CreateFrame("Frame",nil,self.frame,"BackdropTemplate")
+  list:SetPoint("TOPRIGHT",bg,"BOTTOMRIGHT",0,-4); list:SetWidth(360)
+  list:SetFrameStrata("DIALOG")
+  self:Backdrop(list,C.sidebar,C.border)
+  list:SetBackdropColor(C.sidebar[1],C.sidebar[2],C.sidebar[3],.98)
+  list:Hide()
+  list.rows={}
+  for i=1,SEARCH_MAX do
+    local r=CreateFrame("Button",nil,list)
+    r:SetHeight(40); r:SetPoint("TOPLEFT",4,-4-(i-1)*40); r:SetPoint("TOPRIGHT",-4,-4-(i-1)*40)
+    r.bg=r:CreateTexture(nil,"BACKGROUND"); r.bg:SetAllPoints(); r.bg:SetColorTexture(C.accent[1],C.accent[2],C.accent[3],0)
+    r.title=self:SingleLine(self:Font(r,10,"",C.text)); r.title:SetPoint("TOPLEFT",10,-5); r.title:SetPoint("RIGHT",-10,0); r.title:SetJustifyH("LEFT")
+    r.sub=self:SingleLine(self:Font(r,8,"",C.muted)); r.sub:SetPoint("TOPLEFT",10,-23); r.sub:SetPoint("RIGHT",-10,0); r.sub:SetJustifyH("LEFT")
+    r:SetScript("OnEnter",function(self) self.bg:SetColorTexture(C.accent[1],C.accent[2],C.accent[3],.10) end)
+    r:SetScript("OnLeave",function(self) self.bg:SetColorTexture(C.accent[1],C.accent[2],C.accent[3],0) end)
+    r:SetScript("OnClick",function(self) list:Hide(); box:ClearFocus(); UI:GoToSearch(self.entry) end)
+    list.rows[i]=r
+  end
+  list.empty=self:Font(list,9,"찾는 설정이 없어요",C.muted); list.empty:SetPoint("TOPLEFT",14,-12)
+  self.searchList=list
+
+  local function show(text)
+    local hits=UI:RunSearch(text)
+    list.hits=hits
+    if searchNorm(text)=="" then list:Hide(); return end
+    local n=math.min(#hits,SEARCH_MAX)
+    for i,r in ipairs(list.rows) do
+      local e=hits[i]
+      r.entry=e
+      if e then
+        r.title:SetText(e.title~="" and e.title or (UI.pageNames[e.page] or e.page))
+        local where=UI.pageNames[e.page] or e.page
+        r.sub:SetText(e.frame and (where..(e.sub~="" and (" · "..e.sub) or "")) or ("페이지 · "..(e.sub or "")))
+        r:Show()
+      else
+        r:Hide()
+      end
+    end
+    list.empty:SetShown(n==0)
+    list:SetHeight(n==0 and 36 or (8+n*40))
+    list:Show()
+  end
+  box:SetScript("OnTextChanged",function(self)
+    local text=self:GetText() or ""
+    hint:SetShown(text=="")
+    show(text)
+  end)
+  box:SetScript("OnEnterPressed",function(self)
+    local first=list.hits and list.hits[1]
+    list:Hide(); self:ClearFocus()
+    if first then UI:GoToSearch(first) end
+  end)
+  box:SetScript("OnEscapePressed",function(self) self:SetText(""); list:Hide(); self:ClearFocus() end)
+  box:SetScript("OnEditFocusLost",function() C_Timer.After(0.2,function() if not box:HasFocus() then list:Hide() end end) end)
+  box:SetScript("OnEditFocusGained",function(self) show(self:GetText() or "") end)
+  self.frame:HookScript("OnHide",function() list:Hide(); box:ClearFocus() end)
+end
+
 function UI:RefreshNav()
   for id,b in pairs(self.navButtons) do
     local active=id==self.currentPage
@@ -1309,7 +1492,13 @@ function UI:NewPage(id)
     view:SetVerticalScroll(bar:GetValue())
   end
   p.Layout=layout
+  p.pageId=id   -- 2.8.5: 설정 검색이 어느 페이지인지 찾을 때 씀
   p.ScrollToTop=function() bar:SetValue(0) end
+  p.ScrollTo=function(offset)
+    layout()
+    local _,maximum=bar:GetMinMaxValues()
+    bar:SetValue(clamp(offset or 0,0,maximum))
+  end
   p.ScrollBy=function(delta) wheel(nil,delta) end
   view:SetScript("OnSizeChanged",layout)
   view:SetScript("OnShow",layout)
@@ -3129,6 +3318,15 @@ SlashCmdList.NINITOOLS=function(msg)
     -- 2.6.2: 중요몹 「!」 확인 · /nini bang (상태) · /nini bang test [초] · /nini bang stop
     local arg=msg:match("^%S+%s*(.-)%s*$") or ""
     NT:CallSlash("NINIKICK","bang "..arg)
+    return
+  end
+  -- 2.8.5: 위치 편집 · 새 소식
+  if msg=="edit" or msg=="move" or msg=="편집" or msg=="위치" then
+    if NT.EditMode then NT.EditMode:Toggle() end
+    return
+  end
+  if msg=="news" or msg=="소식" or msg=="새소식" then
+    if NT.News then NT.News:Show(true) end
     return
   end
   if msg=="check" or msg:match("^check%s+") then
