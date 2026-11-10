@@ -1610,6 +1610,75 @@ function UI:BuildNSRT()
   end
   p.nsrtFields=fields
 
+  -- 2.8.6: 보스 정보 없는 메모(Lorrgs 「Name:Unknown;」)용 보스 · 난이도 고르기. 그런 메모일 때만 보인다.
+  local pickBoss, pickDiff
+  local function bossPopup()
+    if not UI.frame then return end
+    if p.nsrtBossPopup and p.nsrtBossPopup:IsShown() then p.nsrtBossPopup:Hide(); return end
+    if UI.activeDropdown and UI.activeDropdown~=p.nsrtBossPopup then UI.activeDropdown:Hide() end
+    local list=NR and NR:RaidEncounters() or {}
+    if #list==0 and NR and NR.lastEncounter then list={NR.lastEncounter} end
+    if #list==0 then
+      NT:Print("레이드 보스 목록을 못 읽었어요. 레이드에서 보스를 한 번 풀하면 그 보스가 기본으로 잡혀요.")
+      return
+    end
+    local popup=p.nsrtBossPopup
+    if not popup then
+      popup=CreateFrame("Frame",nil,UI.frame,"BackdropTemplate")
+      popup:SetFrameStrata("DIALOG")
+      popup:SetFrameLevel((UI.frame:GetFrameLevel() or 1)+80)
+      UI:Backdrop(popup,C.panel2,C.border)
+      popup:SetWidth(240)
+      popup.rows={}
+      popup:SetScript("OnHide",function(self) if UI.activeDropdown==self then UI.activeDropdown=nil end end)
+      p.nsrtBossPopup=popup
+    end
+    for _,r in ipairs(popup.rows) do r:Hide() end
+    for i,item in ipairs(list) do
+      local opt=popup.rows[i]
+      if not opt then
+        opt=CreateFrame("Button",nil,popup,"BackdropTemplate")
+        opt:SetHeight(24)
+        UI:Backdrop(opt,C.panel2,C.border)
+        opt:SetBackdropColor(0,0,0,0); opt:SetBackdropBorderColor(0,0,0,0)
+        opt.label=UI:Font(opt,9,"",C.text); opt.label:SetPoint("LEFT",8,0); opt.label:SetPoint("RIGHT",-8,0); opt.label:SetJustifyH("LEFT")
+        opt:SetScript("OnEnter",function(self) self:SetBackdropColor(C.accent[1],C.accent[2],C.accent[3],0.12) end)
+        opt:SetScript("OnLeave",function(self) self:SetBackdropColor(0,0,0,0) end)
+        opt:SetScript("OnClick",function(self)
+          local cur=NR:GetManualTarget()
+          NR:SetManualTarget(self.item.encounterID,self.item.name,(cur and cur.difficultyID) or NR.manualDifficulty or 16)
+          popup:Hide()
+          p.nsrtResult=nil
+          if p.nsrtRefreshPreview then p.nsrtRefreshPreview(false) end
+        end)
+        popup.rows[i]=opt
+      end
+      opt:ClearAllPoints()
+      opt:SetPoint("TOPLEFT",4,-4-(i-1)*26); opt:SetPoint("TOPRIGHT",-4,-4-(i-1)*26)
+      opt.item=item
+      opt.label:SetText(item.name or tostring(item.encounterID))
+      opt:Show()
+    end
+    popup:SetHeight(#list*26+8)
+    popup:ClearAllPoints()
+    popup:SetPoint("TOPRIGHT",pickBoss,"BOTTOMRIGHT",0,-4)
+    popup:Show()
+    UI.activeDropdown=popup
+  end
+  pickBoss=self:Button(result,"보스 고르기 ▼",120,20,bossPopup)
+  pickBoss:SetPoint("TOPRIGHT",-74,-4)
+  pickDiff=self:Button(result,"신화",56,20,function()
+    local t=NR and NR:GetManualTarget()
+    local cur=(t and t.difficultyID) or NR.manualDifficulty or 16
+    local nxt=(cur==16 and 15) or (cur==15 and 14) or 16   -- 신화 → 영웅 → 일반
+    NR:SetManualDifficulty(nxt)
+    p.nsrtResult=nil
+    if p.nsrtRefreshPreview then p.nsrtRefreshPreview(false) end
+  end)
+  pickDiff:SetPoint("TOPRIGHT",-12,-4)
+  pickBoss:Hide(); pickDiff:Hide()
+  p.nsrtPickBoss, p.nsrtPickDiff = pickBoss, pickDiff
+
   p.nsrtResultText=self:Font(sec,8,"",C.muted)
   p.nsrtResultText:SetPoint("TOPLEFT",424,-376)
   p.nsrtResultText:SetPoint("RIGHT",-18,0)
@@ -1637,7 +1706,16 @@ function UI:BuildNSRT()
     conn.label:SetTextColor(cc[1],cc[2],cc[3],1)
     conn:SetBackdropBorderColor(cc[1],cc[2],cc[3],0.55)
 
-    local parsed,err=NR:ParsePaste(text)
+    local parsed,err,errCode=NR:ParsePaste(text)
+    -- 2.8.6: 보스 정보 없는 메모면 보스 · 난이도 고르기 단추를 보인다
+    local needPick=(parsed and parsed.manual) or errCode=="needBoss"
+    pickBoss:SetShown(needPick and true or false); pickDiff:SetShown(needPick and true or false)
+    if needPick then
+      local t=NR:GetManualTarget()
+      pickDiff.label:SetText(DIFF_LABEL[(t and t.difficultyID) or NR.manualDifficulty or 16] or "신화")
+    elseif p.nsrtBossPopup then
+      p.nsrtBossPopup:Hide()
+    end
     if parsed then
       fields[1]:SetText(parsed.name or "-")
       fields[2]:SetText(DIFF_LABEL[parsed.difficultyID] or tostring(parsed.difficultyID or "-"))
@@ -1651,6 +1729,9 @@ function UI:BuildNSRT()
       end
       if p.nsrtResult and p.nsrtResult~="" then
         p.nsrtResultText:SetText(p.nsrtResult)
+      elseif parsed.manual then
+        p.nsrtResultText:SetText(string.format("|cffffd27a보스 정보가 없는 메모예요 · %s|r · %d개 리마인더 줄 · 맞는지 확인하고 적용하세요.",
+          parsed.auto and "마지막 풀 보스로 채움 (다르면 「보스 고르기」)" or "고른 보스로 채움",#(parsed.rawLines or {})))
       else
         p.nsrtResultText:SetText(string.format("%d개 리마인더 줄 인식 · 원문 필드는 유지하고 전문화 tag만 정리합니다.",#(parsed.rawLines or {})))
       end
@@ -1677,6 +1758,8 @@ function UI:BuildNSRT()
     end
   end
 
+  p.nsrtRefreshPreview=refreshPreview
+
   edit:SetScript("OnTextChanged",function(self)
     local text=self:GetText() or ""
     local _,lines=text:gsub("\n","\n")
@@ -1700,6 +1783,8 @@ function UI:BuildNSRT()
         diff=DIFF_LABEL[parsed.difficultyID] or tostring(parsed.difficultyID or "-"),
         spec=(parsed.spec and parsed.spec.label) or currentSpecLabel(),
       } or {name="-",diff="-",spec="-"}
+      -- 2.8.6: 고른 보스는 한 번 쓰고 비운다 (다음 메모가 다른 보스인데 그대로 들어가지 않게 · 난이도는 기억)
+      if NR.manualTarget then NR.manualTarget=nil end
       p.nsrtClearing=true
       edit:SetText("")
       p.nsrtClearing=nil

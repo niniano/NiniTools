@@ -264,6 +264,79 @@ end
 -- 파싱
 -- ---------------------------------------------------------------------------
 
+-- ---------------------------------------------------------------------------
+-- 2.8.6: 보스 정보 없는 메모 (Lorrgs 「Name:Unknown;」 · EncounterID/Difficulty 줄 없음)
+-- 붙여넣기만으로는 어느 보스인지 알 수 없으니 「보스 고르기」로 고른 값을 쓴다.
+-- 고르지 않았으면 이번 접속에서 마지막으로 풀한 레이드 보스를 기본값으로 보여 준다 (적용 전 확인).
+-- ---------------------------------------------------------------------------
+M.manualTarget = nil      -- { encounterID, name, difficultyID }
+M.lastEncounter = nil     -- 이번 접속 마지막 레이드 풀 { encounterID, name, difficultyID }
+
+function M:SetManualTarget(encounterID, name, difficultyID)
+  encounterID = tonumber(encounterID)
+  if not encounterID then self.manualTarget = nil; return end
+  local cur = self.manualTarget or {}
+  self.manualTarget = {
+    encounterID = encounterID,
+    name = cleanBossName(name or cur.name or ("Encounter " .. encounterID)),
+    difficultyID = normalizeDifficulty(difficultyID) or cur.difficultyID or 16,
+  }
+  self.manualDifficulty = self.manualTarget.difficultyID
+end
+
+function M:SetManualDifficulty(difficultyID)
+  difficultyID = normalizeDifficulty(difficultyID)
+  if not difficultyID then return end
+  local t = self:GetManualTarget()
+  if t then self:SetManualTarget(t.encounterID, t.name, difficultyID) end
+  self.manualDifficulty = difficultyID
+end
+
+-- 고른 값 → 없으면 마지막 풀 (auto = true)
+function M:GetManualTarget()
+  if self.manualTarget then return self.manualTarget, false end
+  local last = self.lastEncounter
+  if last then
+    return { encounterID = last.encounterID, name = last.name,
+             difficultyID = self.manualDifficulty or last.difficultyID or 16 }, true
+  end
+  return nil, false
+end
+
+-- 지금 확장팩 레이드 보스 목록 (모험 안내서). 실패하면 빈 목록.
+local raidEncounterCache
+function M:RaidEncounters()
+  if raidEncounterCache then return raidEncounterCache end
+  local out = {}
+  if type(EJ_GetNumTiers) ~= "function" or type(EJ_SelectTier) ~= "function"
+     or type(EJ_GetInstanceByIndex) ~= "function" or type(EJ_GetEncounterInfoByIndex) ~= "function" then
+    return out
+  end
+  local ok = pcall(function()
+    local prevTier = type(EJ_GetCurrentTier) == "function" and EJ_GetCurrentTier() or nil
+    local tier = EJ_GetNumTiers()
+    EJ_SelectTier(tier)
+    local seen = {}
+    for i = 1, 20 do
+      local instanceID, instName = EJ_GetInstanceByIndex(i, true)
+      if not instanceID then break end
+      for j = 1, 20 do
+        local name, _, _, _, _, _, dungeonEncounterID = EJ_GetEncounterInfoByIndex(j, instanceID)
+        if not name then break end
+        dungeonEncounterID = tonumber(safeValue(dungeonEncounterID))
+        if dungeonEncounterID and not seen[dungeonEncounterID] then
+          seen[dungeonEncounterID] = true
+          out[#out + 1] = { encounterID = dungeonEncounterID, name = safeValue(name) or tostring(dungeonEncounterID),
+                            instance = safeValue(instName) }
+        end
+      end
+    end
+    if prevTier and prevTier ~= tier then EJ_SelectTier(prevTier) end
+  end)
+  if ok and #out > 0 then raidEncounterCache = out end
+  return out
+end
+
 function M:ParsePaste(text)
   text = tostring(text or ""):gsub("\r\n", "\n"):gsub("\r", "\n")
   if trim(text) == "" then
@@ -272,17 +345,34 @@ function M:ParsePaste(text)
 
   local headerCount = 0
   for _ in text:gmatch("EncounterID:%s*%d+") do headerCount = headerCount + 1 end
-  if headerCount == 0 then
-    return nil, "EncounterID를 찾지 못했습니다. Lorrgs의 NSRT 형식인지 확인해 주세요."
-  end
   if headerCount > 1 then
     return nil, "메모가 여러 개 감지됐습니다. 하나씩 붙여넣어 주세요."
   end
 
-  local encounterID = tonumber(text:match("EncounterID:%s*(%d+)"))
-  local name = cleanBossName(text:match("Name:%s*([^;\n]+)") or ("Encounter " .. tostring(encounterID)))
-  local difficultyRaw = text:match("Difficulty:%s*([^;\n]+)")
-  local difficultyID = normalizeDifficulty(difficultyRaw)
+  local encounterID, name, difficultyRaw, difficultyID, manual, auto
+  if headerCount == 0 then
+    -- 2.8.6: 보스 정보가 없는 메모 → 고른 보스 (없으면 마지막 풀)
+    local hasLines = false
+    for line in text:gmatch("[^\n]+") do
+      if isReminderLine(line) then hasLines = true; break end
+    end
+    if not hasLines then
+      return nil, "EncounterID를 찾지 못했습니다. Lorrgs의 NSRT 형식인지 확인해 주세요."
+    end
+    local t
+    t, auto = self:GetManualTarget()
+    if not t then
+      return nil, "보스 정보가 없는 메모예요 (Name:Unknown). 아래 「보스 고르기」에서 보스와 난이도를 골라 주세요.", "needBoss"
+    end
+    encounterID, name, difficultyID = t.encounterID, t.name, t.difficultyID
+    difficultyRaw = DIFF_CANONICAL[difficultyID] or tostring(difficultyID)
+    manual = true
+  else
+    encounterID = tonumber(text:match("EncounterID:%s*(%d+)"))
+    name = cleanBossName(text:match("Name:%s*([^;\n]+)") or ("Encounter " .. tostring(encounterID)))
+    difficultyRaw = text:match("Difficulty:%s*([^;\n]+)")
+    difficultyID = normalizeDifficulty(difficultyRaw)
+  end
 
   if not encounterID then
     return nil, "EncounterID를 숫자로 읽지 못했습니다."
@@ -326,6 +416,8 @@ function M:ParsePaste(text)
     difficultyRaw = trim(difficultyRaw),
     spec = spec, -- nil이면 Apply 단계에서 현재 전문화 ID 태그를 사용
     rawLines = rawLines,
+    manual = manual,   -- 2.8.6: 보스를 고른 값으로 채움
+    auto = auto,       -- 2.8.6: 고르지 않아 마지막 풀을 씀
   }
 end
 
@@ -886,8 +978,13 @@ runner:SetScript("OnEvent", function(_, event, ...)
   elseif event == "PLAYER_LEAVING_WORLD" or event == "PLAYER_LOGOUT" then
     restoreAllOverrides()
   elseif event == "ENCOUNTER_START" then
-    local encounterID, _, difficultyID = ...
+    local encounterID, encounterName, difficultyID = ...
     applyActiveForEncounter(encounterID, difficultyID)
+    -- 2.8.6: 보스 정보 없는 메모의 기본 보스 (레이드 난이도만)
+    local enc, diff = tonumber(safeValue(encounterID)), normalizeDifficulty(safeValue(difficultyID))
+    if enc and diff then
+      M.lastEncounter = { encounterID = enc, name = cleanBossName(safeValue(encounterName) or ("Encounter " .. enc)), difficultyID = diff }
+    end
   else
     -- 게임 안에서 NSRT 프로필을 바꿨으면(Load Profile) 다음 지역 이동 · 레디체크 · 풀카운트 때 보관함도 맞춘다.
     local prof = type(_G.NSRT) == "table" and tostring(NSRT.CurrentProfile or "default") or nil

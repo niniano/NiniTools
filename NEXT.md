@@ -10,6 +10,9 @@
   · 인던 보스 모듈(LittleWigs)이 없어 BigWigs 가 안 울리면 → 니니툴 Camelot 전용으로 ENCOUNTER_END 성공 + 던전(party)일 때 재생
   · BigWigs 가 이미 울린 킬은 건너뛰어 두 번 안 나게 · 켜고 끄는 스위치
 
+## 2.8.6
+- NSRT 개인 메모: 보스 정보 없는 Lorrgs 메모(Name:Unknown · EncounterID 없음) → 보스 고르기 · 난이도 단추 · 기본값 = 이번 접속 마지막 레이드 풀 (사용자 11/10 스크린샷)
+
 ## 2.8.5
 - 레이아웃 보완 (사용자 2026-11-09 「추천은 빼고 니니툴이랑 분석기 레이아웃 보완」)
   · 설정 검색 (UI.lua BuildSearchBox · 접는 항목 · 섹션 · SEARCH_KEYWORDS)

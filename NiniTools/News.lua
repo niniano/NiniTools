@@ -6,6 +6,12 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.6", flavor = "retail", cards = {
+    { title = "NSRT 메모 · 보스 정보 없는 메모", lines = {
+      "Lorrgs 메모가 「Name:Unknown;」으로 시작해 보스 정보가 없으면, 판별 결과 칸의 「보스 고르기」와 난이도 단추로 정해서 넣을 수 있습니다.",
+      "고르지 않으면 이번 접속에서 마지막으로 풀한 레이드 보스가 기본으로 채워집니다. 적용 전에 판별 결과를 확인하세요.",
+    } },
+  } },
   { version = "2.8.5", cards = {
     { title = "설정 검색", lines = {
       "창 위 메뉴 줄 오른쪽 「설정 검색」 칸에 이름이나 설명을 쓰면 맞는 설정이 바로 아래에 뜹니다.",
