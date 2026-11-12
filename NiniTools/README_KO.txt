@@ -1,4 +1,4 @@
-﻿NiniTools 2.8.7
+﻿NiniTools 2.8.8
 
 NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운드/Navi, Naowh Smart Reminders 연동을 한 창에 모은 WoW 통합 편의 애드온입니다.
 
@@ -66,8 +66,8 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
 
 [배포]
-- 현재 정식 버전: 2.8.7
-- 최신 변경사항: CHANGELOG_2.8.7.txt (2.8.6: CHANGELOG_2.8.6.txt · 2.8.5: CHANGELOG_2.8.5.txt · 2.8.4: CHANGELOG_2.8.4.txt · 2.8.3: CHANGELOG_2.8.3.txt · 2.8.2: CHANGELOG_2.8.2.txt · 2.8.1: CHANGELOG_2.8.1.txt · 2.8.0: CHANGELOG_2.8.0.txt · 2.7.2: CHANGELOG_2.7.2.txt · 2.7.1: CHANGELOG_2.7.1.txt · 2.7.0: CHANGELOG_2.7.0.txt · 2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
+- 현재 정식 버전: 2.8.8
+- 최신 변경사항: CHANGELOG_2.8.8.txt (2.8.7: CHANGELOG_2.8.7.txt · 2.8.6: CHANGELOG_2.8.6.txt · 2.8.5: CHANGELOG_2.8.5.txt · 2.8.4: CHANGELOG_2.8.4.txt · 2.8.3: CHANGELOG_2.8.3.txt · 2.8.2: CHANGELOG_2.8.2.txt · 2.8.1: CHANGELOG_2.8.1.txt · 2.8.0: CHANGELOG_2.8.0.txt · 2.7.2: CHANGELOG_2.7.2.txt · 2.7.1: CHANGELOG_2.7.1.txt · 2.7.0: CHANGELOG_2.7.0.txt · 2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
 
 [계정 달력 (2.5.8)]
 - NiniTools 창 「계정 달력」 탭 · /nini cal
@@ -100,6 +100,13 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - 메모를 읽기만 하고 바꾸거나 다시 보내지 않습니다. 같은 메모는 한 번만 저장(최대 메모 80개 · 기록 600개).
 - /nini memo (상태) · /nini memo on · /nini memo off · /nini memo clear
 - 저장 파일은 게임 종료나 /reload 때 디스크에 써집니다.
+
+[보스 풀 애드온 부하 기록 (2.8.8 · 본섭)]
+- 기본 켜짐. 보스 전투가 끝나고 전투에서 빠지면, 그 풀에서 애드온마다 얼마나 무거웠는지 NiniTools.lua 에 남깁니다.
+- 적는 것: 보스 전투 평균(ms/프레임) 상위 8개 · 한 프레임에 5/50/100ms 넘은 횟수(풀 전후 차이) · 애드온 합계 · 그 풀의 전문화.
+- 게임 기본 애드온 측정(C_AddOnProfiler)을 전투 밖에서만 읽습니다. 다른 애드온은 건드리지 않습니다. 최근 300풀까지.
+- 한 애드온이 한 풀에 50ms 넘은 프레임이 5번 이상이면 채팅에 한 줄 알려 줍니다.
+- /nini perf (최근 3풀) · /nini perf on · /nini perf off · /nini perf quiet (알림 켜기/끄기) · /nini perf clear
 
 [글꼴 (2.5.4)]
 - SharedMedia에 NaowhKR(본문)·GothamNarrowUltraKR(숫자)가 있으면 자동으로 씁니다. 없으면 EllesmereUI 글꼴 → 게임 기본 글꼴.

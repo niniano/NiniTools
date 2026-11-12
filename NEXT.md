@@ -10,6 +10,12 @@
   · 인던 보스 모듈(LittleWigs)이 없어 BigWigs 가 안 울리면 → 니니툴 Camelot 전용으로 ENCOUNTER_END 성공 + 던전(party)일 때 재생
   · BigWigs 가 이미 울린 킬은 건너뛰어 두 번 안 나게 · 켜고 끄는 스위치
 
+## 2.8.8
+- 보스 풀 애드온 부하 기록 (Modules/Perf/AddonPerf.lua · 본섭 TOC만 · 기본 켜짐): C_AddOnProfiler EncounterAverageTime 상위 8 · CountTimeOver5/50/100Ms 풀 전후 차이 · 전투 밖에서만 읽음
+  (사용자 11/13: 울라텍 6·7트 암살 끊김 원인 확인 — 로그상 내 디버프 동시 90개 · 잠행 판 3배 → 이름표 애드온 의심 · 측정으로 확정하려고)
+- 저장: NiniToolsDB.modules.addonPerf.pulls[] = {at, enc, name, diff, spec, char, success, dur, allAvg, appAvg, addons[{a, avg, peak, n5, n50, n100}]}
+- 다음: GOLD 분석기에서 WTF 의 addonPerf 를 트라이에 붙여 보여 주기 (풀 시각으로 맞춤)
+
 ## 2.8.7
 - NSRT 개인 메모 넣기: 같은 전문화라도 넣는 메모에 있는 줄 종류(스킬/글자)만 교체 (사용자 11/12: 울라텍 큰 알 글자 메모를 넣자 잠행·암살 쿨기 줄이 지워짐)
 - 메모 캡처: NSRT_REMINDER_CHANGED 콜백이 (owner, 이벤트, 개인, 공유) 로 와서 개인 메모를 공유 메모로 적던 것 수정

@@ -6,6 +6,12 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.8", flavor = "retail", cards = {
+    { title = "보스 풀마다 애드온 부하 기록", lines = {
+      "보스 전투가 끝나면 어떤 애드온이 얼마나 무거웠는지(보스 전투 평균 · 한 프레임 50ms 넘은 횟수)를 저장합니다. 화면이 끊긴 판의 원인 애드온을 찾는 데 씁니다.",
+      "한 애드온이 한 풀에 50ms 넘은 프레임이 5번 이상이면 채팅에 한 줄 알려 줍니다. /nini perf 로 최근 기록 · on/off · quiet(알림 끄기).",
+    } },
+  } },
   { version = "2.8.7", flavor = "retail", cards = {
     { title = "NSRT 메모 · 글자 메모를 넣어도 쿨기 유지", lines = {
       "같은 전문화 메모를 다시 넣을 때, 넣는 메모에 있는 줄 종류만 바꿉니다. 스킬 줄(Lorrgs 쿨기)은 스킬 줄끼리, 글자 줄(직접 쓴 안내)은 글자 줄끼리.",

@@ -3381,6 +3381,15 @@ SlashCmdList.NINITOOLS=function(msg)
     end
     return
   end
+  if msg=="perf" or msg:match("^perf%s+") or msg=="부하" then
+    -- 2.8.8: 보스 풀마다 애드온 부하 기록 (C_AddOnProfiler · 기본 켜짐)
+    if NT.AddonPerf and type(NT.AddonPerf.Slash)=="function" then
+      NT.AddonPerf:Slash(msg:match("^%S+%s*(.-)%s*$") or "")
+    else
+      NT:Print("애드온 부하 기록 모듈을 찾지 못했습니다.")
+    end
+    return
+  end
   if msg=="naowh" or msg:match("^naowh%s+") or msg=="나오" then
     -- 2.5.5: /nui install = 각자 설치한 NaowhUI 설치기 열기 (2.7.1 버튼 이름 변경)
     if NT.NaowhUILink and type(NT.NaowhUILink.Slash)=="function" then
