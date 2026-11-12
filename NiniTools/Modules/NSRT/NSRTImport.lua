@@ -170,6 +170,16 @@ local function isReminderLine(line)
   return line:find("spellid:", 1, true) ~= nil or line:find("text:", 1, true) ~= nil
 end
 
+-- 2.8.7: 줄 종류. 스킬 줄(spellid) = Lorrgs 쿨기 메모, 글자 줄(text만) = 직접 쓴 안내(울라텍 큰 알 등).
+-- 같은 전문화라도 넣는 메모에 있는 종류만 바꾼다. 글자 메모를 넣어도 쿨기 줄은 그대로 남는다.
+local function reminderLineKind(line)
+  line = tostring(line or "")
+  if line:find("spellid:", 1, true) then return "spell" end
+  if line:find("text:", 1, true) then return "text" end
+  return nil
+end
+local KIND_LABEL = { spell = "스킬 줄", text = "글자 줄" }
+
 -- ---------------------------------------------------------------------------
 -- DB / 소유권
 -- ---------------------------------------------------------------------------
@@ -436,6 +446,13 @@ function M:Merge(existingText, parsed, tag, legacyTag)
   local body = {}
   local hadSameTag = false
   local otherTags = {}
+  -- 2.8.7: 넣는 메모에 있는 줄 종류 (spell / text). 같은 전문화의 다른 종류 줄은 지우지 않는다.
+  local incomingKinds = {}
+  for _, line in ipairs(parsed.rawLines or {}) do
+    local kind = reminderLineKind(line)
+    if kind then incomingKinds[kind] = true end
+  end
+  local keptSameTag = {}   -- 같은 전문화인데 종류가 달라 남긴 줄 수 (kind → n)
 
   if type(existingText) == "string" and existingText ~= "" then
     local normalized = existingText:gsub("\r\n", "\n"):gsub("\r", "\n")
@@ -445,10 +462,16 @@ function M:Merge(existingText, parsed, tag, legacyTag)
     for line in rest:gmatch("[^\n]+") do
       line = trim(line)
       if line ~= "" then
-        if isReminderLine(line) and (lineHasTag(line, tag) or (legacyTag and lineHasTag(line, legacyTag))) then
+        local sameTag = isReminderLine(line) and (lineHasTag(line, tag) or (legacyTag and lineHasTag(line, legacyTag)))
+        local kind = sameTag and reminderLineKind(line) or nil
+        if sameTag and incomingKinds[kind] then
           -- 구버전은 다른 직업에서 캐릭터명 태그를 사용했다. 같은 캐릭터의
           -- 기존 캐릭터명 태그도 현재 전문화 ID 태그로 교체 대상으로 취급한다.
           hadSameTag = true
+        elseif sameTag then
+          -- 2.8.7: 같은 전문화지만 넣는 메모에 없는 종류 → 그대로 둔다 (지금 전문화 태그로 맞춤)
+          body[#body + 1] = retagReminderLine(line, tag)
+          keptSameTag[kind] = (keptSameTag[kind] or 0) + 1
         else
           body[#body + 1] = line
           if isReminderLine(line) then
@@ -467,7 +490,7 @@ function M:Merge(existingText, parsed, tag, legacyTag)
 
   local out = { header }
   for _, line in ipairs(body) do out[#out + 1] = line end
-  return table.concat(out, "\n") .. "\n", hadSameTag, otherTags
+  return table.concat(out, "\n") .. "\n", hadSameTag, otherTags, keptSameTag, incomingKinds
 end
 
 local function refreshNSRTPersonalReminderUI(noteName)
@@ -695,7 +718,7 @@ function M:Apply(text)
   local noteName = chooseOwnedNoteName(db, parsed)
   local existing = NSRT.PersonalReminders[noteName]
   local legacyTag = fallbackName ~= "" and fallbackName or nil
-  local merged, hadSameTag, otherTags = self:Merge(existing, parsed, tag, legacyTag)
+  local merged, hadSameTag, otherTags, keptSameTag, incomingKinds = self:Merge(existing, parsed, tag, legacyTag)
 
   local ok, writeErr = pcall(function()
     NSRT.PersonalReminders[noteName] = merged
@@ -720,7 +743,17 @@ function M:Apply(text)
 
   local diffLabel = DIFF_LABEL[parsed.difficultyID] or tostring(parsed.difficultyID)
   local verb = hadSameTag and "교체" or "추가"
-  local msg = string.format("%s · %s · %s %s", parsed.name, diffLabel, specLabel, verb)
+  -- 2.8.7: 한 종류만 넣었으면 무엇을 바꿨는지 적는다 (예: 「글자 줄 교체 · 스킬 줄 52개 유지」)
+  local only
+  if incomingKinds and not (incomingKinds.spell and incomingKinds.text) then
+    only = incomingKinds.spell and "spell" or (incomingKinds.text and "text") or nil
+  end
+  local msg = string.format("%s · %s · %s %s%s", parsed.name, diffLabel, specLabel,
+    only and (KIND_LABEL[only] .. " ") or "", verb)
+  for _, kind in ipairs({ "spell", "text" }) do
+    local n = keptSameTag and keptSameTag[kind]
+    if n and n > 0 then msg = msg .. string.format(" · %s %d개 유지", KIND_LABEL[kind], n) end
+  end
   if #kept > 0 then msg = msg .. " · 기존 " .. table.concat(kept, ", ") .. " 유지" end
   return true, msg, noteName
 end

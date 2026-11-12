@@ -3,7 +3,7 @@
 ## Title: |cffF4B23ANini|r|cffE9EDF2Tools|r
 ## Notes: NiniTools for WoW Forever - gold, media and quality-of-life tools
 ## Author: Nini
-## Version: 2.8.6
+## Version: 2.8.7
 ## OptionalDeps: BigWigs, GTFO
 ## SavedVariables: NiniToolsDB
 ## IconTexture: Interface\AddOns\NiniTools\Media\NiniTools.tga

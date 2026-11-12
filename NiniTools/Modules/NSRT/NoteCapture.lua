@@ -201,7 +201,14 @@ function M:RegisterNSRT()
   if registered then return true end
   local api = _G.NSAPI
   if type(api) ~= "table" or type(api.RegisterCallback) ~= "function" then return false end
-  local ok = pcall(api.RegisterCallback, "NiniTools_NoteCapture", "NSRT_REMINDER_CHANGED", function(_, _, shared)
+  -- 2.8.7: NSAPI.RegisterCallback(target, event, func, owner) 는 owner(없으면 nil)를 앞에 붙여
+  -- func(owner, 이벤트, 개인 메모, 공유 메모) 로 부른다. 예전엔 (_, _, shared) 로 받아서 개인 메모를 공대 메모로 적었다.
+  -- 이벤트 이름 위치를 찾아 그 두 칸 뒤(공유 메모)를 읽는다 → 호출 모양이 바뀌어도 맞게.
+  local ok = pcall(api.RegisterCallback, "NiniTools_NoteCapture", "NSRT_REMINDER_CHANGED", function(...)
+    local n, shared = select("#", ...), nil
+    for i = 1, n do
+      if select(i, ...) == "NSRT_REMINDER_CHANGED" then shared = select(i + 2, ...); break end
+    end
     local okCall, err = pcall(M.OnSharedChanged, M, shared)
     if not okCall and NT.Print then NT:Print("메모 캡처 오류: " .. tostring(err)) end
   end)

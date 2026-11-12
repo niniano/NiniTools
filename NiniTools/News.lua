@@ -6,6 +6,12 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.7", flavor = "retail", cards = {
+    { title = "NSRT 메모 · 글자 메모를 넣어도 쿨기 유지", lines = {
+      "같은 전문화 메모를 다시 넣을 때, 넣는 메모에 있는 줄 종류만 바꿉니다. 스킬 줄(Lorrgs 쿨기)은 스킬 줄끼리, 글자 줄(직접 쓴 안내)은 글자 줄끼리.",
+      "예전에는 울라텍 큰 알 같은 글자 메모를 넣으면 그 전문화 쿨기 줄이 모두 지워졌습니다. 지워진 메모는 다시 넣어 주세요.",
+    } },
+  } },
   { version = "2.8.6", flavor = "retail", cards = {
     { title = "NSRT 메모 · 보스 정보 없는 메모", lines = {
       "Lorrgs 메모가 「Name:Unknown;」으로 시작해 보스 정보가 없으면, 판별 결과 칸의 「보스 고르기」와 난이도 단추로 정해서 넣을 수 있습니다.",

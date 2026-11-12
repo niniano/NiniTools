@@ -2,7 +2,7 @@ local ADDON_NAME, NT = ...
 NT = NT or {}
 _G.NiniTools = NT
 
-NT.VERSION = "2.8.6"
+NT.VERSION = "2.8.7"
 -- 2.8.0: WoW Forever (Classic+, Interface 16001, WOW_PROJECT_CAMELOT) 지원.
 -- 포에버에서는 NiniTools_Camelot.toc 가 대신 읽혀 본섭 전용 모듈(차단 · 쐐기 · NSRT · Naowh · EXBoss · 달력)을 아예 싣지 않는다.
 NT.FOREVER = (type(WOW_PROJECT_ID)=="number" and type(WOW_PROJECT_CAMELOT)=="number" and WOW_PROJECT_ID==WOW_PROJECT_CAMELOT) or false
