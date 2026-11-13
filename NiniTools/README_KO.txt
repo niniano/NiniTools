@@ -95,10 +95,10 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - NiniTools 「NSRT」 페이지 아래 「메모 고르기」로 언제든 열 수 있습니다.
 
 [공대 메모 캡처 (2.5.3)]
-- 기본은 꺼짐. /nini memo on 을 입력한 캐릭터만 저장합니다.
+- 기본은 꺼짐. 설정 & 진단 → 「기록 (분석기용)」에서 「공대 메모 캡처」를 켠 캐릭터만 저장합니다.
 - 공대장이 보낸 NSRT 공유 메모를 받은 시각과, 보스를 풀 때마다 그때 켜져 있던 NSRT 공유 메모·MRT 메모를 NiniTools.lua(SavedVariables)에 남깁니다.
 - 메모를 읽기만 하고 바꾸거나 다시 보내지 않습니다. 같은 메모는 한 번만 저장(최대 메모 80개 · 기록 600개).
-- /nini memo (상태) · /nini memo on · /nini memo off · /nini memo clear
+- 켜고 끄기 · 지우기: 설정 & 진단 → 「기록 (분석기용)」 (명령어 /nini memo 도 그대로 됨)
 - 저장 파일은 게임 종료나 /reload 때 디스크에 써집니다.
 
 [보스 풀 애드온 부하 기록 (2.8.8 · 본섭)]
@@ -106,11 +106,11 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - 적는 것: 보스 전투 평균(ms/프레임) 상위 8개 · 한 프레임에 5/50/100ms 넘은 횟수(풀 전후 차이) · 애드온 합계 · 그 풀의 전문화.
 - 게임 기본 애드온 측정(C_AddOnProfiler)을 전투 밖에서만 읽습니다. 다른 애드온은 건드리지 않습니다. 최근 300풀까지.
 - 한 애드온이 한 풀에 50ms 넘은 프레임이 5번 이상이면 채팅에 한 줄 알려 줍니다.
-- /nini perf (최근 3풀) · /nini perf on · /nini perf off · /nini perf quiet (알림 켜기/끄기) · /nini perf clear
+- 켜고 끄기 · 지우기 · 최근 기록: NiniTools 창 오른쪽 위 톱니(설정 & 진단) → 「기록 (분석기용)」
 
 [글꼴 (2.5.4)]
 - SharedMedia에 NaowhKR(본문)·GothamNarrowUltraKR(숫자)가 있으면 자동으로 씁니다. 없으면 EllesmereUI 글꼴 → 게임 기본 글꼴.
-- /nini font (지금 글꼴) · /nini font list · /nini font body <이름> · /nini font num <이름> · /nini font auto
+- 설정 & 진단 → 「글꼴」에서 본문 · 숫자 글꼴을 고릅니다 (자동 포함). UI 다시 불러오기 후 적용.
 - 글꼴 파일은 애드온에 들어 있지 않습니다.
 
 [EXBoss · Nini_S2 (2.5.5)]

@@ -216,6 +216,18 @@ function M:RegisterNSRT()
   return registered
 end
 
+-- 2.8.9: 설정 창 「기록」 칸에 보일 글 (채팅에 찍지 않음)
+function M:SummaryLine()
+  local d = db()
+  local notes, pulls = 0, 0
+  for _ in pairs(d.notes) do notes = notes + 1 end
+  for _, e in ipairs(d.events) do
+    if e.kind == "pull" then pulls = pulls + 1 end
+  end
+  local api = registered and "NSRT 연결됨" or ((type(_G.NSAPI) == "table") and "NSRT 연결 대기" or "NSRT 없음")
+  return string.format("%s · 메모 %d개 · 풀 기록 %d", api, notes, pulls)
+end
+
 function M:Status()
   local d = db()
   local notes, pulls, recv = 0, 0, 0
@@ -247,10 +259,10 @@ function M:Slash(arg)
     self:RegisterNSRT()
     -- 켜는 순간 지금 메모도 한 번 남긴다 (이미 받은 메모를 놓치지 않게).
     self:OnSharedChanged(nsrtShared())
-    NT:Print("공대 메모 캡처를 켰습니다. 풀마다 켜져 있던 메모가 저장됩니다. (/nini memo status)")
+    NT:Print("공대 메모 캡처를 켰습니다. 풀마다 켜져 있던 메모가 저장됩니다.")
   elseif arg == "off" or arg == "끄기" then
     d.enabled = false
-    NT:Print("공대 메모 캡처를 껐습니다. 저장된 기록은 그대로입니다. (지우기: /nini memo clear)")
+    NT:Print("공대 메모 캡처를 껐습니다. 저장된 기록은 그대로입니다.")
   elseif arg == "clear" or arg == "지우기" then
     d.notes = {}
     d.events = {}

@@ -3297,14 +3297,98 @@ function UI:BuildTools()
   local addons=self:Section(p,"현재 환경","주요 연동 애드온 로드 상태",-142,172)
   p.addonText=self:Font(addons,12,"",C.text); p.addonText:SetPoint("TOPLEFT",16,-58); p.addonText:SetPoint("RIGHT",-16,0); p.addonText:SetJustifyH("LEFT")
 
-  local actions=self:Section(p,"유지관리","자주 쓰는 공통 작업",-328,150)
+  local actions=self:Section(p,"유지관리","자주 쓰는 공통 작업",-328,184)
   local b1=self:Button(actions,"UI 다시 불러오기",150,32,function() ReloadUI() end); b1:SetPoint("TOPLEFT",16,-58)
   local back=self:Button(actions,"메인 설정으로",150,32,function() UI:ShowPage(NT:GetDB().lastPage or "GOLD") end); back:SetPoint("LEFT",b1,"RIGHT",10,0)
   local exb=self:Button(actions,"EXBoss 프로필",150,32,function() if NT.ExbossS2 then NT.ExbossS2:OpenDialog() end end); exb:SetPoint("LEFT",back,"RIGHT",10,0)
   local nui=self:Button(actions,"/nui install",150,32,function() if NT.NaowhUILink then NT.NaowhUILink:OpenInstaller() end end); nui:SetPoint("LEFT",exb,"RIGHT",10,0)
   if NT.FOREVER then exb:Hide(); nui:Hide() end   -- 2.8.0: 포에버에는 EXBoss · NaowhUI 연동 모듈이 없음
-  local note=self:Font(actions,9,"명령어 목록은 제거했습니다. 주요 설정은 NiniTools 창에서 바로 조작합니다.",C.muted)
-  note:SetPoint("BOTTOMLEFT",16,18); note:SetPoint("RIGHT",-16,0)
+  -- 2.8.9: /nini check 대신 버튼 (결과는 채팅에)
+  local chk=self:Button(actions,"자가진단",150,32,function()
+    if NT.Diagnostics and type(NT.Diagnostics.Run)=="function" then NT.Diagnostics:Run("") else NT:Print("자가진단 모듈을 찾지 못했습니다.") end
+  end)
+  chk:SetPoint("TOPLEFT",b1,"BOTTOMLEFT",0,-10)
+  local note=self:Font(actions,9,"명령어를 외우지 않아도 됩니다. 기록 · 글꼴 · 진단은 아래 칸과 버튼으로 바꿉니다.",C.muted)
+  note:SetPoint("BOTTOMLEFT",16,14); note:SetPoint("RIGHT",-16,0)
+
+  -- 2.8.9: 기록 (분석기용) — /nini memo · /nini perf 를 켜고 끄는 칸으로
+  local y=-522
+  local rec=self:Section(p,"기록 (분석기용)","보스 풀마다 이 PC 안에 남기는 기록 · NiniAnalyzer(GOLD)가 읽습니다. 기록은 게임 종료나 /reload 때 저장됩니다.",y,340)
+  local ry=-58
+  local recRows={}
+  local function confirmButton(parent,text,fn)
+    local b
+    b=self:Button(parent,text,150,28,function()
+      if b.armed then
+        b.armed=nil; b.label:SetText(text); fn()
+        UI:RefreshVisiblePage()
+      else
+        b.armed=true; b.label:SetText("한 번 더 누르면 지움")
+        if C_Timer and C_Timer.After then C_Timer.After(3,function() if b.armed then b.armed=nil; b.label:SetText(text) end end) end
+      end
+    end)
+    return b
+  end
+  local NC,AP=NT.NoteCapture,NT.AddonPerf
+  if AP then
+    recRows[#recRows+1]=self:Toggle(rec,"보스 풀 애드온 부하 기록 (어떤 애드온이 화면을 끊었나)","enabled",function() return AP.GetDB() end,
+      function(nv) AP:Slash(nv and "on" or "off") end,ry); ry=ry-38
+    recRows[#recRows+1]=self:Toggle(rec,"   └ 부하가 크면 풀이 끝날 때 채팅에 한 줄 알림","announce",function() return AP.GetDB() end,nil,ry); ry=ry-38
+  end
+  if NC then
+    recRows[#recRows+1]=self:Toggle(rec,"공대 메모 캡처 (풀마다 켜져 있던 NSRT · MRT 공유 메모)","enabled",function() return NC.GetDB() end,
+      function(nv) NC:Slash(nv and "on" or "off") end,ry); ry=ry-38
+  end
+  p.recRows=recRows
+  p.recText=self:Font(rec,9,"",C.muted)
+  p.recText:SetPoint("TOPLEFT",22,ry-8); p.recText:SetPoint("RIGHT",-22,0); p.recText:SetJustifyH("LEFT"); p.recText:SetJustifyV("TOP")
+  p.recText:SetHeight(110)
+  local lastBtn
+  if AP then
+    local clr=confirmButton(rec,"부하 기록 지우기",function() AP:Slash("clear") end); clr:SetPoint("BOTTOMLEFT",18,14); lastBtn=clr
+  end
+  if NC then
+    local clr2=confirmButton(rec,"메모 기록 지우기",function() NC:Slash("clear") end)
+    if lastBtn then clr2:SetPoint("LEFT",lastBtn,"RIGHT",10,0) else clr2:SetPoint("BOTTOMLEFT",18,14) end
+  end
+  if not AP and not NC then
+    p.recText:SetText("이 버전(포에버)에는 기록 기능이 없습니다.")
+  end
+
+  -- 2.8.9: 글꼴 — /nini font body · num · auto 대신 고르기 (SharedMedia 한글 글꼴만)
+  y=y-350
+  local fsec=self:Section(p,"글꼴","NiniTools 창 · 알림 글꼴 · 바꾸면 UI 다시 불러오기 후 모든 창에 적용",y,150)
+  local function fontItems()
+    local items={{text="자동 (NaowhKR → EllesmereUI → 기본)",value=false}}
+    local lsm=LibStub and select(2,pcall(LibStub.GetLibrary,LibStub,"LibSharedMedia-3.0",true))
+    if type(lsm)=="table" and type(lsm.List)=="function" then
+      for _,name in ipairs(lsm:List("font") or {}) do
+        local l=name:lower()
+        if l:find("naowh") or l:find("gotham") or l:find("kr") or l:find("asia") or l:find("korean") then
+          items[#items+1]={text=name,value=name}
+        end
+        if #items>=12 then break end
+      end
+    end
+    return items
+  end
+  local fitems=fontItems()
+  local function fontPick(kind)
+    return function(v)
+      local prefs=NT.GetFontPrefs and NT.GetFontPrefs()
+      if not prefs then return end
+      prefs[kind]=v or nil
+      NT:Print((kind=="num" and "숫자" or "본문").." 글꼴 = "..(v or "자동")..". 「UI 다시 불러오기」 후 적용됩니다.")
+    end
+  end
+  local function fontGet(kind)
+    return function() local prefs=NT.GetFontPrefs and NT.GetFontPrefs(); return (prefs and prefs[kind]) or false end
+  end
+  p.fontBody=self:DropdownRow(fsec,"본문 글꼴",-56,fitems,fontGet("body"),fontPick("body"))
+  p.fontNum=self:DropdownRow(fsec,"숫자 글꼴",-92,fitems,fontGet("num"),fontPick("num"))
+  p.fontNow=self:Font(fsec,8,"",C.muted)
+  p.fontNow:SetPoint("BOTTOMLEFT",22,12); p.fontNow:SetPoint("RIGHT",-22,0); p.fontNow:SetJustifyH("LEFT")
+  p.contentHeight=-y+170
 
   p.Refresh=function(self)
     self.versionText:SetText("NiniTools  "..tostring(NT.VERSION))
@@ -3322,6 +3406,21 @@ function UI:BuildTools()
       end
     end
     self.addonText:SetText(table.concat(lines,"\n"))
+    -- 2.8.9: 기록 · 글꼴 칸
+    for _,row in ipairs(self.recRows or {}) do if row.Refresh then row:Refresh() end end
+    if NT.AddonPerf or NT.NoteCapture then
+      local t={}
+      if NT.AddonPerf then
+        for i,line in ipairs(NT.AddonPerf:SummaryLines(3)) do t[#t+1]=(i==1 and "애드온 부하: " or "  ")..line end
+      end
+      if NT.NoteCapture then t[#t+1]="공대 메모: "..NT.NoteCapture:SummaryLine() end
+      self.recText:SetText(table.concat(t,"\n"))
+    end
+    if self.fontBody then self.fontBody:Refresh(); self.fontNum:Refresh() end
+    if self.fontNow and NT.ResolveFont then
+      local _,bs=NT:ResolveFont("body"); local _,ns=NT:ResolveFont("num")
+      self.fontNow:SetText("지금 쓰는 글꼴 · 본문 "..tostring(bs).." · 숫자 "..tostring(ns))
+    end
   end
 end
 

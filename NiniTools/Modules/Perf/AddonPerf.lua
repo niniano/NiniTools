@@ -228,7 +228,7 @@ function M:Finish()
       if (r.n50 or 0) >= M.ANNOUNCE_N50 and (not worst or r.n50 > worst.n50) then worst = r end
     end
     if worst and NT.Print then
-      NT:Print(string.format("애드온 부하: %s 50ms 넘은 프레임 %d번 (보스 전투 평균 %.1fms) · /nini perf",
+      NT:Print(string.format("애드온 부하: %s 50ms 넘은 프레임 %d번 (보스 전투 평균 %.1fms) · 설정 & 진단 → 기록",
         worst.a, worst.n50, worst.avg or 0))
     end
   end
@@ -244,6 +244,17 @@ local function fmtPull(p)
   return string.format("%s %s(%s) %s %ss · 애드온 합계 %.1fms · %s", tostring(p.at), tostring(p.name or p.enc),
     tostring(p.diff), p.success and "킬" or "전멸", tostring(p.dur or "?"), p.allAvg or 0,
     p.error or (#parts > 0 and table.concat(parts, " · ") or "부하 없음"))
+end
+
+-- 2.8.9: 설정 창 「기록」 칸에 보일 글 (채팅에 찍지 않음)
+function M:SummaryLines(n)
+  local d = db()
+  local out = { string.format("%s · 풀 %d개 저장%s", self:Available() and "측정 가능" or "|cffff6060측정 불가|r", #d.pulls,
+    #d.pulls > 0 and (" · 마지막 " .. tostring(d.pulls[#d.pulls].at)) or "") }
+  for i = math.max(1, #d.pulls - (n or 3) + 1), #d.pulls do
+    out[#out + 1] = fmtPull(d.pulls[i])
+  end
+  return out
 end
 
 function M:Status()
@@ -262,11 +273,11 @@ function M:Slash(arg)
   if arg == "on" or arg == "켜기" then
     d.enabled = true
     self:Snapshot("on")
-    NT:Print("보스 풀 애드온 부하 기록을 켰습니다. (/nini perf)")
+    NT:Print("보스 풀 애드온 부하 기록을 켰습니다.")
   elseif arg == "off" or arg == "끄기" then
     d.enabled = false
     pending = nil
-    NT:Print("보스 풀 애드온 부하 기록을 껐습니다. 저장된 기록은 그대로입니다. (지우기: /nini perf clear)")
+    NT:Print("보스 풀 애드온 부하 기록을 껐습니다. 저장된 기록은 그대로입니다.")
   elseif arg == "quiet" or arg == "조용히" then
     d.announce = not d.announce
     NT:Print("풀이 끝날 때 부하 알림: " .. (d.announce and "켜짐" or "꺼짐"))
