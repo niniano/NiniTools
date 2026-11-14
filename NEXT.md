@@ -9,6 +9,13 @@
   · 고칠 것: 버튼 글은 한 줄(SetWordWrap(false) · SetMaxLines(1) · 넘치면 …) · 항목 이름 짧게 「자동」 (순서 NaowhKR → EllesmereUI → 기본 은
     섹션 설명 줄이나 마우스 올림 설명으로) · 글꼴 이름이 긴 경우를 위해 이 두 줄만 버튼 폭 넓히기(약 230px) + 펼친 목록(popup) 폭도 같게
   · 다른 DropdownRow(공대 메모 · 소리 등)도 같은 한 줄 처리라서 긴 항목 있는 곳 화면 확인
+- 스크롤 막대 모양 통일 (사용자 11/14 스크린샷 · 골드 페이지 캐릭터 목록)
+  · 증상: 블리자드 기본 스크롤 막대(동그란 ▲▼ 단추 · 회색 손잡이)가 니니툴 어두운 창과 안 어울림
+  · 원인: UIPanelScrollFrameTemplate 그대로 쓰는 곳 3군데 — UI.lua BuildGold 캐릭터 목록(charScroll) ·
+    BuildNSRT 메모 글 칸 · ShowNoteRestore 복구 목록 창
+  · 고칠 것: 큰 창 오른쪽 막대(UI.lua 본문 view 의 Slider · C.sidebar 바탕 + C.muted 손잡이 · ▲▼ 단추)와 같은 모양을
+    UI:ScrollBar(scrollFrame) 같은 공용 함수로 빼서 3군데에 씀 · 템플릿 막대는 숨김 · 휠 · 끌기 · 내용 짧으면 막대 숨김 ·
+    좁은 칸에 맞게 폭 10~12px · 손잡이 길이는 보이는 비율로
 
 ## 대기 (버전 미정)
 - 대기: 사용자가 포에버에 LittleWigs 설치 + BigWigs 승리·초읽기 소리를 뜌미로 설정함 (11/9) → 다음 인던에서 소리 나면 이 항목은 안 함
