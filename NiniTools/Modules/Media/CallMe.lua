@@ -242,10 +242,10 @@ SlashCmdList.NINICALLME=function(msg)
     NT:Print("CallMe 별명을 모두 지웠습니다.")
   elseif cmd=="on" then
     NT:SetCallMeEnabled(true)
-    NT:Print("CallMe ON")
+    NT:Print("이름 호출 켜짐")
   elseif cmd=="off" then
     NT:SetCallMeEnabled(false)
-    NT:Print("CallMe OFF")
+    NT:Print("이름 호출 꺼짐")
   elseif cmd=="test" then
     NT:TestCallMeSound()
   else

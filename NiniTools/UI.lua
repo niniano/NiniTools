@@ -11,8 +11,8 @@ UI.pageOrder = {"GOLD","KICK","NSRT","QOL","MEDIA","CAL"}
 -- 2.8.0: 포에버에는 차단 · NSRT · 달력 모듈이 없다.
 if NT.FOREVER then UI.pageOrder = {"GOLD","QOL","MEDIA"} end
 UI.pageNames = {
-  KICK="Interrupt & M+",
-  GOLD="Gold History",
+  KICK="차단 & 쐐기",
+  GOLD="골드 내역",
   NSRT="NSRT 개인 메모",
   MEDIA="사운드 & Navi",
   QOL="화면 & 편의",
@@ -246,6 +246,77 @@ function UI:BuildSubNav(parent, items, defaultId)
   end
 
   return body,parent.subPages
+end
+
+-- 2.8.9: 작은 칸용 스크롤 (블리자드 기본 막대 대신 큰 창 오른쪽 막대와 같은 모양 · 가늘게).
+-- 막대는 스크롤 칸 오른쪽 바깥 6px 에 붙는다. 내용이 짧으면 막대를 숨긴다.
+function UI:ScrollArea(parent)
+  local scroll=CreateFrame("ScrollFrame",nil,parent)
+  scroll:EnableMouseWheel(true)
+  local bar=CreateFrame("Slider",nil,scroll,"BackdropTemplate")
+  bar:SetPoint("TOPLEFT",scroll,"TOPRIGHT",6,0)
+  bar:SetPoint("BOTTOMLEFT",scroll,"BOTTOMRIGHT",6,0)
+  bar:SetWidth(10)
+  bar:SetOrientation("VERTICAL")
+  self:Backdrop(bar,C.sidebar,C.border)
+  bar:SetThumbTexture("Interface\\Buttons\\WHITE8x8")
+  local thumb=bar:GetThumbTexture()
+  if thumb then thumb:SetSize(8,32); thumb:SetVertexColor(C.muted[1],C.muted[2],C.muted[3],1) end
+  bar:SetMinMaxValues(0,0); bar:SetValueStep(1); bar:SetValue(0)
+  bar:Hide()
+  scroll.niniBar=bar
+  local syncing=false
+  local function range()
+    local child=scroll:GetScrollChild()
+    local view=scroll:GetHeight() or 0
+    local total=child and child:GetHeight() or 0
+    return math.max(0,(tonumber(total) or 0)-(tonumber(view) or 0)),tonumber(view) or 0,tonumber(total) or 0
+  end
+  local function update()
+    local maximum,view,total=range()
+    bar:SetMinMaxValues(0,maximum)
+    if thumb and total>0 and view>0 then thumb:SetHeight(clamp(view*view/total,18,math.max(18,view-4))) end
+    local cur=clamp(scroll:GetVerticalScroll() or 0,0,maximum)
+    syncing=true
+    scroll:SetVerticalScroll(cur); bar:SetValue(cur)
+    syncing=false
+    bar:SetShown(maximum>0.5)
+  end
+  scroll.NiniUpdate=update
+  bar:SetScript("OnValueChanged",function(_,value)
+    if syncing then return end
+    syncing=true; scroll:SetVerticalScroll(value or 0); syncing=false
+  end)
+  local function wheel(_,delta)
+    local maximum=range()
+    scroll:SetVerticalScroll(clamp((scroll:GetVerticalScroll() or 0)-delta*48,0,maximum))
+  end
+  scroll:SetScript("OnMouseWheel",wheel)
+  bar:EnableMouseWheel(true)
+  bar:SetScript("OnMouseWheel",function(_,delta) local h=scroll:GetScript("OnMouseWheel"); if h then h(scroll,delta) end end)
+  scroll:SetScript("OnVerticalScroll",function(_,offset)
+    if syncing then return end
+    syncing=true; bar:SetValue(offset or 0); syncing=false
+  end)
+  scroll:SetScript("OnScrollRangeChanged",update)
+  scroll:SetScript("OnSizeChanged",update)
+  scroll:SetScript("OnShow",update)
+  return scroll
+end
+
+-- 2.8.9: 니니툴 모양 체크 상자 (블리자드 기본 체크 버튼 대신)
+function UI:CheckBox(parent,size)
+  size=size or 16
+  local b=CreateFrame("CheckButton",nil,parent,"BackdropTemplate")
+  b:SetSize(size,size)
+  self:Backdrop(b,C.panel2,C.border)
+  local mark=b:CreateTexture(nil,"OVERLAY")
+  mark:SetPoint("TOPLEFT",3,-3); mark:SetPoint("BOTTOMRIGHT",-3,3)
+  mark:SetColorTexture(C.accent[1],C.accent[2],C.accent[3],1)
+  b:SetCheckedTexture(mark)
+  b:SetScript("OnEnter",function(self) self:SetBackdropBorderColor(C.accent[1],C.accent[2],C.accent[3],0.95) end)
+  b:SetScript("OnLeave",function(self) self:SetBackdropBorderColor(C.border[1],C.border[2],C.border[3],1) end)
+  return b
 end
 
 function UI:Button(parent, text, width, height, fn)
@@ -625,7 +696,16 @@ function UI:SliderRow(parent, label, y, minValue, maxValue, step, getValue, onVa
 end
 
 -- Popup is parented to the main window, not the scroll child, so it never gets clipped.
-function UI:DropdownRow(parent, label, y, items, getValue, onPick)
+-- 2.8.9: 버튼 글은 한 줄(넘치면 …) · width 로 버튼/목록 폭을 넓힐 수 있음 (글꼴 이름처럼 긴 항목)
+local function oneLine(fs)
+  if not fs then return end
+  if fs.SetWordWrap then fs:SetWordWrap(false) end
+  if fs.SetMaxLines then fs:SetMaxLines(1) end
+end
+UI.OneLine=oneLine
+
+function UI:DropdownRow(parent, label, y, items, getValue, onPick, width)
+  width=tonumber(width) or 172
   local row=CreateFrame("Frame",nil,parent)
   row:SetPoint("TOPLEFT",18,y)
   row:SetPoint("TOPRIGHT",-18,y)
@@ -635,7 +715,7 @@ function UI:DropdownRow(parent, label, y, items, getValue, onPick)
   name:SetPoint("LEFT",4,0)
 
   local btn
-  btn=self:Button(row,"",172,28,function()
+  btn=self:Button(row,"",width,28,function()
     if not UI.frame then return end
     if row.popup and row.popup:IsShown() then row.popup:Hide(); return end
     if UI.activeDropdown and UI.activeDropdown~=row.popup then UI.activeDropdown:Hide() end
@@ -644,7 +724,7 @@ function UI:DropdownRow(parent, label, y, items, getValue, onPick)
       popup:SetFrameStrata("DIALOG")
       popup:SetFrameLevel((UI.frame:GetFrameLevel() or 1)+80)
       UI:Backdrop(popup,C.panel2,C.border)
-      popup:SetWidth(172)
+      popup:SetWidth(width)
       popup:SetHeight(#items*30+8)
       popup.rows={}
       for i,item in ipairs(items) do
@@ -656,7 +736,7 @@ function UI:DropdownRow(parent, label, y, items, getValue, onPick)
         opt:SetBackdropColor(0,0,0,0)
         opt:SetBackdropBorderColor(0,0,0,0)
         opt.label=UI:Font(opt,10,item.text or tostring(item.value),C.text)
-        opt.label:SetPoint("LEFT",8,0)
+        opt.label:SetPoint("LEFT",8,0); opt.label:SetPoint("RIGHT",-8,0); opt.label:SetJustifyH("LEFT"); oneLine(opt.label)
         opt.item=item
         opt:SetScript("OnEnter",function(self) self:SetBackdropColor(C.accent[1],C.accent[2],C.accent[3],0.12) end)
         opt:SetScript("OnLeave",function(self) self:SetBackdropColor(0,0,0,0) end)
@@ -680,7 +760,8 @@ function UI:DropdownRow(parent, label, y, items, getValue, onPick)
   row.button=btn
   local arrow=self:Font(btn,8,"▼",C.muted)   -- 2.7.1: ⌄ 는 게임 글꼴에 없어 □ 로 보였음
   arrow:SetPoint("RIGHT",-9,0)
-  btn.label:ClearAllPoints(); btn.label:SetPoint("LEFT",10,0); btn.label:SetPoint("RIGHT",-26,0); btn.label:SetJustifyH("LEFT")
+  btn.label:ClearAllPoints(); btn.label:SetPoint("LEFT",10,0); btn.label:SetPoint("RIGHT",-26,0); btn.label:SetJustifyH("LEFT"); oneLine(btn.label)
+  btn:SetWidth(width)   -- UI:Button 은 글 길이에 맞춰 넓어지므로 폭을 다시 고정
 
   row.Refresh=function(self)
     local cur=getValue()
@@ -1552,8 +1633,8 @@ function UI:BuildNSRT()
   self:Backdrop(boxFrame,C.panel2,C.border)
   boxFrame:SetBackdropColor(C.panel2[1],C.panel2[2],C.panel2[3],0.76)
 
-  local scroll=CreateFrame("ScrollFrame",nil,boxFrame,"UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT",10,-10); scroll:SetPoint("BOTTOMRIGHT",-30,26)
+  local scroll=self:ScrollArea(boxFrame)   -- 2.8.9: 기본 스크롤 막대 → 니니툴 막대
+  scroll:SetPoint("TOPLEFT",10,-10); scroll:SetPoint("BOTTOMRIGHT",-26,26)
   local edit=CreateFrame("EditBox",nil,scroll)
   edit:SetMultiLine(true); edit:SetAutoFocus(false); edit:SetFontObject(ChatFontNormal)
   edit:SetWidth(900); edit:SetHeight(176); edit:SetTextInsets(4,4,4,4)
@@ -1766,6 +1847,7 @@ function UI:BuildNSRT()
     lines=(text=="" and 0 or lines+1)
     self:SetHeight(math.max(176,lines*15+18))
     scroll:UpdateScrollChildRect()
+    scroll.NiniUpdate()
     refreshPreview(not p.nsrtClearing)
   end)
 
@@ -1842,6 +1924,80 @@ function UI:BuildNSRT()
 end
 
 -- 2.7.2: NSRT 메모 넣기 창. 지금 NSRT 프로필에 없는 보관 메모를 골라서 넣는다.
+-- 2.8.9: 보스 풀 애드온 부하 기록 보기 (최근 풀부터 · 풀마다 부하 큰 애드온 5개)
+function UI:ShowPerfLog()
+  local AP=NT.AddonPerf
+  if not AP or type(AP.GetDB)~="function" then return end
+  local f=self.perfLogFrame
+  if not f then
+    f=CreateFrame("Frame","NiniToolsPerfLog",UIParent,"BackdropTemplate")
+    f:SetSize(620,460); f:SetPoint("CENTER",0,40)
+    f:SetFrameStrata("DIALOG"); f:SetToplevel(true)
+    f:EnableMouse(true); f:SetMovable(true); f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart",f.StartMoving); f:SetScript("OnDragStop",f.StopMovingOrSizing)
+    self:Backdrop(f,C.bg,C.border)
+    tinsert(UISpecialFrames,"NiniToolsPerfLog")
+    f.title=self:Font(f,13,"보스 풀 애드온 부하 기록",C.text); f.title:SetPoint("TOPLEFT",16,-14)
+    f.sub=self:Font(f,8,"",C.muted); f.sub:SetPoint("TOPLEFT",16,-36); f.sub:SetPoint("RIGHT",-44,0); f.sub:SetJustifyH("LEFT")
+    local close=self:Button(f,"×",24,22,function() f:Hide() end); close:SetWidth(24); close:SetPoint("TOPRIGHT",-8,-8)
+    local box=CreateFrame("Frame",nil,f,"BackdropTemplate")
+    box:SetPoint("TOPLEFT",14,-58); box:SetPoint("BOTTOMRIGHT",-14,14)
+    self:Backdrop(box,C.panel,C.border)
+    local scroll=self:ScrollArea(box)
+    scroll:SetPoint("TOPLEFT",8,-8); scroll:SetPoint("BOTTOMRIGHT",-22,8)
+    local content=CreateFrame("Frame",nil,scroll); content:SetSize(560,10)
+    scroll:SetScrollChild(content)
+    f.scroll=scroll; f.content=content
+    f.text=self:Font(content,9,"",C.text)
+    f.text:SetPoint("TOPLEFT",2,-2); f.text:SetWidth(552); f.text:SetJustifyH("LEFT"); f.text:SetJustifyV("TOP")
+    if f.text.SetSpacing then f.text:SetSpacing(3) end
+    self.perfLogFrame=f
+  end
+  local DIFF={[14]="일반",[15]="영웅",[16]="신화",[17]="공찾"}
+  local pulls=AP.GetDB().pulls or {}
+  local lines={}
+  local shown=0
+  for i=#pulls,math.max(1,#pulls-39),-1 do
+    local pl=pulls[i]
+    shown=shown+1
+    lines[#lines+1]=string.format("|cffF4B23A%s|r  %s %s · %s · %s초 · 애드온 합계 평균 %.1fms",
+      tostring(pl.at or "?"),tostring(pl.name or pl.enc or "?"),DIFF[tonumber(pl.diff) or 0] or "",
+      pl.success and "|cff59e58c킬|r" or "|cffff8a80전멸|r",tostring(pl.dur or "?"),tonumber(pl.allAvg) or 0)
+    if pl.spec or pl.char then lines[#lines+1]="   |cff7d94a8"..tostring(pl.char or "").." "..tostring(pl.spec or "").."|r" end
+    if pl.error then
+      lines[#lines+1]="   |cffffc857"..tostring(pl.error).."|r"
+    elseif type(pl.addons)~="table" or #pl.addons==0 then
+      lines[#lines+1]="   |cff7d94a8눈에 띄는 부하 없음|r"
+    else
+      local rows={}
+      for _,r in ipairs(pl.addons) do rows[#rows+1]=r end
+      table.sort(rows,function(x,y)   -- 끊김(50ms 넘음) 많은 순 → 평균 큰 순
+        local a50,b50=tonumber(x.n50) or 0,tonumber(y.n50) or 0
+        if a50~=b50 then return a50>b50 end
+        return (tonumber(x.avg) or 0)>(tonumber(y.avg) or 0)
+      end)
+      for j,r in ipairs(rows) do
+        if j>5 then break end
+        local n50,n100=tonumber(r.n50) or 0,tonumber(r.n100) or 0
+        local spike=""
+        if n50>0 or n100>0 then
+          spike=string.format("  |cffff8a80끊김: 50ms 넘음 %d번%s|r",n50,n100>0 and (" · 100ms 넘음 "..n100.."번") or "")
+        elseif (tonumber(r.n5) or 0)>0 then
+          spike=string.format("  |cff7d94a85ms 넘음 %d번|r",tonumber(r.n5) or 0)
+        end
+        lines[#lines+1]=string.format("   %d. %s  평균 %.2fms · 최대 %.1fms%s",j,tostring(r.a or "?"),tonumber(r.avg) or 0,tonumber(r.peak) or 0,spike)
+      end
+    end
+    lines[#lines+1]=" "
+  end
+  if shown==0 then lines[1]="아직 기록이 없습니다. 기록을 켜 두면 보스 풀이 끝날 때마다 한 줄씩 쌓입니다." end
+  f.sub:SetText(string.format("최근 풀부터 %d개 (저장 %d개) · 「끊김」 = 그 애드온 때문에 한 프레임이 50ms 넘게 걸린 횟수",shown,#pulls))
+  f.text:SetText(table.concat(lines,"\n"))
+  f.content:SetHeight(math.max(10,(f.text:GetStringHeight() or 0)+8))
+  f:Show()
+  if f.scroll.NiniUpdate then f.scroll:SetVerticalScroll(0); f.scroll.NiniUpdate() end
+end
+
 function UI:ShowNoteRestore(list, profileName)
   local NR=NT.NSRTImport
   if not NR or type(list)~="table" or #list==0 then return end
@@ -1856,13 +2012,14 @@ function UI:ShowNoteRestore(list, profileName)
     tinsert(UISpecialFrames,"NiniToolsNoteRestore")
     f.title=self:Font(f,13,"NSRT 메모 넣기",C.text); f.title:SetPoint("TOPLEFT",16,-14)
     f.sub=self:Font(f,8,"",C.muted); f.sub:SetPoint("TOPLEFT",16,-36); f.sub:SetPoint("RIGHT",-16,0); f.sub:SetJustifyH("LEFT")
-    local close=CreateFrame("Button",nil,f,"UIPanelCloseButton"); close:SetPoint("TOPRIGHT",-2,-2)
+    local close=self:Button(f,"×",24,22,function() f:Hide() end); close:SetWidth(24); close:SetPoint("TOPRIGHT",-8,-8)   -- 2.8.9
 
     local box=CreateFrame("Frame",nil,f,"BackdropTemplate")
     box:SetPoint("TOPLEFT",14,-58); box:SetPoint("BOTTOMRIGHT",-14,86)
     self:Backdrop(box,C.panel,C.border)
-    local scroll=CreateFrame("ScrollFrame",nil,box,"UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT",6,-6); scroll:SetPoint("BOTTOMRIGHT",-28,6)
+    local scroll=self:ScrollArea(box)   -- 2.8.9
+    scroll:SetPoint("TOPLEFT",6,-6); scroll:SetPoint("BOTTOMRIGHT",-22,6)
+    f.scroll=scroll
     local content=CreateFrame("Frame",nil,scroll); content:SetSize(380,10)
     scroll:SetScrollChild(content)
     f.content=content; f.rows={}
@@ -1917,8 +2074,8 @@ function UI:ShowNoteRestore(list, profileName)
     if not r then
       r=CreateFrame("Frame",nil,f.content); r:SetSize(380,ROW)
       r:SetPoint("TOPLEFT",0,-(i-1)*ROW)
-      r.check=CreateFrame("CheckButton",nil,r,"UICheckButtonTemplate")
-      r.check:SetSize(22,22); r.check:SetPoint("LEFT",2,0)
+      r.check=self:CheckBox(r,16)   -- 2.8.9
+      r.check:SetPoint("LEFT",5,0)
       r.check:SetScript("OnClick",function() f.UpdateCount() end)
       r.tag=self:Font(r,8,"",C.muted); r.tag:SetPoint("LEFT",30,0); r.tag:SetWidth(34); r.tag:SetJustifyH("LEFT")
       r.name=self:Font(r,9,"",C.text); r.name:SetPoint("LEFT",66,0); r.name:SetPoint("RIGHT",-4,0); r.name:SetJustifyH("LEFT")
@@ -1933,6 +2090,7 @@ function UI:ShowNoteRestore(list, profileName)
   end
   for i=#list+1,#f.rows do f.rows[i]:Hide() end
   f.content:SetHeight(math.max(10,#list*ROW))
+  if f.scroll and f.scroll.NiniUpdate then f.scroll.NiniUpdate() end
   f.UpdateCount()
   f:Show()
 end
@@ -2402,11 +2560,11 @@ function UI:BuildGold()
   p.charSelected:SetPoint("RIGHT",-12,0)
   p.charSelected:SetJustifyH("LEFT")
 
-  local charScroll=CreateFrame("ScrollFrame",nil,left,"UIPanelScrollFrameTemplate")
+  local charScroll=self:ScrollArea(left)   -- 2.8.9: 기본 스크롤 막대 → 니니툴 막대
   -- Keep a little breathing room above the first character row. Inline money
   -- textures/font ascenders can otherwise be clipped by the ScrollFrame's top edge.
   charScroll:SetPoint("TOPLEFT",12,-76)
-  charScroll:SetPoint("BOTTOMRIGHT",-28,68)
+  charScroll:SetPoint("BOTTOMRIGHT",-24,68)
   charScroll:EnableMouseWheel(true)
   local charChild=CreateFrame("Frame",nil,charScroll)
   charChild:SetWidth(334)
@@ -2692,6 +2850,7 @@ function UI:BuildGold()
       local current=self.charScroll:GetVerticalScroll() or 0
       self.charScroll:SetVerticalScroll(clamp(current,0,maxScroll))
     end
+    if self.charScroll.NiniUpdate then self.charScroll.NiniUpdate() end
     for i,c in ipairs(g.characters or {}) do
       local row=self.goldRows[i]
       row.charKey=c.key; row.charName=c.name; row.realm=c.realm; row.lastSeen=c.lastSeen; row.verified=c.goldVerified
@@ -3308,6 +3467,21 @@ function UI:BuildTools()
     if NT.Diagnostics and type(NT.Diagnostics.Run)=="function" then NT.Diagnostics:Run("") else NT:Print("자가진단 모듈을 찾지 못했습니다.") end
   end)
   chk:SetPoint("TOPLEFT",b1,"BOTTOMLEFT",0,-10)
+  -- 2.8.9: 명령어로만 되던 것 (/nk overlays · /nec test · /nk focusmacro migrate) → 버튼
+  if not NT.FOREVER then
+    local ov=self:Button(actions,"주문 경보 켜기",150,32,function() NT:CallSlash("NINIKICK","overlays") end)
+    ov:SetPoint("LEFT",chk,"RIGHT",10,0)
+    local ecOn=false
+    local ec
+    ec=self:Button(actions,"적 숫자 테스트",150,32,function()
+      ecOn=not ecOn
+      NT:CallSlash("NINITOOLSENEMYCOUNT",ecOn and "test 5" or "test off")
+      ec.label:SetText(ecOn and "적 숫자 테스트 끝" or "적 숫자 테스트")
+    end)
+    ec:SetPoint("LEFT",ov,"RIGHT",10,0)
+    local fm=self:Button(actions,"주시 매크로 캐릭터용",150,32,function() NT:CallSlash("NINIKICK","focusmacro migrate") end)
+    fm:SetPoint("LEFT",ec,"RIGHT",10,0)
+  end
   local note=self:Font(actions,9,"명령어를 외우지 않아도 됩니다. 기록 · 글꼴 · 진단은 아래 칸과 버튼으로 바꿉니다.",C.muted)
   note:SetPoint("BOTTOMLEFT",16,14); note:SetPoint("RIGHT",-16,0)
 
@@ -3350,6 +3524,11 @@ function UI:BuildTools()
   if NC then
     local clr2=confirmButton(rec,"메모 기록 지우기",function() NC:Slash("clear") end)
     if lastBtn then clr2:SetPoint("LEFT",lastBtn,"RIGHT",10,0) else clr2:SetPoint("BOTTOMLEFT",18,14) end
+    lastBtn=clr2
+  end
+  if AP then   -- 2.8.9: 풀별 부하 기록을 게임 안에서 보기
+    local view=self:Button(rec,"부하 기록 보기",150,28,function() UI:ShowPerfLog() end)
+    if lastBtn then view:SetPoint("LEFT",lastBtn,"RIGHT",10,0) else view:SetPoint("BOTTOMLEFT",18,14) end
   end
   if not AP and not NC then
     p.recText:SetText("이 버전(포에버)에는 기록 기능이 없습니다.")
@@ -3357,9 +3536,9 @@ function UI:BuildTools()
 
   -- 2.8.9: 글꼴 — /nini font body · num · auto 대신 고르기 (SharedMedia 한글 글꼴만)
   y=y-350
-  local fsec=self:Section(p,"글꼴","NiniTools 창 · 알림 글꼴 · 바꾸면 UI 다시 불러오기 후 모든 창에 적용",y,150)
+  local fsec=self:Section(p,"글꼴","NiniTools 창 · 알림 글꼴 · 바꾸면 UI 다시 불러오기 후 적용 · 자동 = NaowhKR → EllesmereUI → 기본 순서",y,150)
   local function fontItems()
-    local items={{text="자동 (NaowhKR → EllesmereUI → 기본)",value=false}}
+    local items={{text="자동",value=false}}
     local lsm=LibStub and select(2,pcall(LibStub.GetLibrary,LibStub,"LibSharedMedia-3.0",true))
     if type(lsm)=="table" and type(lsm.List)=="function" then
       for _,name in ipairs(lsm:List("font") or {}) do
@@ -3384,8 +3563,8 @@ function UI:BuildTools()
   local function fontGet(kind)
     return function() local prefs=NT.GetFontPrefs and NT.GetFontPrefs(); return (prefs and prefs[kind]) or false end
   end
-  p.fontBody=self:DropdownRow(fsec,"본문 글꼴",-56,fitems,fontGet("body"),fontPick("body"))
-  p.fontNum=self:DropdownRow(fsec,"숫자 글꼴",-92,fitems,fontGet("num"),fontPick("num"))
+  p.fontBody=self:DropdownRow(fsec,"본문 글꼴",-56,fitems,fontGet("body"),fontPick("body"),240)
+  p.fontNum=self:DropdownRow(fsec,"숫자 글꼴",-92,fitems,fontGet("num"),fontPick("num"),240)
   p.fontNow=self:Font(fsec,8,"",C.muted)
   p.fontNow:SetPoint("BOTTOMLEFT",22,12); p.fontNow:SetPoint("RIGHT",-22,0); p.fontNow:SetJustifyH("LEFT")
   p.contentHeight=-y+170

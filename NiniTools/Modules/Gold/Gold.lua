@@ -224,14 +224,29 @@ local function recordEntry(amount, kind, who, detail)
   if not db or not charKey or not amount or amount == 0 then return end
   local d = ensureDay()
   local ts = nowTime()
-  d.entries[#d.entries + 1] = {
-    t = ts,
-    char = charKey,
-    amount = amount,
-    kind = kind,
-    who = safeString(who),
-    detail = safeString(detail),
-  }
+  -- 2.8.9: 상점 한 번 열고 닫는 동안의 판매(또는 구매)는 한 줄로 묶는다 (합계 · n건).
+  -- 물건 7개를 팔면 「상점 판매」가 7줄 쌓이던 것 → 「상점 · 7건」 한 줄.
+  local last = d.entries[#d.entries]
+  local merged = false
+  if (kind == "vendor_in" or kind == "vendor_out") and state.merchant and state.merchantVisit
+    and last and last.kind == kind and last.char == charKey and last.visit == state.merchantVisit then
+    last.amount = (tonumber(last.amount) or 0) + amount
+    last.n = (tonumber(last.n) or 1) + 1
+    last.t = ts
+    last.detail = "상점 · " .. last.n .. "건"
+    merged = true
+  end
+  if not merged then
+    d.entries[#d.entries + 1] = {
+      t = ts,
+      char = charKey,
+      amount = amount,
+      kind = kind,
+      who = safeString(who),
+      detail = safeString(detail),
+      visit = ((kind == "vendor_in" or kind == "vendor_out") and state.merchant and state.merchantVisit) or nil,
+    }
+  end
 
   db.stats = db.stats or { lifetime = newSummaryBucket(), months = {} }
   db.stats.lifetime = db.stats.lifetime or newSummaryBucket()
@@ -694,6 +709,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
     end
   elseif event == "MERCHANT_SHOW" then
     state.merchant = true
+    state.merchantVisit = nowTime()   -- 2.8.9: 이번 상점 방문 표시 (같은 방문의 판매를 한 줄로)
   elseif event == "MERCHANT_CLOSED" then
     state.merchant = false
     state.repairPending = false

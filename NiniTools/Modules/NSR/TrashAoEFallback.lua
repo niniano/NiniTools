@@ -588,7 +588,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
         if instanceID and DATA[instanceID] then
             stageByInstance[instanceID] = 1
             ClearStates()
-            if not IsEXBossLoaded() then CorePrint("challenge start; stage=1") end
+            if not IsEXBossLoaded() then CorePrint("쐐기 시작 · 1단계") end
         end
     elseif event == "ENCOUNTER_END" then
         local _encounterID, _encounterName, _difficultyID, _groupSize, success = ...
@@ -609,16 +609,16 @@ frame:SetScript("OnEvent", function(_, event, ...)
         ClearStates()
         if wasFallback then
             if event == "CHALLENGE_MODE_COMPLETED" then
-                CorePrint("challenge complete; reset")
+                CorePrint("쐐기 완료 · 초기화")
             else
-                CorePrint("challenge reset; fallback stopped")
+                CorePrint("쐐기 초기화 · 대체 알림 멈춤")
             end
         end
     elseif event == "ADDON_LOADED" then
         local name = ...
         if name == "EXBoss" then
             ClearStates()
-            Print("EXBoss loaded; fallback suspended")
+            Print("EXBoss 가 켜져 있어 대체 알림을 쉽니다")
         elseif name == ADDON_NAME then
             StartTicker()
         end

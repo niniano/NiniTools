@@ -1,10 +1,10 @@
-﻿NiniTools 2.8.8
+﻿NiniTools 2.8.9
 
 NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운드/Navi, Naowh Smart Reminders 연동을 한 창에 모은 WoW 통합 편의 애드온입니다.
 
 [메인 메뉴]
-- Gold History
-- Interrupt & M+
+- 골드 내역
+- 차단 & 쐐기
 - NSRT 개인 메모
 - 화면 & 편의
 - 사운드 & Navi
@@ -21,7 +21,7 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - NSRT 메모 보관함: NSRT 프로필이 바뀌어도(나오 /nui install 등) 개인·공용 메모를 골라서 다시 넣기
 - 목적지 안내, 채팅 말풍선, 던전 검색, 미니맵/창 설정
 - GTFO, 효과음, CallMe 이름 호출, Navi 마우스 커서
-- Gold History: 현재 소지금 스냅샷, 거래 기록, 필터/검색, 전투부대 은행
+- 골드 내역: 현재 소지금 스냅샷, 거래 기록, 필터/검색, 전투부대 은행
 
 [Naowh Smart Reminders]
 - 도적 프로필: Nini Rogue M+ S2 - Safe Alpha
@@ -66,7 +66,7 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - Naowh 레이드 기본 체크와 이후 수동 체크 보존 확인.
 
 [배포]
-- 현재 정식 버전: 2.8.8
+- 현재 정식 버전: 2.8.9
 - 최신 변경사항: CHANGELOG_2.8.8.txt (2.8.7: CHANGELOG_2.8.7.txt · 2.8.6: CHANGELOG_2.8.6.txt · 2.8.5: CHANGELOG_2.8.5.txt · 2.8.4: CHANGELOG_2.8.4.txt · 2.8.3: CHANGELOG_2.8.3.txt · 2.8.2: CHANGELOG_2.8.2.txt · 2.8.1: CHANGELOG_2.8.1.txt · 2.8.0: CHANGELOG_2.8.0.txt · 2.7.2: CHANGELOG_2.7.2.txt · 2.7.1: CHANGELOG_2.7.1.txt · 2.7.0: CHANGELOG_2.7.0.txt · 2.6.9: CHANGELOG_2.6.9.txt · 2.6.8: CHANGELOG_2.6.8.txt · 2.6.7: CHANGELOG_2.6.7.txt · 2.6.6: CHANGELOG_2.6.6.txt · 2.6.5: CHANGELOG_2.6.5.txt · 2.6.4: CHANGELOG_2.6.4.txt · 2.6.3: CHANGELOG_2.6.3.txt · 2.6.0 ~ 2.6.2는 2.6.3에 포함 · 2.5.9: CHANGELOG_2.5.9.txt · 2.5.8: CHANGELOG_2.5.8.txt · 2.5.7: CHANGELOG_2.5.7.txt · 2.5.6: CHANGELOG_2.5.6.txt · 2.5.5: CHANGELOG_2.5.5.txt · 2.5.4: CHANGELOG_2.5.4.txt)
 
 [계정 달력 (2.5.8)]
@@ -83,7 +83,7 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 
 [WoW 포에버 (2.8.0)]
 - 같은 NiniTools 폴더를 포에버 AddOns 폴더에도 넣으면 됩니다. 포에버에서는 NiniTools_Camelot.toc 가 대신 읽힙니다.
-- 포에버에서 되는 것: Gold History · 사운드 & Navi(GTFO · 효과음 · CallMe · Navi 커서 · Navi 채팅) · 화면 & 편의(목적지 안내 · 전투 시간 · 파티 입장 인사 · 주시 · 차단 매크로 · 채팅 말풍선 · 미니맵 버튼 · 창 설정)
+- 포에버에서 되는 것: 골드 내역 · 사운드 & Navi(GTFO · 효과음 · CallMe · Navi 커서 · Navi 채팅) · 화면 & 편의(목적지 안내 · 전투 시간 · 파티 입장 인사 · 주시 · 차단 매크로 · 채팅 말풍선 · 미니맵 버튼 · 창 설정)
 - 포에버에서 빠진 것: 차단 · 쐐기 · 중요몹 · 주변 적 숫자 · NSRT · Smart Reminders · EXBoss · NaowhUI 연동 · 계정 달력 · 던전 검색 · 전투부대 은행 · 진단
 - 목적지 안내: NaowhForever(QoL)가 켜져 있으면 웨이포인트 핀과 겹치므로 처음엔 꺼짐 · 화면 & 편의에서 켜고 끄기
 

@@ -9,7 +9,7 @@ WoW 애드온 NiniTools · 차단 알림(NiniKick) · 브리핑 · 골드 장부
 
 ## 폴더
 - `NiniTools/` : 애드온 폴더 그대로 (AddOns 밑에 이 폴더를 넣으면 됨)
-- 버전별 변경 내역: `NiniTools/CHANGELOG_x.y.z.txt` · 태그 `vx.y.z`
+- 버전별 변경 내역: `NiniTools/CHANGELOG_x.y.z.txt` (2.8.3 이전은 `docs/changelog/`) · 태그 `vx.y.z`
 
 ## 버전 기록
 2.5.4부터 2.6.8까지 배포한 zip을 버전마다 커밋 하나로 옮겨 왔습니다 (`git log`, 태그로 버전별 비교 가능).

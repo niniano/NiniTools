@@ -294,11 +294,16 @@ function D:ShowCopyBox(text)
     end)
     f.editBox = eb
 
-    local close = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    close:SetSize(90, 24)
+    local close
+    if NT.UI and type(NT.UI.Button) == "function" then   -- 2.8.9: 니니툴 모양 버튼
+      close = NT.UI:Button(f, "닫기", 90, 24, function() f:Hide() end)
+    else
+      close = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+      close:SetSize(90, 24)
+      close:SetText("닫기")
+      close:SetScript("OnClick", function() f:Hide() end)
+    end
     close:SetPoint("BOTTOMRIGHT", -18, 14)
-    close:SetText("닫기")
-    close:SetScript("OnClick", function() f:Hide() end)
 
     f:Hide()
     self.copyFrame = f
@@ -389,7 +394,7 @@ function D:Run(arg)
       schema.schemaVersion or 0, schema.currentSchema or 0, schema.minMigratableSchema or 0,
       schema.cleanupRevision or 0, schema.targetCleanupRevision or 0, schema.adoptedLegacy and "채택" or "아님", schema.cleanupCandidateCount or 0, schema.unknownRootCount or 0))
   else
-    NT:Print("DB Schema FAIL")
+    NT:Print("저장 자료 구조 점검 실패")
   end
 
   for _, state in ipairs(states) do
@@ -437,7 +442,7 @@ function D:Run(arg)
     end
     NT:Print(memLine)
   else
-    NT:Print("Memory N/A")
+    NT:Print("메모리 사용량을 읽을 수 없음")
   end
 
   if profiling and cpuMS then
