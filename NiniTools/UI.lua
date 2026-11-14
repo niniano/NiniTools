@@ -399,18 +399,35 @@ function UI:Toggle(parent, label, key, getDB, onChanged, y)
     return db and db[key]~=false
   end
 
+  -- 2.8.9: 흐리게(비활성) 할 때 스위치는 투명하게 하지 않는다.
+  -- 알약(가운데 + 양끝 원)과 손잡이가 겹쳐 있어서 투명해지면 겹친 곳이 비쳐 원이 두 개처럼 보였다.
+  -- → 글자만 투명하게 하고, 스위치는 불투명한 채 색만 바탕색 쪽으로 섞는다.
+  local rawSetAlpha=row.SetAlpha
+  row.SetAlpha=function(self,alpha)
+    self.dim=clamp(tonumber(alpha) or 1,0,1)
+    rawSetAlpha(self,1)
+    self.text:SetAlpha(self.dim)
+    self.divider:SetAlpha(self.dim)
+    self:Refresh()
+  end
+  local function mix(c,k)   -- 바탕색(C.panel)과 섞기 · k=1 이면 원래 색
+    local bg=C.panel
+    return bg[1]+(c[1]-bg[1])*k,bg[2]+(c[2]-bg[2])*k,bg[3]+(c[3]-bg[3])*k
+  end
+
   row.Refresh=function(self)
     local on=self.GetValue()
+    local k=self.dim or 1
     self.knob:ClearAllPoints()
     if on then
       self.knob:SetPoint("RIGHT",-3,0)
-      self:SetTrackColor(C.accent[1],C.accent[2],C.accent[3],0.92)
-      self.knob:SetVertexColor(1,1,1,1)
+      local r,g,b=mix(C.accent,k); self:SetTrackColor(r,g,b,1)
+      r,g,b=mix({1,1,1},k); self.knob:SetVertexColor(r,g,b,1)
       self.text:SetTextColor(C.text[1],C.text[2],C.text[3],1)
     else
       self.knob:SetPoint("LEFT",3,0)
-      self:SetTrackColor(C.muted[1]*.55,C.muted[2]*.55,C.muted[3]*.55,0.92)
-      self.knob:SetVertexColor(.78,.81,.84,1)
+      local r,g,b=mix({C.muted[1]*.55,C.muted[2]*.55,C.muted[3]*.55},k); self:SetTrackColor(r,g,b,1)
+      r,g,b=mix({.78,.81,.84},k); self.knob:SetVertexColor(r,g,b,1)
       self.text:SetTextColor(C.muted[1]+.22,C.muted[2]+.22,C.muted[3]+.22,1)
     end
   end
@@ -3450,13 +3467,19 @@ function UI:BuildTools()
   local p=self:NewPage("TOOLS")
   p.contentHeight=510
 
-  local versions=self:Section(p,"버전","현재 NiniTools 버전",-8,120)
+  -- 2.8.9: 칸 여백 줄이기 — 왼쪽(버전 · 현재 환경) / 오른쪽(유지관리 · 글꼴) 2단 + 아래 기록 한 칸.
+  -- 기본 창 크기에서 스크롤 없이 다 보이게 (예전에는 칸마다 전체 폭 + 높이가 넉넉해서 내려야 했음).
+  local LEFT_W=260
+  local function leftCol(sec,y) sec:ClearAllPoints(); sec:SetPoint("TOPLEFT",16,y); sec:SetWidth(LEFT_W) end
+  local function rightCol(sec,y) sec:ClearAllPoints(); sec:SetPoint("TOPLEFT",16+LEFT_W+8,y); sec:SetPoint("TOPRIGHT",-16,y) end
+
+  local versions=self:Section(p,"버전","현재 NiniTools 버전",-8,82); leftCol(versions,-8)
   p.versionText=self:Font(versions,12,"",C.text); p.versionText:SetPoint("TOPLEFT",16,-58); p.versionText:SetPoint("RIGHT",-16,0); p.versionText:SetJustifyH("LEFT")
 
-  local addons=self:Section(p,"현재 환경","주요 연동 애드온 로드 상태",-142,172)
-  p.addonText=self:Font(addons,12,"",C.text); p.addonText:SetPoint("TOPLEFT",16,-58); p.addonText:SetPoint("RIGHT",-16,0); p.addonText:SetJustifyH("LEFT")
+  local addons=self:Section(p,"현재 환경","주요 연동 애드온 로드 상태",-98,172); leftCol(addons,-98)
+  p.addonText=self:Font(addons,10,"",C.text); p.addonText:SetPoint("TOPLEFT",16,-58); p.addonText:SetPoint("RIGHT",-16,0); p.addonText:SetJustifyH("LEFT")
 
-  local actions=self:Section(p,"유지관리","자주 쓰는 공통 작업",-328,184)
+  local actions=self:Section(p,"유지관리","자주 쓰는 공통 작업 · 명령어를 외우지 않아도 됩니다",-8,146); rightCol(actions,-8)
   local b1=self:Button(actions,"UI 다시 불러오기",150,32,function() ReloadUI() end); b1:SetPoint("TOPLEFT",16,-58)
   local back=self:Button(actions,"메인 설정으로",150,32,function() UI:ShowPage(NT:GetDB().lastPage or "GOLD") end); back:SetPoint("LEFT",b1,"RIGHT",10,0)
   local exb=self:Button(actions,"EXBoss 프로필",150,32,function() if NT.ExbossS2 then NT.ExbossS2:OpenDialog() end end); exb:SetPoint("LEFT",back,"RIGHT",10,0)
@@ -3482,12 +3505,10 @@ function UI:BuildTools()
     local fm=self:Button(actions,"주시 매크로 캐릭터용",150,32,function() NT:CallSlash("NINIKICK","focusmacro migrate") end)
     fm:SetPoint("LEFT",ec,"RIGHT",10,0)
   end
-  local note=self:Font(actions,9,"명령어를 외우지 않아도 됩니다. 기록 · 글꼴 · 진단은 아래 칸과 버튼으로 바꿉니다.",C.muted)
-  note:SetPoint("BOTTOMLEFT",16,14); note:SetPoint("RIGHT",-16,0)
 
   -- 2.8.9: 기록 (분석기용) — /nini memo · /nini perf 를 켜고 끄는 칸으로
-  local y=-522
-  local rec=self:Section(p,"기록 (분석기용)","보스 풀마다 이 PC 안에 남기는 기록 · NiniAnalyzer(GOLD)가 읽습니다. 기록은 게임 종료나 /reload 때 저장됩니다.",y,340)
+  local y=-278
+  local rec=self:Section(p,"기록 (분석기용)","보스 풀마다 이 PC 안에 남기는 기록 · NiniAnalyzer(GOLD)가 읽습니다. 기록은 게임 종료나 /reload 때 저장됩니다.",y,224)
   local ry=-58
   local recRows={}
   local function confirmButton(parent,text,fn)
@@ -3514,9 +3535,13 @@ function UI:BuildTools()
       function(nv) NC:Slash(nv and "on" or "off") end,ry); ry=ry-38
   end
   p.recRows=recRows
+  -- 2.8.9: 스위치는 칸 왼쪽 절반, 최근 기록 글은 오른쪽 절반 (아래로 길어지지 않게)
+  for i,row in ipairs(recRows) do
+    row:ClearAllPoints(); row:SetPoint("TOPLEFT",18,-58-(i-1)*38); row:SetPoint("RIGHT",rec,"CENTER",-12,0)
+  end
   p.recText=self:Font(rec,9,"",C.muted)
-  p.recText:SetPoint("TOPLEFT",22,ry-8); p.recText:SetPoint("RIGHT",-22,0); p.recText:SetJustifyH("LEFT"); p.recText:SetJustifyV("TOP")
-  p.recText:SetHeight(110)
+  p.recText:SetPoint("TOPLEFT",rec,"TOP",12,-62); p.recText:SetPoint("RIGHT",-22,0); p.recText:SetJustifyH("LEFT"); p.recText:SetJustifyV("TOP")
+  p.recText:SetHeight(112)
   local lastBtn
   if AP then
     local clr=confirmButton(rec,"부하 기록 지우기",function() AP:Slash("clear") end); clr:SetPoint("BOTTOMLEFT",18,14); lastBtn=clr
@@ -3532,11 +3557,11 @@ function UI:BuildTools()
   end
   if not AP and not NC then
     p.recText:SetText("이 버전(포에버)에는 기록 기능이 없습니다.")
+    rec:SetHeight(96); p.recShort=true
   end
 
   -- 2.8.9: 글꼴 — /nini font body · num · auto 대신 고르기 (SharedMedia 한글 글꼴만)
-  y=y-350
-  local fsec=self:Section(p,"글꼴","NiniTools 창 · 알림 글꼴 · 바꾸면 UI 다시 불러오기 후 적용 · 자동 = NaowhKR → EllesmereUI → 기본 순서",y,150)
+  local fsec=self:Section(p,"글꼴","바꾸면 UI 다시 불러오기 후 적용 · 자동 = NaowhKR → EllesmereUI → 기본 순서",-162,108); rightCol(fsec,-162)
   local function fontItems()
     local items={{text="자동",value=false}}
     local lsm=LibStub and select(2,pcall(LibStub.GetLibrary,LibStub,"LibSharedMedia-3.0",true))
@@ -3563,11 +3588,14 @@ function UI:BuildTools()
   local function fontGet(kind)
     return function() local prefs=NT.GetFontPrefs and NT.GetFontPrefs(); return (prefs and prefs[kind]) or false end
   end
-  p.fontBody=self:DropdownRow(fsec,"본문 글꼴",-56,fitems,fontGet("body"),fontPick("body"),240)
-  p.fontNum=self:DropdownRow(fsec,"숫자 글꼴",-92,fitems,fontGet("num"),fontPick("num"),240)
+  p.fontBody=self:DropdownRow(fsec,"본문 글꼴",-50,fitems,fontGet("body"),fontPick("body"),220)
+  p.fontNum=self:DropdownRow(fsec,"숫자 글꼴",-50,fitems,fontGet("num"),fontPick("num"),220)
+  -- 한 줄에 나란히: 본문은 왼쪽 절반, 숫자는 오른쪽 절반
+  p.fontBody:ClearAllPoints(); p.fontBody:SetPoint("TOPLEFT",18,-50); p.fontBody:SetPoint("RIGHT",fsec,"CENTER",-10,0)
+  p.fontNum:ClearAllPoints(); p.fontNum:SetPoint("TOPLEFT",fsec,"TOP",10,-50); p.fontNum:SetPoint("RIGHT",-18,0)
   p.fontNow=self:Font(fsec,8,"",C.muted)
-  p.fontNow:SetPoint("BOTTOMLEFT",22,12); p.fontNow:SetPoint("RIGHT",-22,0); p.fontNow:SetJustifyH("LEFT")
-  p.contentHeight=-y+170
+  p.fontNow:SetPoint("BOTTOMLEFT",22,9); p.fontNow:SetPoint("RIGHT",-22,0); p.fontNow:SetJustifyH("LEFT")
+  p.contentHeight=-y+(p.recShort and 96 or 224)+12
 
   p.Refresh=function(self)
     self.versionText:SetText("NiniTools  "..tostring(NT.VERSION))
@@ -3590,7 +3618,7 @@ function UI:BuildTools()
     if NT.AddonPerf or NT.NoteCapture then
       local t={}
       if NT.AddonPerf then
-        for i,line in ipairs(NT.AddonPerf:SummaryLines(3)) do t[#t+1]=(i==1 and "애드온 부하: " or "  ")..line end
+        for i,line in ipairs(NT.AddonPerf:SummaryLines(1)) do t[#t+1]=(i==1 and "애드온 부하: " or "  ")..line end
       end
       if NT.NoteCapture then t[#t+1]="공대 메모: "..NT.NoteCapture:SummaryLine() end
       self.recText:SetText(table.concat(t,"\n"))
