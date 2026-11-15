@@ -35,7 +35,10 @@ def gh(url: str):
 
 
 def releases(repo: str):
-    return [r for r in gh(f"https://api.github.com/repos/{repo}/releases?per_page=100") if not r.get("draft")]
+    # GitHub 목록 순서는 태그 이름(버전 모양) 기준이라 「V1.0.13」처럼 대문자 V 태그는 v1.0.12 뒤로 밀렸다
+    # → 임베드가 새 릴리스를 못 따라옴 (11/15). 게시 시각 최신순으로 직접 정렬한다.
+    rels = [r for r in gh(f"https://api.github.com/repos/{repo}/releases?per_page=100") if not r.get("draft")]
+    return sorted(rels, key=lambda r: r.get("published_at") or r.get("created_at") or "", reverse=True)
 
 
 def asset(rel, suffix: str):
@@ -69,7 +72,7 @@ def build_embed():
     nt_pat, na_pat = (".zip",), ("_Setup_Windows_x64.exe", "_SAFE_FOLDER.zip")
     nt_now, nt_tot = count([nt], nt_pat), count(nt_all, nt_pat)
     na_now, na_tot = count([na], na_pat), count(na_all, na_pat)
-    nt_ver, na_ver = nt["tag_name"].lstrip("v"), na["tag_name"].lstrip("v")
+    nt_ver, na_ver = nt["tag_name"].lstrip("vV"), na["tag_name"].lstrip("vV")
 
     nt_lines = "\n".join([
         f"> **[ZIP 받기]({nt_zip})** · {day(nt)}",
