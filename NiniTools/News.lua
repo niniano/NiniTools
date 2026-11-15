@@ -6,6 +6,11 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.10", flavor = "retail", cards = {
+    { title = "부하 기록 복사", lines = {
+      "「부하 기록 보기」 창 오른쪽 위 「복사용 글」을 누르면 글이 전체 선택됩니다. Ctrl+C 로 복사해서 붙여 넣으면 됩니다 (모든 애드온 숫자 포함).",
+    } },
+  } },
   { version = "2.8.9", cards = {
     { title = "화면 다듬기", lines = {
       "작은 스크롤 막대(골드 캐릭터 목록 · NSRT 메모 칸 · 메모 넣기 창)를 니니툴 모양으로 바꿨습니다. 내용이 짧으면 막대가 숨습니다.",

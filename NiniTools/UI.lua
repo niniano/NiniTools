@@ -1968,23 +1968,57 @@ function UI:ShowPerfLog()
     f.text=self:Font(content,9,"",C.text)
     f.text:SetPoint("TOPLEFT",2,-2); f.text:SetWidth(552); f.text:SetJustifyH("LEFT"); f.text:SetJustifyV("TOP")
     if f.text.SetSpacing then f.text:SetSpacing(3) end
+    -- 2.8.10: 복사용 글 — 색 없는 글을 고를 수 있는 글 칸에 넣어 Ctrl+A · Ctrl+C 로 복사
+    local edit=CreateFrame("EditBox",nil,scroll)
+    edit:SetMultiLine(true); edit:SetAutoFocus(false); edit:SetFontObject(ChatFontNormal)
+    edit:SetWidth(556); edit:SetTextInsets(2,2,2,2)
+    edit:SetScript("OnEscapePressed",function(self) self:ClearFocus() end)
+    edit:SetScript("OnTextChanged",function(self,user)   -- 읽기 전용: 고쳐도 원래 글로 되돌림
+      if user and f.copyText and self:GetText()~=f.copyText then self:SetText(f.copyText); self:HighlightText() end
+    end)
+    edit:Hide()
+    f.edit=edit
+    local copyBtn
+    copyBtn=self:Button(f,"복사용 글",96,22,function()
+      f.copyMode=not f.copyMode
+      if f.copyMode then
+        f.text:Hide(); scroll:SetScrollChild(edit); edit:Show()
+        edit:SetText(f.copyText or ""); edit:SetHeight(math.max(10,(f.text:GetStringHeight() or 0)*1.6+40))
+        edit:SetFocus(); edit:HighlightText()
+        copyBtn.label:SetText("보기로 돌아가기")
+        f.sub:SetText("전체 선택됨 · Ctrl+C 로 복사 (선택이 풀리면 Ctrl+A) · 모든 애드온이 들어 있습니다")
+      else
+        edit:ClearFocus(); edit:Hide(); scroll:SetScrollChild(content); f.text:Show()
+        copyBtn.label:SetText("복사용 글")
+        f.sub:SetText(f.subText or "")
+      end
+      scroll:SetVerticalScroll(0); if scroll.NiniUpdate then scroll.NiniUpdate() end
+    end)
+    copyBtn:SetWidth(120); copyBtn:SetPoint("TOPRIGHT",-40,-8)
+    f.copyBtn=copyBtn
     self.perfLogFrame=f
   end
   local DIFF={[14]="일반",[15]="영웅",[16]="신화",[17]="공찾"}
   local pulls=AP.GetDB().pulls or {}
   local lines={}
+  local plain={}   -- 2.8.10: 복사용 (색 없음 · 애드온 전부)
   local shown=0
   for i=#pulls,math.max(1,#pulls-39),-1 do
     local pl=pulls[i]
     shown=shown+1
+    plain[#plain+1]=string.format("%s  %s %s · %s · %s초 · 애드온 합계 평균 %.1fms · %s %s",
+      tostring(pl.at or "?"),tostring(pl.name or pl.enc or "?"),DIFF[tonumber(pl.diff) or 0] or "",
+      pl.success and "킬" or "전멸",tostring(pl.dur or "?"),tonumber(pl.allAvg) or 0,tostring(pl.char or ""),tostring(pl.spec or ""))
     lines[#lines+1]=string.format("|cffF4B23A%s|r  %s %s · %s · %s초 · 애드온 합계 평균 %.1fms",
       tostring(pl.at or "?"),tostring(pl.name or pl.enc or "?"),DIFF[tonumber(pl.diff) or 0] or "",
       pl.success and "|cff59e58c킬|r" or "|cffff8a80전멸|r",tostring(pl.dur or "?"),tonumber(pl.allAvg) or 0)
     if pl.spec or pl.char then lines[#lines+1]="   |cff7d94a8"..tostring(pl.char or "").." "..tostring(pl.spec or "").."|r" end
     if pl.error then
       lines[#lines+1]="   |cffffc857"..tostring(pl.error).."|r"
+      plain[#plain+1]="   "..tostring(pl.error)
     elseif type(pl.addons)~="table" or #pl.addons==0 then
       lines[#lines+1]="   |cff7d94a8눈에 띄는 부하 없음|r"
+      plain[#plain+1]="   눈에 띄는 부하 없음"
     else
       local rows={}
       for _,r in ipairs(pl.addons) do rows[#rows+1]=r end
@@ -1993,6 +2027,10 @@ function UI:ShowPerfLog()
         if a50~=b50 then return a50>b50 end
         return (tonumber(x.avg) or 0)>(tonumber(y.avg) or 0)
       end)
+      for j,r in ipairs(rows) do
+        plain[#plain+1]=string.format("   %d. %s  평균 %.2fms · 최대 %.1fms · 5ms 넘음 %d · 50ms 넘음 %d · 100ms 넘음 %d",
+          j,tostring(r.a or "?"),tonumber(r.avg) or 0,tonumber(r.peak) or 0,tonumber(r.n5) or 0,tonumber(r.n50) or 0,tonumber(r.n100) or 0)
+      end
       for j,r in ipairs(rows) do
         if j>5 then break end
         local n50,n100=tonumber(r.n50) or 0,tonumber(r.n100) or 0
@@ -2006,9 +2044,13 @@ function UI:ShowPerfLog()
       end
     end
     lines[#lines+1]=" "
+    plain[#plain+1]=""
   end
   if shown==0 then lines[1]="아직 기록이 없습니다. 기록을 켜 두면 보스 풀이 끝날 때마다 한 줄씩 쌓입니다." end
-  f.sub:SetText(string.format("최근 풀부터 %d개 (저장 %d개) · 「끊김」 = 그 애드온 때문에 한 프레임이 50ms 넘게 걸린 횟수",shown,#pulls))
+  f.copyText="NiniTools 보스 풀 애드온 부하 기록 ("..tostring(NT.VERSION)..")\n\n"..table.concat(plain,"\n")
+  f.subText=string.format("최근 풀부터 %d개 (저장 %d개) · 「끊김」 = 그 애드온 때문에 한 프레임이 50ms 넘게 걸린 횟수",shown,#pulls)
+  if f.copyMode then f.copyBtn:GetScript("OnClick")(f.copyBtn) end   -- 다시 열면 보기 화면부터
+  f.sub:SetText(f.subText)
   f.text:SetText(table.concat(lines,"\n"))
   f.content:SetHeight(math.max(10,(f.text:GetStringHeight() or 0)+8))
   f:Show()
