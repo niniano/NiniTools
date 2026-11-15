@@ -134,6 +134,7 @@ function M:Snapshot(reason)
   for _, name in ipairs(loadedAddons()) do
     local row = {}
     for k, key in pairs(COUNT_KEYS) do row[k] = metric(name, key) end
+    row.peak = metric(name, "PeakTime")   -- 2.8.11: 최대값은 접속 후 누적이라 풀 전 값을 같이 잡아 둠
     snap[name] = row
   end
   base, baseAt = snap, now()
@@ -187,8 +188,12 @@ function M:Finish()
   else
     local rows = {}
     for _, name in ipairs(loadedAddons()) do
-      local r = { a = name, avg = round(metric(name, "EncounterAverageTime"), 3), peak = round(metric(name, "PeakTime"), 1) }
+      local r = { a = name, avg = round(metric(name, "EncounterAverageTime"), 3) }
       local b = base and base[name] or {}
+      -- 2.8.11: PeakTime 은 접속(리로드) 후 가장 큰 값이라 풀마다 같은 숫자가 반복됐다.
+      -- 이번 풀에서 더 커졌을 때만 「이번 풀 최대」로 남기고, 아니면 비운다 (기준값이 없으면 모름 → 비움).
+      local peakNow = metric(name, "PeakTime")
+      if peakNow and b.peak and peakNow > b.peak + 0.05 then r.peak = round(peakNow, 1) end
       for k, key in pairs(COUNT_KEYS) do
         local v = metric(name, key)
         if v then
@@ -213,6 +218,7 @@ function M:Finish()
     table.sort(keep, function(a, b) return (a.avg or 0) > (b.avg or 0) end)
     p.addons = keep
     p.hadBase = base ~= nil
+    p.peakPerPull = true   -- 2.8.11: peak 가 「이번 풀 최대」 (예전 기록은 접속 후 누적이라 화면에 안 씀)
     local okA, all = pcall(C_AddOnProfiler.GetOverallMetric, METRIC.EncounterAverageTime)
     p.allAvg = okA and round(safeValue(all), 3) or nil
     if type(C_AddOnProfiler.GetApplicationMetric) == "function" then

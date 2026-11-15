@@ -2028,8 +2028,9 @@ function UI:ShowPerfLog()
         return (tonumber(x.avg) or 0)>(tonumber(y.avg) or 0)
       end)
       for j,r in ipairs(rows) do
-        plain[#plain+1]=string.format("   %d. %s  평균 %.2fms · 최대 %.1fms · 5ms 넘음 %d · 50ms 넘음 %d · 100ms 넘음 %d",
-          j,tostring(r.a or "?"),tonumber(r.avg) or 0,tonumber(r.peak) or 0,tonumber(r.n5) or 0,tonumber(r.n50) or 0,tonumber(r.n100) or 0)
+        plain[#plain+1]=string.format("   %d. %s  평균 %.2fms%s · 5ms 넘음 %d · 50ms 넘음 %d · 100ms 넘음 %d",
+          j,tostring(r.a or "?"),tonumber(r.avg) or 0,(pl.peakPerPull and r.peak) and string.format(" · 이번 풀 최대 %.1fms",tonumber(r.peak) or 0) or "",
+          tonumber(r.n5) or 0,tonumber(r.n50) or 0,tonumber(r.n100) or 0)
       end
       for j,r in ipairs(rows) do
         if j>5 then break end
@@ -2040,7 +2041,8 @@ function UI:ShowPerfLog()
         elseif (tonumber(r.n5) or 0)>0 then
           spike=string.format("  |cff7d94a85ms 넘음 %d번|r",tonumber(r.n5) or 0)
         end
-        lines[#lines+1]=string.format("   %d. %s  평균 %.2fms · 최대 %.1fms%s",j,tostring(r.a or "?"),tonumber(r.avg) or 0,tonumber(r.peak) or 0,spike)
+        lines[#lines+1]=string.format("   %d. %s  평균 %.2fms%s%s",j,tostring(r.a or "?"),tonumber(r.avg) or 0,
+          (pl.peakPerPull and r.peak) and string.format(" · 이번 풀 최대 %.1fms",tonumber(r.peak) or 0) or "",spike)
       end
     end
     lines[#lines+1]=" "

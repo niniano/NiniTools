@@ -6,6 +6,11 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.11", flavor = "retail", cards = {
+    { title = "부하 기록 「최대」 숫자 고침", lines = {
+      "예전 「최대」는 접속 후 가장 큰 값이라 풀마다 같은 숫자가 반복됐습니다. 이제 그 풀에서 새로 커졌을 때만 「이번 풀 최대」로 보입니다.",
+    } },
+  } },
   { version = "2.8.10", flavor = "retail", cards = {
     { title = "부하 기록 복사", lines = {
       "「부하 기록 보기」 창 오른쪽 위 「복사용 글」을 누르면 글이 전체 선택됩니다. Ctrl+C 로 복사해서 붙여 넣으면 됩니다 (모든 애드온 숫자 포함).",
