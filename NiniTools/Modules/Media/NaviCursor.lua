@@ -6,7 +6,8 @@ if not NT then return end
 -- 2.3.0: ring/glow/scale settings used by the unified Sound & Navi UI.
 -- 2.8.12: 날아간 자리에 남는 꼬리(궤적) · 죽으면 다른 모습(분홍 요정 · 커서 가운데) ·
 --         Navi 둘레 시전바 링 · (포에버) 자동공격 링. 모두 켜고 끄기 가능 · 기본 켬.
---         그림(NaviRing · NaviSpark)은 니니툴이 직접 만든 것. 다른 애드온 · 위크오라 코드나 그림은 쓰지 않음.
+--         가운데 반짝임(밝은 빛 · 도는 네 갈래 반짝임 · 바깥 빛 고리가 가운데로 모임).
+--         그림(NaviRing · NaviSpark · NaviStar · NaviConverge)은 니니툴이 직접 만든 것. 다른 애드온 · 위크오라 코드나 그림은 쓰지 않음.
 --
 -- 출처 · 고마운 분:
 --   Navi 커서의 모양 · 위치 · 색 · 모델 번호(살아 있을 때 166890 · 죽었을 때 166351)와 둘레 링 아이디어는
@@ -113,10 +114,10 @@ if model.SetKeepModelOnHide then pcall(model.SetKeepModelOnHide, model, true) en
 local FORMS = {
   alive = { model = 166890, pos = { -5.05, 0, -1.9 }, modelAlpha = 0.5, shift = false,
     orb = { 0.4627451300621, 0.54901963472366, 1, 0.65000000596046 }, circle = { 0, 0.26274511218071, 1, 1 },
-    trail = { 0.04, 0.14, 1 } },
+    trail = { 0.04, 0.14, 1 }, core = { 0.82, 0.9, 1 }, glint = { 0.72, 0.86, 1 }, converge = { 0.3, 0.52, 1 } },
   dead = { model = 166351, pos = { -10.9, 0, -2 }, modelAlpha = 1, shift = true,
     orb = { 1, 0.88235300779343, 0.89803928136826, 0.51 }, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
-    trail = { 1, 0.55, 0.72 } },
+    trail = { 1, 0.55, 0.72 }, core = { 1, 0.9, 0.94 }, glint = { 1, 0.82, 0.9 }, converge = { 1, 0.5, 0.7 } },
 }
 local form = FORMS.alive
 
@@ -148,10 +149,28 @@ local circle = CreateTextureRegion(
   1
 )
 
+-- 2.8.12: 가운데 반짝임 · 빛이 가운데로 모이는 느낌
+--   core     : 요정 몸 위의 밝은 빛 (깜빡이며 커졌다 작아짐)
+--   glint    : 천천히 도는 네 갈래 반짝임
+--   converge : 바깥 빛 고리가 가운데로 줄어들며 모임 (두 개가 번갈아)
+local SPARK_TEX = "Interface\\AddOns\\NiniTools\\Media\\NaviSpark.tga"
+local STAR_TEX = "Interface\\AddOns\\NiniTools\\Media\\NaviStar.tga"
+local CONV_TEX = "Interface\\AddOns\\NiniTools\\Media\\NaviConverge.tga"
+local CX, CY = 54.2, 43.6
+local core = CreateTextureRegion("Navi Core", 26, 26, CX, CY, SPARK_TEX, {0.82,0.9,1,1}, 1)
+local glint = CreateTextureRegion("Navi Glint", 42, 42, CX, CY, STAR_TEX, {0.72,0.86,1,1}, 0.9)
+local converge1 = CreateTextureRegion("Navi Converge 1", 80, 80, CX, CY, CONV_TEX, {0.3,0.52,1,1}, 0)
+local converge2 = CreateTextureRegion("Navi Converge 2", 80, 80, CX, CY, CONV_TEX, {0.3,0.52,1,1}, 0)
+local sparkleRegions = { core, glint, converge1, converge2 }
+
 background:SetFrameLevel(mouseFrame:GetFrameLevel()+1)
 modelRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+2)
 orb:SetFrameLevel(mouseFrame:GetFrameLevel()+3)
 circle:SetFrameLevel(mouseFrame:GetFrameLevel()+4)
+converge1:SetFrameLevel(mouseFrame:GetFrameLevel()+5)
+converge2:SetFrameLevel(mouseFrame:GetFrameLevel()+5)
+core:SetFrameLevel(mouseFrame:GetFrameLevel()+6)
+glint:SetFrameLevel(mouseFrame:GetFrameLevel()+7)
 
 local pulseRegions = {background,orb,circle}
 local born = GetTime()
@@ -182,6 +201,7 @@ local function ApplyGeometry(db, force)
   ApplyAnchor(orb,scale)
   ApplyAnchor(circle,scale)
   ApplyAnchor(modelRegion,scale)
+  for _,r in ipairs(sparkleRegions) do ApplyAnchor(r,scale) end
   if NT.NaviRingsLayout then NT.NaviRingsLayout(scale) end
   return scale
 end
@@ -197,6 +217,7 @@ local function ApplyVisibility(show,db)
   modelRegion:SetShown(show)
   orb:SetShown(show and glowOn)
   circle:SetShown(show and ringOn)
+  for _,r in ipairs(sparkleRegions) do r:SetShown(show and glowOn) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -435,6 +456,7 @@ local function CursorOnUpdate()
     circle:SetSize(circle.baseWidth*scale*f,circle.baseHeight*scale*f)
     modelRegion:SetSize(modelRegion.baseWidth*scale*f,modelRegion.baseHeight*scale*f)
 
+    for _,r in ipairs(sparkleRegions) do r:SetAlpha(0) end
     background:SetAlpha(background.baseAlpha*p)
     orb:SetAlpha(orb.baseAlpha*p)
     circle:SetAlpha(circle.baseAlpha*p)
@@ -450,6 +472,24 @@ local function CursorOnUpdate()
     local angle=(progress*2*math.pi)-(math.pi/2)
     local factor=1+(((math.sin(angle)+1)/2)*0.05)
     for _,region in ipairs(pulseRegions) do ApplyPulse(region,factor,scale) end
+
+    -- 가운데 반짝임 · 모이는 빛
+    if core:IsShown() then
+      local now=GetTime()
+      local tw=(math.sin(now*10.47)+1)/2            -- 0.6초 깜빡임
+      local tw2=(math.sin(now*7.0+1.3)+1)/2
+      local cs=core.baseWidth*scale*(0.88+0.3*tw)
+      core:SetSize(cs,cs); core:SetAlpha(0.6+0.4*tw)
+      local gs=glint.baseWidth*scale*(0.8+0.35*tw2)
+      glint:SetSize(gs,gs); glint:SetAlpha(0.45+0.55*tw2)
+      if glint.texture.SetRotation then glint.texture:SetRotation(now*0.7) end
+      for i,r in ipairs({converge1,converge2}) do
+        local ph=((now/1.1)+(i-1)*0.5)%1             -- 1.1초마다 바깥에서 가운데로
+        local sz=(14+66*(1-ph)^1.4)*scale
+        r:SetSize(sz,sz)
+        r:SetAlpha(math.sin(ph*math.pi)^0.8*0.7)
+      end
+    end
   end
 end
 
@@ -463,6 +503,10 @@ end
 
 -- 2.8.12: 죽음 · 부활에 따라 모습 바꾸기
 local function ApplyFormColors()
+  core.texture:SetVertexColor(form.core[1], form.core[2], form.core[3], 1)
+  glint.texture:SetVertexColor(form.glint[1], form.glint[2], form.glint[3], 1)
+  converge1.texture:SetVertexColor(form.converge[1], form.converge[2], form.converge[3], 1)
+  converge2.texture:SetVertexColor(form.converge[1], form.converge[2], form.converge[3], 1)
   orb.texture:SetVertexColor(form.orb[1], form.orb[2], form.orb[3], form.orb[4])
   circle.texture:SetVertexColor(form.circle[1], form.circle[2], form.circle[3], form.circle[4])
   modelRegion.baseAlpha = form.modelAlpha
