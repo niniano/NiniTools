@@ -183,12 +183,40 @@ local coreGlow = CreateTextureRegion("Navi Glow Alive 19", 30, 30, 52, 41, "Bonu
 local sparkleRegions = { sparkRegion, coreGlow }
 local SPARKLE_ON = NT.FOREVER and true or false
 
+-- 2.8.15: 본섭용 빛줄기 대신 = 요정 모델이 원래 하는 「뱅그르 돌고 팡 터지는」 움직임을 크게.
+--   같은 요정 모델(166890)을 1.5배 크기 · 옅게(35%) 요정 뒤에 하나 더 둔다. 앞의 요정은 그대로라 모양은 또렷.
+local ECHO_SCALE, ECHO_ALPHA = 1.5, 0.35
+local echoRegion = CreateFrame("Frame", nil, mouseFrame)
+echoRegion.baseWidth, echoRegion.baseHeight = modelRegion.baseWidth * ECHO_SCALE, modelRegion.baseHeight * ECHO_SCALE
+echoRegion.baseX, echoRegion.baseY = modelRegion.baseX, modelRegion.baseY
+echoRegion.baseAlpha = ECHO_ALPHA
+echoRegion:SetSize(echoRegion.baseWidth, echoRegion.baseHeight)
+echoRegion:SetPoint("CENTER", mouseFrame, "CENTER", echoRegion.baseX, echoRegion.baseY)
+local echoModel = CreateFrame("PlayerModel", nil, echoRegion)
+echoModel:SetAllPoints(echoRegion)
+if echoModel.SetKeepModelOnHide then pcall(echoModel.SetKeepModelOnHide, echoModel, true) end
+local function ConfigureEcho()
+  pcall(echoModel.SetModel, echoModel, 166890)
+  if echoModel.SetPortraitZoom then pcall(echoModel.SetPortraitZoom, echoModel, 0) end
+  if echoModel.ClearTransform then pcall(echoModel.ClearTransform, echoModel) end
+  if echoModel.SetPosition then pcall(echoModel.SetPosition, echoModel, -5.05, 0, -1.9) end
+  if echoModel.SetFacing then pcall(echoModel.SetFacing, echoModel, 0) end
+end
+local ECHO_ON = not NT.FOREVER
+if ECHO_ON then
+  ConfigureEcho()
+  local configureMain = ConfigureModel
+  ConfigureModel = function() configureMain(); ConfigureEcho() end
+  sparkleRegions[#sparkleRegions + 1] = echoRegion
+end
+
 background:SetFrameLevel(mouseFrame:GetFrameLevel()+1)
 modelRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+2)
 orb:SetFrameLevel(mouseFrame:GetFrameLevel()+3)
 circle:SetFrameLevel(mouseFrame:GetFrameLevel()+4)
 coreGlow:SetFrameLevel(mouseFrame:GetFrameLevel()+5)
 sparkRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+6)
+echoRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+1)
 
 local pulseRegions = {background,orb,circle}
 local born = GetTime()
@@ -240,7 +268,10 @@ local function ApplyVisibility(show,db)
   modelRegion:SetShown(show)
   orb:SetShown(show and glowOn)
   circle:SetShown(show and ringOn)
-  for _,r in ipairs(sparkleRegions) do r:SetShown(SPARKLE_ON and show and glowOn and not form.shift) end
+  for _,r in ipairs(sparkleRegions) do
+    local on = (r == echoRegion) and ECHO_ON or SPARKLE_ON
+    r:SetShown(on and show and glowOn and not form.shift)
+  end
 end
 
 -- ---------------------------------------------------------------------------
@@ -482,6 +513,8 @@ local function CursorOnUpdate()
     local gm=GlowMul(db)
     coreGlow:SetAlpha(coreGlow.baseAlpha*p*gm)
     sparkRegion:SetAlpha(p)
+    echoRegion:SetAlpha(echoRegion.baseAlpha*p)
+    echoRegion:SetSize(echoRegion.baseWidth*scale*f,echoRegion.baseHeight*scale*f)
     sparkRegion:SetSize(sparkRegion.baseWidth*scale*f,sparkRegion.baseHeight*scale*f)
     background:SetAlpha(background.baseAlpha*p*gm)
     orb:SetAlpha(orb.baseAlpha*p*gm)
@@ -503,6 +536,8 @@ local function CursorOnUpdate()
     coreGlow:SetAlpha(coreGlow.baseAlpha*gm)
     ApplyPulse(coreGlow,factor,scale)
     sparkRegion:SetAlpha(1)
+    echoRegion:SetAlpha(echoRegion.baseAlpha)
+    echoRegion:SetSize(echoRegion.baseWidth*scale,echoRegion.baseHeight*scale)
     sparkRegion:SetSize(sparkRegion.baseWidth*scale,sparkRegion.baseHeight*scale)
   end
 end

@@ -13,6 +13,7 @@
 
 ## 2.8.15
 - 본섭: conjureitem 반짝임 + coreGlow 숨김 (SPARKLE_ON = NT.FOREVER) · 사용자 본섭 영상: 요정 머리 쪽 푸른 빛이 모양을 뭉갬 (2.8.14 의 밝기 슬라이더는 잘못 짚은 것)
+- 본섭 대체: 같은 요정 모델 166890 을 1.5배 · 35% 로 요정 뒤에 (echoRegion · ECHO_ON = not FOREVER) · 실게임 확인 필요
 - naviGlowAlpha 기본 100 (naviGlowAlphaV=2 로 60 → 100 한 번 되돌림)
 
 ## 2.8.14
