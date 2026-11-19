@@ -6,6 +6,11 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.15", flavor = "retail", cards = {
+    { title = "Navi 요정 모양 또렷하게", lines = {
+      "요정 머리 쪽에 뭉쳐 보이던 푸른 빛(가운데 반짝임)을 본섭에서는 뺐습니다. 설정 미리보기처럼 요정 모양이 또렷하게 보입니다.",
+    } },
+  } },
   { version = "2.8.14", cards = {
     { title = "Navi 가운데 빛 밝기", lines = {
       "가운데 파란 빛이 요정 모양을 덮어 잘 안 보이면 사운드 & Navi → Navi · 마우스 커서 → 「가운데 빛」을 낮추세요 (기본 60%).",

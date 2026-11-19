@@ -3151,7 +3151,7 @@ function UI:BuildMedia()
   p.naviScaleRow:ClearAllPoints(); p.naviScaleRow:SetPoint("TOPLEFT",18,-46); p.naviScaleRow:SetSize(420,34)
   -- 2.8.13: 가운데 파란 빛 밝기 (요정 모양이 묻히면 낮추기)
   p.naviGlowRow=self:SliderRow(navi.body,"가운데 빛",-88,20,100,5,
-    function() return NT.GetNaviGlowAlpha and NT:GetNaviGlowAlpha() or 60 end,
+    function() return NT.GetNaviGlowAlpha and NT:GetNaviGlowAlpha() or 100 end,
     function(v) if NT.SetNaviGlowAlpha then NT:SetNaviGlowAlpha(v) end end,
     function(v) return math.floor(v+.5).."%" end)
   p.naviGlowRow:ClearAllPoints(); p.naviGlowRow:SetPoint("TOPLEFT",18,-84); p.naviGlowRow:SetSize(420,34)
@@ -3233,7 +3233,7 @@ function UI:BuildMedia()
     end
     pvBackground:SetShown(enabled and glow); pvOrb:SetShown(enabled and glow); pvCircle:SetShown(enabled and ring); pvModelRegion:SetShown(enabled); cursorGlyph:SetShown(enabled)
     geometry(pvBackground,pulse); geometry(pvOrb,pulse); geometry(pvCircle,pulse); geometry(pvModelRegion,1)
-    local pvGm=(NT.GetNaviGlowAlpha and NT:GetNaviGlowAlpha() or 60)/100
+    local pvGm=(NT.GetNaviGlowAlpha and NT:GetNaviGlowAlpha() or 100)/100
     pvBackground:SetAlpha(enabled and pvBackground.baseAlpha*pvGm or .15); pvOrb:SetAlpha(enabled and pvGm or .15); pvCircle:SetAlpha(enabled and 1 or .15); pvModelRegion:SetAlpha(enabled and pvModelRegion.baseAlpha or .15)
     cursorGlyph:SetAlpha(enabled and .88 or .18)
   end)

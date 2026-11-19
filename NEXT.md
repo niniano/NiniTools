@@ -11,6 +11,10 @@
   · 인던 보스 모듈(LittleWigs)이 없어 BigWigs 가 안 울리면 → 니니툴 Camelot 전용으로 ENCOUNTER_END 성공 + 던전(party)일 때 재생
   · BigWigs 가 이미 울린 킬은 건너뛰어 두 번 안 나게 · 켜고 끄는 스위치
 
+## 2.8.15
+- 본섭: conjureitem 반짝임 + coreGlow 숨김 (SPARKLE_ON = NT.FOREVER) · 사용자 본섭 영상: 요정 머리 쪽 푸른 빛이 모양을 뭉갬 (2.8.14 의 밝기 슬라이더는 잘못 짚은 것)
+- naviGlowAlpha 기본 100 (naviGlowAlphaV=2 로 60 → 100 한 번 되돌림)
+
 ## 2.8.14
 - Navi 「가운데 빛」 밝기 슬라이더 (naviGlowAlpha 20~100 · 기본 60): background · orb · coreGlow 알파에 곱함 (11/19 본섭 영상: 파란 빛이 요정 모양 가림)
 - 본섭에서 conjureitem(165816) 빛줄기가 포에버처럼 안 보임 (사용자 본섭 영상) · 포에버는 잘 나옴 → 본섭용 대체 효과는 미정

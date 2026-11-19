@@ -35,7 +35,12 @@ local function getDB()
   db.naviCursorRingEnabled=true   -- 2.7.1: 링 · 반짝임은 항상 켬 (예전에 꺼 둔 값도 켬)
   db.naviCursorGlowEnabled=true
   if db.naviCursorScale==nil then db.naviCursorScale=100 end
-  if db.naviGlowAlpha==nil then db.naviGlowAlpha=60 end   -- 2.8.13: 가운데 파란 빛 밝기 (요정 모양이 묻히지 않게)
+  -- 2.8.14: 가운데 파란 빛 밝기. 2.8.15: 기본 100% 로 (2.8.14 의 60% 기본값은 한 번만 100% 로 되돌림)
+  if db.naviGlowAlphaV~=2 then
+    if db.naviGlowAlpha==nil or db.naviGlowAlpha==60 then db.naviGlowAlpha=100 end
+    db.naviGlowAlphaV=2
+  end
+  if db.naviGlowAlpha==nil then db.naviGlowAlpha=100 end
   if db.naviTrail==nil then db.naviTrail=true end
   if db.naviDeadForm==nil then db.naviDeadForm=true end
   if db.naviCastRing==nil then db.naviCastRing=true end
@@ -174,7 +179,9 @@ do
 end
 
 local coreGlow = CreateTextureRegion("Navi Glow Alive 19", 30, 30, 52, 41, "BonusChest-CircleGlow", {0,0.72156864404678,1,1}, 1)
+-- 2.8.15: 본섭은 이 주문 효과가 빛줄기 대신 요정 머리 쪽 뭉친 빛으로 그려져 요정 모양을 뭉갬 → 포에버에서만 보임
 local sparkleRegions = { sparkRegion, coreGlow }
+local SPARKLE_ON = NT.FOREVER and true or false
 
 background:SetFrameLevel(mouseFrame:GetFrameLevel()+1)
 modelRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+2)
@@ -190,7 +197,7 @@ local lastScale = nil
 
 -- 2.8.13: 가운데 파란 빛(배경 · 구슬 · 하늘색 빛) 밝기 배율. 바깥 고리 · 요정 모델 · 반짝임은 그대로.
 local function GlowMul(db)
-  return clamp((db and tonumber(db.naviGlowAlpha)) or 60,20,100)/100
+  return clamp((db and tonumber(db.naviGlowAlpha)) or 100,20,100)/100
 end
 
 local function GetScale(db)
@@ -233,7 +240,7 @@ local function ApplyVisibility(show,db)
   modelRegion:SetShown(show)
   orb:SetShown(show and glowOn)
   circle:SetShown(show and ringOn)
-  for _,r in ipairs(sparkleRegions) do r:SetShown(show and glowOn and not form.shift) end
+  for _,r in ipairs(sparkleRegions) do r:SetShown(SPARKLE_ON and show and glowOn and not form.shift) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -592,7 +599,7 @@ end
 
 function NT:GetNaviGlowAlpha()
   local db=getDB()
-  return db and math.floor(GlowMul(db)*100+0.5) or 60
+  return db and math.floor(GlowMul(db)*100+0.5) or 100
 end
 
 function NT:SetNaviGlowAlpha(value)
