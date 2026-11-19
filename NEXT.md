@@ -12,8 +12,7 @@
   · BigWigs 가 이미 울린 킬은 건너뛰어 두 번 안 나게 · 켜고 끄는 스위치
 
 ## 2.8.15
-- 본섭: conjureitem 반짝임 + coreGlow 숨김 (SPARKLE_ON = NT.FOREVER) · 사용자 본섭 영상: 요정 머리 쪽 푸른 빛이 모양을 뭉갬 (2.8.14 의 밝기 슬라이더는 잘못 짚은 것)
-- 본섭 대체: 같은 요정 모델 166890 을 1.5배 · 35% 로 요정 뒤에 (echoRegion · ECHO_ON = not FOREVER) · 실게임 확인 필요
+- 본섭: conjureitem 반짝임 틀 2배 (RETAIL_SPARK_SCALE) → 포에버 빛줄기 크기 · coreGlow 본섭에서 숨김 · 사용자 본섭 영상: 효과가 작게 머리에 뭉쳐 요정 모양 뭉갬 (2.8.14 밝기 슬라이더는 잘못 짚은 것) · 실게임 확인 필요
 - naviGlowAlpha 기본 100 (naviGlowAlphaV=2 로 60 → 100 한 번 되돌림)
 
 ## 2.8.14
