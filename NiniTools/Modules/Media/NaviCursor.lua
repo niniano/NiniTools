@@ -4,6 +4,9 @@ if not NT then return end
 -- Alive-only Navi cursor integrated into NiniTools.
 -- No death state, no AFK test, no secure state driver.
 -- 2.3.0: ring/glow/scale settings used by the unified Sound & Navi UI.
+-- 2.8.12: 날아간 자리에 남는 꼬리(궤적) · 죽으면 다른 모습(분홍 요정 · 커서 가운데) ·
+--         Navi 둘레 시전바 링 · (포에버) 자동공격 링. 모두 켜고 끄기 가능 · 기본 켬.
+--         그림(NaviRing · NaviDot)은 니니툴이 직접 만든 것. 다른 애드온 · 위크오라 코드나 그림은 쓰지 않음.
 
 local driver = CreateFrame("Frame")
 local mouseFrame = CreateFrame("Frame", nil, UIParent)
@@ -26,6 +29,9 @@ local function getDB()
   db.naviCursorRingEnabled=true   -- 2.7.1: 링 · 반짝임은 항상 켬 (예전에 꺼 둔 값도 켬)
   db.naviCursorGlowEnabled=true
   if db.naviCursorScale==nil then db.naviCursorScale=100 end
+  if db.naviTrail==nil then db.naviTrail=true end
+  if db.naviDeadForm==nil then db.naviDeadForm=true end
+  if db.naviCastRing==nil then db.naviCastRing=true end
   db.naviCursorScale=math.floor(clamp(db.naviCursorScale,70,140)+0.5)
   return db
 end
@@ -97,11 +103,22 @@ local model = CreateFrame("PlayerModel", nil, modelRegion)
 model:SetAllPoints(modelRegion)
 if model.SetKeepModelOnHide then pcall(model.SetKeepModelOnHide, model, true) end
 
+-- 2.8.12: 살아 있을 때 / 죽었을 때 모습
+local FORMS = {
+  alive = { model = 166890, pos = { -5.05, 0, -1.9 }, modelAlpha = 0.5, shift = false,
+    orb = { 0.4627451300621, 0.54901963472366, 1, 0.65000000596046 }, circle = { 0, 0.26274511218071, 1, 1 },
+    trail = { 0.15, 0.42, 1 } },
+  dead = { model = 166351, pos = { -10.9, 0, -2 }, modelAlpha = 1, shift = true,
+    orb = { 1, 0.88235300779343, 0.89803928136826, 0.51 }, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
+    trail = { 1, 0.55, 0.72 } },
+}
+local form = FORMS.alive
+
 local function ConfigureModel()
-  pcall(model.SetModel, model, 166890)
+  pcall(model.SetModel, model, form.model)
   if model.SetPortraitZoom then pcall(model.SetPortraitZoom, model, 0) end
   if model.ClearTransform then pcall(model.ClearTransform, model) end
-  if model.SetPosition then pcall(model.SetPosition, model, -5.05, 0, -1.9) end
+  if model.SetPosition then pcall(model.SetPosition, model, form.pos[1], form.pos[2], form.pos[3]) end
   if model.SetFacing then pcall(model.SetFacing, model, 0) end
   if model.SetAnimation then pcall(model.SetAnimation, model, 0) end
 end
@@ -139,9 +156,16 @@ local function GetScale(db)
   return clamp((db and db.naviCursorScale) or 100,70,140)/100
 end
 
+-- 죽은 모습은 커서 한가운데 (살아 있을 때는 커서 오른쪽 위)
+local function Shift()
+  if form.shift then return -modelRegion.baseX, -modelRegion.baseY end
+  return 0, 0
+end
+
 local function ApplyAnchor(region, scale)
+  local sx, sy = Shift()
   region:ClearAllPoints()
-  region:SetPoint("CENTER", mouseFrame, "CENTER", region.baseX*scale, region.baseY*scale)
+  region:SetPoint("CENTER", mouseFrame, "CENTER", (region.baseX+sx)*scale, (region.baseY+sy)*scale)
 end
 
 local function ApplyGeometry(db, force)
@@ -151,8 +175,8 @@ local function ApplyGeometry(db, force)
   ApplyAnchor(background,scale)
   ApplyAnchor(orb,scale)
   ApplyAnchor(circle,scale)
-  modelRegion:ClearAllPoints()
-  modelRegion:SetPoint("CENTER",mouseFrame,"CENTER",modelRegion.baseX*scale,modelRegion.baseY*scale)
+  ApplyAnchor(modelRegion,scale)
+  if NT.NaviRingsLayout then NT.NaviRingsLayout(scale) end
   return scale
 end
 
@@ -169,11 +193,200 @@ local function ApplyVisibility(show,db)
   circle:SetShown(show and ringOn)
 end
 
+-- ---------------------------------------------------------------------------
+-- 2.8.12: 꼬리(궤적). 움직일 때만 점을 남기고, 점은 0.5초 동안 작아지며 사라진다.
+-- 점 16개를 돌려 쓰므로 프레임마다 새로 만드는 것 없음. 멈춰 있고 남은 점이 없으면 아무것도 안 함.
+-- ---------------------------------------------------------------------------
+local TRAIL_N, TRAIL_LIFE, TRAIL_SIZE, TRAIL_GAP = 16, 0.5, 15, 6
+local DOT = "Interface\\AddOns\\NiniTools\\Media\\NaviDot.tga"
+local trailFrame = CreateFrame("Frame", nil, UIParent)
+trailFrame:SetAllPoints(UIParent)
+trailFrame:SetFrameStrata("MEDIUM")
+trailFrame:SetFrameLevel(math.max(0, mouseFrame:GetFrameLevel()))
+local trail, trailHead, trailAlive = {}, 0, 0
+local lastEmitX, lastEmitY, lastTick
+for i = 1, TRAIL_N do
+  local t = trailFrame:CreateTexture(nil, "ARTWORK")
+  t:SetTexture(DOT)
+  t:SetBlendMode("ADD")
+  t:Hide()
+  trail[i] = { tex = t, age = TRAIL_LIFE }
+end
+
+local function ClearTrail()
+  for i = 1, TRAIL_N do trail[i].age = TRAIL_LIFE; trail[i].tex:Hide() end
+  trailAlive, lastEmitX, lastEmitY = 0, nil, nil
+end
+
+local function UpdateTrail(px, py, scale, on)
+  local now = GetTime()
+  local dt = lastTick and math.min(0.1, now - lastTick) or 0
+  lastTick = now
+  if on then
+    if not lastEmitX then lastEmitX, lastEmitY = px, py end
+    local dx, dy = px - lastEmitX, py - lastEmitY
+    if dx * dx + dy * dy >= (TRAIL_GAP * scale) ^ 2 then
+      trailHead = trailHead % TRAIL_N + 1
+      local d = trail[trailHead]
+      if d.age >= TRAIL_LIFE then trailAlive = trailAlive + 1 end
+      d.age = 0
+      d.size = TRAIL_SIZE * scale * (0.8 + 0.4 * math.random())
+      local c = form.trail
+      d.tex:SetVertexColor(c[1], c[2], c[3], 1)
+      d.tex:ClearAllPoints()
+      d.tex:SetPoint("CENTER", UIParent, "BOTTOMLEFT", px, py)
+      d.tex:Show()
+      lastEmitX, lastEmitY = px, py
+    end
+  end
+  if trailAlive <= 0 then return end
+  for i = 1, TRAIL_N do
+    local d = trail[i]
+    if d.age < TRAIL_LIFE then
+      d.age = d.age + dt
+      if d.age >= TRAIL_LIFE then
+        d.tex:Hide(); trailAlive = trailAlive - 1
+      else
+        local a = 1 - d.age / TRAIL_LIFE
+        d.tex:SetAlpha(a * 0.85)
+        local sz = d.size * (0.3 + 0.7 * a)
+        d.tex:SetSize(sz, sz)
+      end
+    end
+  end
+end
+
+-- ---------------------------------------------------------------------------
+-- 2.8.12: Navi 둘레 링. 안쪽 = 시전바 (채널은 줄어듦), 바깥쪽 = 자동공격 · 원거리 자동 사격 (포에버만).
+-- 쿨다운 틀의 원형 채우기에 니니툴 링 그림을 씌운다. 끝나면 스스로 숨는다.
+-- ---------------------------------------------------------------------------
+local RING = "Interface\\AddOns\\NiniTools\\Media\\NaviRing.tga"
+local function MakeRing(size, r, g, b)
+  local holder = CreateFrame("Frame", nil, mouseFrame)
+  holder.baseSize = size
+  holder:SetSize(size, size)
+  holder:SetFrameLevel(mouseFrame:GetFrameLevel() + 5)
+  holder.bg = holder:CreateTexture(nil, "BACKGROUND")
+  holder.bg:SetAllPoints()
+  holder.bg:SetTexture(RING)
+  holder.bg:SetVertexColor(0, 0, 0, 0.5)
+  local cd = CreateFrame("Cooldown", nil, holder)
+  cd:SetAllPoints()
+  if cd.SetSwipeTexture then pcall(cd.SetSwipeTexture, cd, RING) end
+  if cd.SetSwipeColor then pcall(cd.SetSwipeColor, cd, r, g, b, 1) end
+  if cd.SetDrawEdge then pcall(cd.SetDrawEdge, cd, false) end
+  if cd.SetDrawBling then pcall(cd.SetDrawBling, cd, false) end
+  if cd.SetHideCountdownNumbers then pcall(cd.SetHideCountdownNumbers, cd, true) end
+  if cd.SetUseCircularEdge then pcall(cd.SetUseCircularEdge, cd, true) end
+  cd:SetScript("OnCooldownDone", function() holder:Hide() end)
+  holder.cd = cd
+  holder.color = { r, g, b }
+  holder:Hide()
+  function holder:Run(startSec, durSec, shrinking, cr, cg, cb)
+    if not durSec or durSec <= 0 then self:Hide(); return end
+    if cr and self.cd.SetSwipeColor then pcall(self.cd.SetSwipeColor, self.cd, cr, cg, cb, 1) end
+    if self.cd.SetReverse then pcall(self.cd.SetReverse, self.cd, not shrinking) end
+    self:Show()
+    pcall(self.cd.SetCooldown, self.cd, startSec, durSec)
+  end
+  function holder:Stop()
+    if self.cd.Clear then pcall(self.cd.Clear, self.cd) end
+    self:Hide()
+  end
+  return holder
+end
+
+local castRing = MakeRing(50, 0, 0.6588, 1)
+local swingRing = MakeRing(62, 0, 1, 0.8118)
+local RANGED_COLOR = { 0.6078, 0.9216, 1 }
+
+NT.NaviRingsLayout = function(scale)
+  scale = scale or 1
+  local sx, sy = Shift()
+  for _, ring in ipairs({ castRing, swingRing }) do
+    ring:SetSize(ring.baseSize * scale, ring.baseSize * scale)
+    ring:ClearAllPoints()
+    ring:SetPoint("CENTER", mouseFrame, "CENTER", (modelRegion.baseX + sx) * scale, (modelRegion.baseY + sy) * scale + 4 * scale)
+  end
+end
+
+local function ringsOn()
+  local db = getDB()
+  return db and db.naviCursorEnabled ~= false and db.naviCastRing ~= false
+end
+
+local function RefreshCast()
+  if not ringsOn() then castRing:Stop(); return end
+  local now = GetTime()
+  local ok, name, _, _, startMS, endMS = pcall(UnitCastingInfo, "player")
+  if ok and name and type(startMS) == "number" and type(endMS) == "number" then
+    castRing:Run(startMS / 1000, (endMS - startMS) / 1000, false)
+    return
+  end
+  ok, name, _, _, startMS, endMS = pcall(UnitChannelInfo, "player")
+  if ok and name and type(startMS) == "number" and type(endMS) == "number" then
+    castRing:Run(startMS / 1000, (endMS - startMS) / 1000, true)
+    return
+  end
+  castRing:Stop()
+end
+
+local castEvents = CreateFrame("Frame")
+for _, ev in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
+  "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_UPDATE", "UNIT_SPELLCAST_CHANNEL_STOP" }) do
+  if castEvents.RegisterUnitEvent then pcall(castEvents.RegisterUnitEvent, castEvents, ev, "player")
+  else pcall(castEvents.RegisterEvent, castEvents, ev) end
+end
+castEvents:SetScript("OnEvent", function(_, _, unit)
+  if unit and unit ~= "player" then return end
+  RefreshCast()
+end)
+
+-- 자동공격 (포에버만: 본섭 12.x 는 전투 기록 이벤트를 애드온이 못 읽음)
+if NT.FOREVER then
+  local swingEvents = CreateFrame("Frame")
+  local playerGUID
+  local AUTO_SHOT = { [75] = true, [5019] = true }   -- 자동 사격 · 마법봉 쏘기
+  pcall(swingEvents.RegisterEvent, swingEvents, "COMBAT_LOG_EVENT_UNFILTERED")
+  pcall(swingEvents.RegisterEvent, swingEvents, "PLAYER_REGEN_ENABLED")
+  if swingEvents.RegisterUnitEvent then pcall(swingEvents.RegisterUnitEvent, swingEvents, "UNIT_SPELLCAST_SUCCEEDED", "player")
+  else pcall(swingEvents.RegisterEvent, swingEvents, "UNIT_SPELLCAST_SUCCEEDED") end
+  swingEvents:SetScript("OnEvent", function(_, event, ...)
+    if event == "PLAYER_REGEN_ENABLED" then swingRing:Stop(); return end
+    if not ringsOn() then return end
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+      local unit, _, spellID = ...
+      if unit == "player" and AUTO_SHOT[spellID] and UnitRangedDamage then
+        local speed = UnitRangedDamage("player")
+        if type(speed) == "number" and speed > 0 then
+          swingRing:Run(GetTime(), speed, true, RANGED_COLOR[1], RANGED_COLOR[2], RANGED_COLOR[3])
+        end
+      end
+      return
+    end
+    if not CombatLogGetCurrentEventInfo then return end
+    local _, sub, _, sourceGUID = CombatLogGetCurrentEventInfo()
+    if sub ~= "SWING_DAMAGE" and sub ~= "SWING_MISSED" then return end
+    playerGUID = playerGUID or UnitGUID("player")
+    if sourceGUID ~= playerGUID then return end
+    local offhand
+    if sub == "SWING_DAMAGE" then offhand = select(21, CombatLogGetCurrentEventInfo())
+    else offhand = select(13, CombatLogGetCurrentEventInfo()) end
+    if offhand then return end   -- 주무기 기준
+    local speed = UnitAttackSpeed and UnitAttackSpeed("player")
+    if type(speed) == "number" and speed > 0 then
+      local c = swingRing.color
+      swingRing:Run(GetTime(), speed, true, c[1], c[2], c[3])
+    end
+  end)
+end
+
 local function CursorOnUpdate()
   local db=getDB()
   if not db or db.naviCursorEnabled==false then
     driver:SetScript("OnUpdate",nil)
     ApplyVisibility(false,db)
+    ClearTrail(); castRing:Stop(); swingRing:Stop()
     wasShown=false
     return
   end
@@ -190,6 +403,10 @@ local function CursorOnUpdate()
   local invScale=1/UIParent:GetEffectiveScale()
   mouseFrame:ClearAllPoints()
   mouseFrame:SetPoint("CENTER",UIParent,"BOTTOMLEFT",x*invScale,y*invScale)
+  if db.naviTrail~=false or trailAlive>0 then
+    local sx,sy=Shift()
+    UpdateTrail(x*invScale+(modelRegion.baseX+sx)*scale,y*invScale+(modelRegion.baseY+sy)*scale,scale,db.naviTrail~=false)
+  end
 
   local age=GetTime()-born
   if age<0.25 then
@@ -225,6 +442,31 @@ local function SetDriverActive(active)
   else
     driver:SetScript("OnUpdate",nil)
   end
+end
+
+-- 2.8.12: 죽음 · 부활에 따라 모습 바꾸기
+local function ApplyFormColors()
+  orb.texture:SetVertexColor(form.orb[1], form.orb[2], form.orb[3], form.orb[4])
+  circle.texture:SetVertexColor(form.circle[1], form.circle[2], form.circle[3], form.circle[4])
+  modelRegion.baseAlpha = form.modelAlpha
+end
+
+local function RefreshForm()
+  local db = getDB()
+  local dead = false
+  if db and db.naviDeadForm ~= false then
+    local ok, v = pcall(UnitIsDeadOrGhost, "player")
+    dead = ok and v == true
+  end
+  local want = dead and FORMS.dead or FORMS.alive
+  if want == form then return end
+  form = want
+  ApplyFormColors()
+  ConfigureModel()
+  ApplyGeometry(db, true)
+  ClearTrail()
+  castRing:Stop(); swingRing:Stop()
+  born = GetTime()
 end
 
 function NT:IsNaviCursorEnabled()
@@ -291,6 +533,22 @@ function NT:SetNaviCursorScale(value)
   return true
 end
 
+-- 2.8.12: 꼬리 · 죽은 모습 · 링 켜고 끄기 (키: naviTrail · naviDeadForm · naviCastRing)
+function NT:SetNaviCursorOption(key, enabled)
+  local db=getDB()
+  if not db then return false end
+  db[key]=enabled and true or false
+  if key=="naviTrail" and not db.naviTrail then ClearTrail() end
+  if key=="naviDeadForm" then RefreshForm() end
+  if key=="naviCastRing" then if db.naviCastRing then RefreshCast() else castRing:Stop(); swingRing:Stop() end end
+  return true
+end
+
+-- 진단용 (자가진단 · 시험): 남은 꼬리 점 수, 죽은 모습 여부, 시전 링 · 자동공격 링 보임
+function NT:NaviCursorState()
+  return trailAlive, form == FORMS.dead, castRing:IsShown() and true or false, swingRing:IsShown() and true or false
+end
+
 function NT:ResetNaviCursor()
   local db=getDB()
   born=GetTime()
@@ -302,7 +560,10 @@ end
 
 local events=_G.NiniTools.EventDispatcher:CreateProxy("Media.NaviCursor")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
-events:SetScript("OnEvent",function()
+for _,ev in ipairs({"PLAYER_DEAD","PLAYER_ALIVE","PLAYER_UNGHOST"}) do pcall(events.RegisterEvent,events,ev) end
+events:SetScript("OnEvent",function(_,event)
+  if event~="PLAYER_ENTERING_WORLD" then RefreshForm(); return end
+  RefreshForm()
   local db=getDB()
   if db and db.naviCursorEnabled~=false then
     ConfigureModel()

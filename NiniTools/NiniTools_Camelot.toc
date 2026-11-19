@@ -28,6 +28,7 @@ Modules\Media\Jump.lua
 Modules\Media\NaviCursor.lua
 Modules\Media\NaviChat.lua
 Modules\Media\CallMe.lua
+Modules\Media\UIScale.lua
 Modules\Combat\CombatTimer.lua
 Modules\Combat\DungeonRun.lua
 Modules\Social\PartyGreeting.lua

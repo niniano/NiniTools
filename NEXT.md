@@ -16,6 +16,9 @@
 - 화면 & 편의 세부 탭 (UI:AccordionGroups · db.subTabs)
 - NSRT 보관함: 한꺼번에 사라지면(3개 이상 또는 2개 이상 & 절반 이상) 보관함에 남김 · 1~2개는 지운 것으로
 - 포에버 던전 기록 (Modules/Combat/DungeonRun.lua · Camelot TOC 만)
+- 마우스 Navi: 꼬리 · 죽은 모습(모델 166351 · 분홍) · 시전 링 / 포에버 자동공격 링(CLEU) · 그림 NaviRing/NaviDot 자체 제작
+  (11/19 사용자: 포에버 UntrueUI Navi 위크오라는 안 쓰고 이것만. 위크오라 코드 · Fairy/NaviTarget 그림 · 젤다 소리는 안 넣음)
+- 포에버 UI 배율 자동 (Modules/Media/UIScale.lua · 768/세로 · 기본 꺼짐)
 - 목조르기 커버리지에 파열 추가는 안 하기로 (11/19 · 추적하는 오라가 늘수록 이름표 오라 훑기가 늘어 부하 · Naowh Dot Coverage 끄고 끊김 없어짐)
 
 ## 2.8.11

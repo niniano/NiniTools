@@ -1466,7 +1466,9 @@ local SEARCH_KEYWORDS={
   gtfo="바닥 경고음 GTFO BigWigs",
   effects="뜌미 승리 초읽기 점프 소리",
   callme="이름 호출 니니 별명",
-  navi="커서 마우스 Navi 채팅",
+  navi="커서 마우스 Navi 채팅 꼬리 궤적 시전바 자동공격 스윙 링 죽음",
+  uiscale="UI 배율 스케일 해상도 픽셀 퍼펙트 FHD QHD",
+  drun="던전 기록 런 스플릿 경험치 XP 골드",
   graphics="그래픽 CVar 최적화",
   waypoint="웨이포인트 길안내 기둥 목적지 핀",
   ctimer="전투 시간 타이머",
@@ -3147,6 +3149,17 @@ function UI:BuildMedia()
     function(v) if NT.SetNaviCursorScale then NT:SetNaviCursorScale(v) else mediaDB().naviCursorScale=math.floor(v+.5) end end,
     function(v) return math.floor(v+.5).."%" end)
   p.naviScaleRow:ClearAllPoints(); p.naviScaleRow:SetPoint("TOPLEFT",18,-46); p.naviScaleRow:SetSize(420,34)
+  -- 2.8.12: 꼬리 · 죽은 모습 · 둘레 링
+  p.naviOptRows={}
+  for i,opt in ipairs({
+    {"naviTrail","날아간 자리에 꼬리(궤적) 남기기"},
+    {"naviDeadForm","죽으면 Navi 모습 바뀜 (분홍 · 커서 가운데)"},
+    {"naviCastRing",NT.FOREVER and "Navi 둘레 시전바 · 자동공격 링" or "Navi 둘레 시전바 링"},
+  }) do
+    local row=self:Toggle(navi.body,opt[2],opt[1],mediaDB,function(v) if NT.SetNaviCursorOption then NT:SetNaviCursorOption(opt[1],v) end end,-84-(i-1)*36)
+    row:ClearAllPoints(); row:SetPoint("TOPLEFT",18,-84-(i-1)*36); row:SetSize(420,34)
+    p.naviOptRows[i]=row
+  end
 
   -- Animated preview using the same geometry/offsets as NaviCursor.lua.
   -- Keep a dedicated preview scale instead of collapsing every layer onto one center point.
@@ -3264,6 +3277,7 @@ function UI:BuildMedia()
 
     self.naviCursorRow:Refresh(); self.naviScaleRow:Refresh(); self.naviChatRow:Refresh(); self.naviFontRow:Refresh()
     local cursorOn=db.naviCursorEnabled~=false
+    for _,row in ipairs(self.naviOptRows or {}) do row:Refresh(); setControlEnabled(row,cursorOn) end
     local chatOn=db.naviChatEnabled~=false
     navi:SetEnabledState(cursorOn)
     navi:SetState(string.format("커서 %d%% · 채팅 %s",tonumber(db.naviCursorScale) or 100,chatOn and "ON" or "OFF"),cursorOn and "accent" or nil)
@@ -3490,6 +3504,18 @@ function UI:BuildQOL()
     if p.drunText.SetSpacing then p.drunText:SetSpacing(3) end
   end
 
+  -- 2.8.12: 포에버 UI 배율 자동 (픽셀 퍼펙트)
+  local USM=NT.UIScaleAuto
+  local uiscale=self:AccordionSection(p,"uiscale","UI 배율 자동","화면 해상도에 맞춰 픽셀 퍼펙트 배율 · FHD 0.711 · QHD 0.533 · 4K 0.711",112,false)
+  uiscale.forceHidden=not USM
+  if USM then
+    p.uiscaleRow=self:Toggle(uiscale.body,"UI 배율 자동 맞추기","enabled",function() return USM:GetDB() end,function(v) USM:SetEnabled(v); UI:RefreshVisiblePage() end,-8)
+    p.uiscaleText=self:Font(uiscale.body,9,"",C.muted)
+    p.uiscaleText:SetPoint("TOPLEFT",22,-52); p.uiscaleText:SetPoint("RIGHT",-22,0); p.uiscaleText:SetJustifyH("LEFT")
+    local usNote=self:Font(uiscale.body,8,"끄면 켜기 전 배율로 되돌립니다 · QHD 는 글자 · 창이 작아 보일 수 있어요",C.muted)
+    usNote:SetPoint("TOPLEFT",22,-74); usNote:SetPoint("RIGHT",-22,0); usNote:SetJustifyH("LEFT")
+  end
+
   -- 3) Chat bubbles -------------------------------------------------------------------
   local bubble=self:AccordionSection(p,"bubble","채팅 말풍선","머리 위 채팅 말풍선 글자 크기를 8~20px 사이에서 조절",100,false)
   p.bubbleSlider=self:SliderRow(bubble.body,"말풍선 글자 크기",-16,8,20,1,function()
@@ -3564,7 +3590,7 @@ function UI:BuildQOL()
   self:AccordionGroups(p,{
     {"screen","화면 표시"},{"combat","전투 & 던전"},{"party","파티 & 매크로"},{"nini","NiniTools 창"},
   },"QOL",{
-    graphics="screen",waypoint="screen",bubble="screen",
+    graphics="screen",waypoint="screen",bubble="screen",uiscale="screen",
     ctimer="combat",drun="combat",
     greet="party",fmacro="party",finder="party",
     minimap="nini",window="nini",
@@ -3592,6 +3618,14 @@ function UI:BuildQOL()
       local on=FMM:GetDB().enabled~=false
       fmac:SetEnabledState(on)
       fmac:SetState(on and (FMM.MARKER_NAMES[FMM:GetDB().marker] or "ON") or "OFF",on and "accent" or "warn")
+    end
+    if USM and self.uiscaleRow then
+      self.uiscaleRow:Refresh()
+      self.uiscaleText:SetText(USM:StatusLine())
+      local on=USM:IsEnabled()
+      uiscale:SetEnabledState(on)
+      local t=USM:Target()
+      uiscale:SetState(t and string.format("%.3f",t) or "?",on and "accent" or "warn")
     end
     if DRM and self.drunRow then
       self.drunRow:Refresh(); self.drunPanelRow:Refresh()
