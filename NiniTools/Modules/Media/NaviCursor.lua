@@ -7,6 +7,12 @@ if not NT then return end
 -- 2.8.12: 날아간 자리에 남는 꼬리(궤적) · 죽으면 다른 모습(분홍 요정 · 커서 가운데) ·
 --         Navi 둘레 시전바 링 · (포에버) 자동공격 링. 모두 켜고 끄기 가능 · 기본 켬.
 --         그림(NaviRing · NaviDot)은 니니툴이 직접 만든 것. 다른 애드온 · 위크오라 코드나 그림은 쓰지 않음.
+--
+-- 출처 · 고마운 분:
+--   Navi 커서의 모양 · 위치 · 색 · 모델 번호(살아 있을 때 166890 · 죽었을 때 166351)와 둘레 링 아이디어는
+--   Untrue 님의 「UntrueUI - Navi Cursor」 위크오라를 참고했다 (포에버판 https://wago.io/p7q_rWVGh).
+--   꼬리(궤적)는 그 위크오라와 함께 쓰는 Lumen 애드온의 꼬리에서 아이디어만 얻었다.
+--   Navi 는 닌텐도 「젤다의 전설」 캐릭터 이름이다. 니니툴은 닌텐도 · Untrue · Lumen 과 관계없다.
 
 local driver = CreateFrame("Frame")
 local mouseFrame = CreateFrame("Frame", nil, UIParent)

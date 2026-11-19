@@ -27,6 +27,12 @@ NiniTools는 차단/M+, 골드 기록, NSRT 개인 메모, 화면 편의, 사운
 - GTFO, 효과음, CallMe 이름 호출, Navi 마우스 커서
 - 골드 내역: 현재 소지금 스냅샷, 거래 기록, 필터/검색, 전투부대 은행
 
+[출처 · 고마운 분]
+- 마우스 Navi 커서 · Navi 채팅: Untrue 님의 「UntrueUI - Navi Cursor」 위크오라(wago.io · 포에버판 https://wago.io/p7q_rWVGh)의
+  모양 · 위치 · 색 · 모델 번호를 참고해 니니툴 코드로 새로 만들었습니다. 위크오라 코드 · 그림 · 소리는 들어 있지 않습니다.
+- Navi 꼬리(궤적): Lumen 애드온의 꼬리에서 아이디어를 얻었습니다 (그림은 니니툴이 직접 만듦).
+- Navi 는 닌텐도 「젤다의 전설」 캐릭터 이름입니다. 니니툴은 닌텐도 · Untrue · Lumen 과 관계없습니다.
+
 [Naowh Smart Reminders]
 - 도적 프로필: Nini Rogue M+ S2 - Safe Alpha
 - 암살/무법/잠행 3특성에 같은 프로필을 연결합니다.

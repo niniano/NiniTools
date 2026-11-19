@@ -3,6 +3,7 @@ if not NT then return end
 
 -- NiniTools NaviChat
 -- Reimplementation of the sparse "Chat Messages 3" feed.
+-- 출처: Untrue 님의 「UntrueUI - Navi Cursor」 위크오라 채팅 표시를 참고해 니니툴 코드로 새로 만든 것.
 -- AFK state is intentionally never queried because WoW 12.x can expose it
 -- as a restricted/secret value. Resting / combat / alive checks are guarded
 -- with pcall so a rejected state check simply suppresses the ordinary line.

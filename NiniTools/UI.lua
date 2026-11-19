@@ -3230,7 +3230,9 @@ function UI:BuildMedia()
     pvBackground:SetAlpha(enabled and pvBackground.baseAlpha or .15); pvOrb:SetAlpha(enabled and 1 or .15); pvCircle:SetAlpha(enabled and 1 or .15); pvModelRegion:SetAlpha(enabled and pvModelRegion.baseAlpha or .15)
     cursorGlyph:SetAlpha(enabled and .88 or .18)
   end)
-  local pvNote=self:Font(preview,8,"실제 Navi 오프셋 · 비율 · 알파를 그대로 축소 재현",C.muted); pvNote:SetPoint("BOTTOM",0,10)
+  local pvNote=self:Font(preview,8,"실제 Navi 오프셋 · 비율 · 알파를 그대로 축소 재현",C.muted); pvNote:SetPoint("BOTTOM",0,22)
+  -- 2.8.12: 출처 표기
+  local pvCredit=self:Font(preview,7,"모양 참고: Untrue 「UntrueUI - Navi Cursor」 · 꼬리 아이디어: Lumen",C.muted); pvCredit:SetPoint("BOTTOM",0,8)
   p.naviPreview=preview
 
   local sep=navi.body:CreateTexture(nil,"ARTWORK"); sep:SetColorTexture(C.border[1],C.border[2],C.border[3],.6); sep:SetPoint("TOPLEFT",18,-202); sep:SetPoint("TOPRIGHT",-18,-202); sep:SetHeight(1)
