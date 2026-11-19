@@ -2,6 +2,11 @@
 
 배포 ZIP에는 안 들어가는 메모입니다 (`NiniTools/` 폴더 밖).
 
+## 다음 버전 (2.8.16) 예약
+- 홈 「애드온 부하 (마지막 보스)」 카드: 애드온 이름이 길면 ms 숫자가 잘림 (예: 「EllesmereUIUnitFrames 0.4」 · 11/20 사용자 스샷)
+  → 숫자를 먼저 쓰거나(「0.4ms · EllesmereUIUnitFrames」) 이름 줄이기(EllesmereUI → EUI) · 넘치면 글자 작게 / 말줄임은 이름 쪽에만
+  · 아래 「최근 보스 풀 부하」 줄도 같은 이름 줄이기 맞추기
+
 ## 대기 (버전 미정)
 - 본섭 Navi 반짝임: 2.8.15 (conjureitem 1.3배) 도 사용자 맘에 아직 안 듦 (11/19 「여기까지만」). 다시 할 때는 사용자 본섭 영상 먼저 받고 원하는 모습 확인 후
 - 포에버 UI 배율 자동 (2.8.12 · 기본 꺼짐): 사용자가 써 보고 없앨지 둘지 정하기로 함 (11/19). 없애면 UIScale.lua · Camelot TOC 줄 · QOL uiscale 칸 · News/CHANGELOG/README 한 줄씩
