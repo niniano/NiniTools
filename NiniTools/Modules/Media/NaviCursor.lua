@@ -6,7 +6,7 @@ if not NT then return end
 -- 2.3.0: ring/glow/scale settings used by the unified Sound & Navi UI.
 -- 2.8.12: 날아간 자리에 남는 꼬리(궤적) · 죽으면 다른 모습(분홍 요정 · 커서 가운데) ·
 --         Navi 둘레 시전바 링 · (포에버) 자동공격 링. 모두 켜고 끄기 가능 · 기본 켬.
---         그림(NaviRing · NaviDot)은 니니툴이 직접 만든 것. 다른 애드온 · 위크오라 코드나 그림은 쓰지 않음.
+--         그림(NaviRing · NaviSpark)은 니니툴이 직접 만든 것. 다른 애드온 · 위크오라 코드나 그림은 쓰지 않음.
 --
 -- 출처 · 고마운 분:
 --   Navi 커서의 모양 · 위치 · 색 · 모델 번호(살아 있을 때 166890 · 죽었을 때 166351)와 둘레 링 아이디어는
@@ -113,7 +113,7 @@ if model.SetKeepModelOnHide then pcall(model.SetKeepModelOnHide, model, true) en
 local FORMS = {
   alive = { model = 166890, pos = { -5.05, 0, -1.9 }, modelAlpha = 0.5, shift = false,
     orb = { 0.4627451300621, 0.54901963472366, 1, 0.65000000596046 }, circle = { 0, 0.26274511218071, 1, 1 },
-    trail = { 0.15, 0.42, 1 } },
+    trail = { 0.04, 0.14, 1 } },
   dead = { model = 166351, pos = { -10.9, 0, -2 }, modelAlpha = 1, shift = true,
     orb = { 1, 0.88235300779343, 0.89803928136826, 0.51 }, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
     trail = { 1, 0.55, 0.72 } },
@@ -200,11 +200,13 @@ local function ApplyVisibility(show,db)
 end
 
 -- ---------------------------------------------------------------------------
--- 2.8.12: 꼬리(궤적). 움직일 때만 점을 남기고, 점은 0.5초 동안 작아지며 사라진다.
--- 점 16개를 돌려 쓰므로 프레임마다 새로 만드는 것 없음. 멈춰 있고 남은 점이 없으면 아무것도 안 함.
+-- 2.8.12: 꼬리(궤적). 움직일 때만 불꽃 점을 남기고, 점은 0.7초 동안 작아지며 사라진다.
+-- 점은 천천히 흩어지며(드리프트) 더해지는 빛(ADD)으로 겹쳐 굵은 빛줄기처럼 보인다.
+-- 점 40개를 돌려 쓰므로 프레임마다 새로 만드는 것 없음 (모자라면 가장 오래된 점부터 다시 씀).
+-- 멈춰 있고 남은 점이 없으면 아무것도 안 함.
 -- ---------------------------------------------------------------------------
-local TRAIL_N, TRAIL_LIFE, TRAIL_SIZE, TRAIL_GAP = 16, 0.5, 15, 6
-local DOT = "Interface\\AddOns\\NiniTools\\Media\\NaviDot.tga"
+local TRAIL_N, TRAIL_LIFE, TRAIL_SIZE, TRAIL_GAP, TRAIL_ALPHA, TRAIL_DRIFT = 40, 0.7, 44, 12, 0.85, 14
+local DOT = "Interface\\AddOns\\NiniTools\\Media\\NaviSpark.tga"
 local trailFrame = CreateFrame("Frame", nil, UIParent)
 trailFrame:SetAllPoints(UIParent)
 trailFrame:SetFrameStrata("MEDIUM")
@@ -236,7 +238,11 @@ local function UpdateTrail(px, py, scale, on)
       local d = trail[trailHead]
       if d.age >= TRAIL_LIFE then trailAlive = trailAlive + 1 end
       d.age = 0
-      d.size = TRAIL_SIZE * scale * (0.8 + 0.4 * math.random())
+      d.size = TRAIL_SIZE * scale * (0.85 + 0.3 * math.random())
+      d.x, d.y = px, py
+      local ang = math.random() * 6.2832
+      local sp = TRAIL_DRIFT * scale * (0.3 + 0.7 * math.random())
+      d.vx, d.vy = math.cos(ang) * sp, math.sin(ang) * sp
       local c = form.trail
       d.tex:SetVertexColor(c[1], c[2], c[3], 1)
       d.tex:ClearAllPoints()
@@ -254,9 +260,14 @@ local function UpdateTrail(px, py, scale, on)
         d.tex:Hide(); trailAlive = trailAlive - 1
       else
         local a = 1 - d.age / TRAIL_LIFE
-        d.tex:SetAlpha(a * 0.85)
-        local sz = d.size * (0.3 + 0.7 * a)
+        d.tex:SetAlpha(a * TRAIL_ALPHA)
+        local sz = d.size * (0.25 + 0.75 * a)
         d.tex:SetSize(sz, sz)
+        if d.vx and dt > 0 then
+          d.x, d.y = d.x + d.vx * dt, d.y + d.vy * dt
+          d.tex:ClearAllPoints()
+          d.tex:SetPoint("CENTER", UIParent, "BOTTOMLEFT", d.x, d.y)
+        end
       end
     end
   end
