@@ -35,12 +35,6 @@ local function getDB()
   db.naviCursorRingEnabled=true   -- 2.7.1: 링 · 반짝임은 항상 켬 (예전에 꺼 둔 값도 켬)
   db.naviCursorGlowEnabled=true
   if db.naviCursorScale==nil then db.naviCursorScale=100 end
-  -- 2.8.14: 가운데 파란 빛 밝기. 2.8.15: 기본 100% 로 (2.8.14 의 60% 기본값은 한 번만 100% 로 되돌림)
-  if db.naviGlowAlphaV~=2 then
-    if db.naviGlowAlpha==nil or db.naviGlowAlpha==60 then db.naviGlowAlpha=100 end
-    db.naviGlowAlphaV=2
-  end
-  if db.naviGlowAlpha==nil then db.naviGlowAlpha=100 end
   if db.naviTrail==nil then db.naviTrail=true end
   if db.naviDeadForm==nil then db.naviDeadForm=true end
   if db.naviCastRing==nil then db.naviCastRing=true end
@@ -179,16 +173,19 @@ do
 end
 
 local coreGlow = CreateTextureRegion("Navi Glow Alive 19", 30, 30, 52, 41, "BonusChest-CircleGlow", {0,0.72156864404678,1,1}, 1)
--- 2.8.15: 본섭은 같은 주문 효과가 작게 그려져 요정 머리 쪽에 뭉친 빛이 됨
---   → 본섭만 효과 틀을 2배로 키워 포에버 빛줄기 크기로 (요정은 그대로) · 가운데 하늘색 빛은 본섭에서 뺌
-local RETAIL_SPARK_SCALE = 2
+-- 2.8.15: 본섭은 요정 바깥 원 안으로 빛줄기가 모여 뱅그르 터지는 크기가 작아 보임 → 본섭만 조금 크게 (1.3배).
+--   틀을 키우면 효과 전체가 커진다. 빛이 모이는 가운데(요정 가운데)는 제자리에 있게 틀 위치를 아래로 조금 옮긴다.
+local RETAIL_SPARK_SCALE = 1.3
 if not NT.FOREVER then
+  local pivotY = modelRegion.baseY
   sparkRegion.baseWidth = sparkRegion.baseWidth * RETAIL_SPARK_SCALE
   sparkRegion.baseHeight = sparkRegion.baseHeight * RETAIL_SPARK_SCALE
+  sparkRegion.baseY = pivotY - (pivotY - sparkRegion.baseY) * RETAIL_SPARK_SCALE
   sparkRegion:SetSize(sparkRegion.baseWidth, sparkRegion.baseHeight)
+  sparkRegion:ClearAllPoints()
+  sparkRegion:SetPoint("CENTER", mouseFrame, "CENTER", sparkRegion.baseX, sparkRegion.baseY)
 end
 local sparkleRegions = { sparkRegion, coreGlow }
-
 
 background:SetFrameLevel(mouseFrame:GetFrameLevel()+1)
 modelRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+2)
@@ -201,11 +198,6 @@ local pulseRegions = {background,orb,circle}
 local born = GetTime()
 local wasShown = false
 local lastScale = nil
-
--- 2.8.13: 가운데 파란 빛(배경 · 구슬 · 하늘색 빛) 밝기 배율. 바깥 고리 · 요정 모델 · 반짝임은 그대로.
-local function GlowMul(db)
-  return clamp((db and tonumber(db.naviGlowAlpha)) or 100,20,100)/100
-end
 
 local function GetScale(db)
   return clamp((db and db.naviCursorScale) or 100,70,140)/100
@@ -247,10 +239,7 @@ local function ApplyVisibility(show,db)
   modelRegion:SetShown(show)
   orb:SetShown(show and glowOn)
   circle:SetShown(show and ringOn)
-  for _,r in ipairs(sparkleRegions) do
-    local on = (r ~= coreGlow) or NT.FOREVER
-    r:SetShown(on and show and glowOn and not form.shift)
-  end
+  for _,r in ipairs(sparkleRegions) do r:SetShown(show and glowOn and not form.shift) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -489,18 +478,16 @@ local function CursorOnUpdate()
     circle:SetSize(circle.baseWidth*scale*f,circle.baseHeight*scale*f)
     modelRegion:SetSize(modelRegion.baseWidth*scale*f,modelRegion.baseHeight*scale*f)
 
-    local gm=GlowMul(db)
-    coreGlow:SetAlpha(coreGlow.baseAlpha*p*gm)
+    coreGlow:SetAlpha(coreGlow.baseAlpha*p)
     sparkRegion:SetAlpha(p)
     sparkRegion:SetSize(sparkRegion.baseWidth*scale*f,sparkRegion.baseHeight*scale*f)
-    background:SetAlpha(background.baseAlpha*p*gm)
-    orb:SetAlpha(orb.baseAlpha*p*gm)
+    background:SetAlpha(background.baseAlpha*p)
+    orb:SetAlpha(orb.baseAlpha*p)
     circle:SetAlpha(circle.baseAlpha*p)
     modelRegion:SetAlpha(modelRegion.baseAlpha*p)
   else
-    local gm=GlowMul(db)
-    background:SetAlpha(background.baseAlpha*gm)
-    orb:SetAlpha(orb.baseAlpha*gm)
+    background:SetAlpha(background.baseAlpha)
+    orb:SetAlpha(orb.baseAlpha)
     circle:SetAlpha(circle.baseAlpha)
     modelRegion:SetAlpha(modelRegion.baseAlpha)
     modelRegion:SetSize(modelRegion.baseWidth*scale,modelRegion.baseHeight*scale)
@@ -510,7 +497,7 @@ local function CursorOnUpdate()
     local factor=1+(((math.sin(angle)+1)/2)*0.05)
     for _,region in ipairs(pulseRegions) do ApplyPulse(region,factor,scale) end
 
-    coreGlow:SetAlpha(coreGlow.baseAlpha*gm)
+    coreGlow:SetAlpha(coreGlow.baseAlpha)
     ApplyPulse(coreGlow,factor,scale)
     sparkRegion:SetAlpha(1)
     sparkRegion:SetSize(sparkRegion.baseWidth*scale,sparkRegion.baseHeight*scale)
@@ -605,18 +592,6 @@ end
 function NT:GetNaviCursorScale()
   local db=getDB()
   return db and (tonumber(db.naviCursorScale) or 100) or 100
-end
-
-function NT:GetNaviGlowAlpha()
-  local db=getDB()
-  return db and math.floor(GlowMul(db)*100+0.5) or 100
-end
-
-function NT:SetNaviGlowAlpha(value)
-  local db=getDB()
-  if not db then return false end
-  db.naviGlowAlpha=math.floor(clamp(value,20,100)+0.5)
-  return true
 end
 
 function NT:SetNaviCursorScale(value)

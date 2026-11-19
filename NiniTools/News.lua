@@ -7,13 +7,8 @@ NT = NT or _G.NiniTools
 
 local NEWS = {
   { version = "2.8.15", flavor = "retail", cards = {
-    { title = "Navi 요정 모양 또렷하게", lines = {
-      "요정 머리 쪽에 작게 뭉쳐 보이던 가운데 반짝임을 포에버 빛줄기 크기로 키웠습니다. 요정 모양은 그대로입니다.",
-    } },
-  } },
-  { version = "2.8.14", cards = {
-    { title = "Navi 가운데 빛 밝기", lines = {
-      "가운데 파란 빛이 요정 모양을 덮어 잘 안 보이면 사운드 & Navi → Navi · 마우스 커서 → 「가운데 빛」을 낮추세요 (기본 60%).",
+    { title = "Navi 반짝임 조금 크게", lines = {
+      "요정 바깥 원 안으로 빛줄기가 모여 뱅그르 터지는 효과를 조금 키웠습니다. 2.8.14 의 「가운데 빛」 슬라이더는 뺐습니다.",
     } },
   } },
   { version = "2.8.13", cards = {

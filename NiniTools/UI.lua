@@ -3140,7 +3140,7 @@ function UI:BuildMedia()
   callNote3:SetPoint("TOPLEFT",22,-197); callNote3:SetPoint("RIGHT",-18,0)
 
   -- 4) Navi · 마우스 커서 -------------------------------------------------------------
-  local navi=self:AccordionSection(p,"navi","Navi · 마우스 커서","커서 강조 효과 · 실시간 미리보기 · Navi 채팅",358,false)
+  local navi=self:AccordionSection(p,"navi","Navi · 마우스 커서","커서 강조 효과 · 실시간 미리보기 · Navi 채팅",320,false)
   p.naviCursorRow=self:Toggle(navi.body,"마우스 Navi 사용","naviCursorEnabled",mediaDB,function(v) NT:SetNaviCursorEnabled(v) end,-10)
   p.naviCursorRow:ClearAllPoints(); p.naviCursorRow:SetPoint("TOPLEFT",18,-8); p.naviCursorRow:SetSize(420,36)
   -- 2.7.1: 커서 링 · 반짝임 효과는 항상 켬 (토글 없음)
@@ -3149,12 +3149,6 @@ function UI:BuildMedia()
     function(v) if NT.SetNaviCursorScale then NT:SetNaviCursorScale(v) else mediaDB().naviCursorScale=math.floor(v+.5) end end,
     function(v) return math.floor(v+.5).."%" end)
   p.naviScaleRow:ClearAllPoints(); p.naviScaleRow:SetPoint("TOPLEFT",18,-46); p.naviScaleRow:SetSize(420,34)
-  -- 2.8.13: 가운데 파란 빛 밝기 (요정 모양이 묻히면 낮추기)
-  p.naviGlowRow=self:SliderRow(navi.body,"가운데 빛",-88,20,100,5,
-    function() return NT.GetNaviGlowAlpha and NT:GetNaviGlowAlpha() or 100 end,
-    function(v) if NT.SetNaviGlowAlpha then NT:SetNaviGlowAlpha(v) end end,
-    function(v) return math.floor(v+.5).."%" end)
-  p.naviGlowRow:ClearAllPoints(); p.naviGlowRow:SetPoint("TOPLEFT",18,-84); p.naviGlowRow:SetSize(420,34)
   -- 2.8.12: 꼬리 · 죽은 모습 · 둘레 링
   p.naviOptRows={}
   for i,opt in ipairs({
@@ -3162,8 +3156,8 @@ function UI:BuildMedia()
     {"naviDeadForm","죽으면 Navi 모습 바뀜 (분홍 · 커서 가운데)"},
     {"naviCastRing",NT.FOREVER and "Navi 둘레 시전바 · 자동공격 링" or "Navi 둘레 시전바 링"},
   }) do
-    local row=self:Toggle(navi.body,opt[2],opt[1],mediaDB,function(v) if NT.SetNaviCursorOption then NT:SetNaviCursorOption(opt[1],v) end end,-122-(i-1)*36)
-    row:ClearAllPoints(); row:SetPoint("TOPLEFT",18,-122-(i-1)*36); row:SetSize(420,34)
+    local row=self:Toggle(navi.body,opt[2],opt[1],mediaDB,function(v) if NT.SetNaviCursorOption then NT:SetNaviCursorOption(opt[1],v) end end,-84-(i-1)*36)
+    row:ClearAllPoints(); row:SetPoint("TOPLEFT",18,-84-(i-1)*36); row:SetSize(420,34)
     p.naviOptRows[i]=row
   end
 
@@ -3233,8 +3227,7 @@ function UI:BuildMedia()
     end
     pvBackground:SetShown(enabled and glow); pvOrb:SetShown(enabled and glow); pvCircle:SetShown(enabled and ring); pvModelRegion:SetShown(enabled); cursorGlyph:SetShown(enabled)
     geometry(pvBackground,pulse); geometry(pvOrb,pulse); geometry(pvCircle,pulse); geometry(pvModelRegion,1)
-    local pvGm=(NT.GetNaviGlowAlpha and NT:GetNaviGlowAlpha() or 100)/100
-    pvBackground:SetAlpha(enabled and pvBackground.baseAlpha*pvGm or .15); pvOrb:SetAlpha(enabled and pvGm or .15); pvCircle:SetAlpha(enabled and 1 or .15); pvModelRegion:SetAlpha(enabled and pvModelRegion.baseAlpha or .15)
+    pvBackground:SetAlpha(enabled and pvBackground.baseAlpha or .15); pvOrb:SetAlpha(enabled and 1 or .15); pvCircle:SetAlpha(enabled and 1 or .15); pvModelRegion:SetAlpha(enabled and pvModelRegion.baseAlpha or .15)
     cursorGlyph:SetAlpha(enabled and .88 or .18)
   end)
   local pvNote=self:Font(preview,8,"실제 Navi 오프셋 · 비율 · 알파를 그대로 축소 재현",C.muted); pvNote:SetPoint("BOTTOM",0,22)
@@ -3242,16 +3235,16 @@ function UI:BuildMedia()
   local pvCredit=self:Font(preview,7,"모양 참고: Untrue 「UntrueUI - Navi Cursor」 · 꼬리 아이디어: Lumen",C.muted); pvCredit:SetPoint("BOTTOM",0,8)
   p.naviPreview=preview
 
-  local sep=navi.body:CreateTexture(nil,"ARTWORK"); sep:SetColorTexture(C.border[1],C.border[2],C.border[3],.6); sep:SetPoint("TOPLEFT",18,-240); sep:SetPoint("TOPRIGHT",-18,-240); sep:SetHeight(1)
-  local chatTitle=self:Font(navi.body,10,"Navi 채팅",C.text); chatTitle:SetPoint("TOPLEFT",22,-258)
-  p.naviChatRow=self:Toggle(navi.body,"Navi 채팅창 사용","naviChatEnabled",mediaDB,function(v) NT:SetNaviChatEnabled(v) end,-274)
-  p.naviChatRow:ClearAllPoints(); p.naviChatRow:SetPoint("TOPLEFT",18,-272); p.naviChatRow:SetSize(420,36)
-  p.naviFontRow=self:SliderRow(navi.body,"채팅 글자 크기",-314,8,32,1,function() return NT:GetNaviChatFontSize() end,function(v) NT:SetNaviChatFontSize(v) end,function(v) return math.floor(v+.5).." px" end)
-  p.naviFontRow:ClearAllPoints(); p.naviFontRow:SetPoint("TOPLEFT",18,-310); p.naviFontRow:SetSize(420,34)
-  p.naviMove=self:Button(navi.body,"채팅 위치 이동",130,28,function() NT:SetNaviChatUnlocked(not NT:IsNaviChatUnlocked()); UI:RefreshVisiblePage() end); p.naviMove:SetPoint("TOPLEFT",474,-270)
+  local sep=navi.body:CreateTexture(nil,"ARTWORK"); sep:SetColorTexture(C.border[1],C.border[2],C.border[3],.6); sep:SetPoint("TOPLEFT",18,-202); sep:SetPoint("TOPRIGHT",-18,-202); sep:SetHeight(1)
+  local chatTitle=self:Font(navi.body,10,"Navi 채팅",C.text); chatTitle:SetPoint("TOPLEFT",22,-220)
+  p.naviChatRow=self:Toggle(navi.body,"Navi 채팅창 사용","naviChatEnabled",mediaDB,function(v) NT:SetNaviChatEnabled(v) end,-236)
+  p.naviChatRow:ClearAllPoints(); p.naviChatRow:SetPoint("TOPLEFT",18,-234); p.naviChatRow:SetSize(420,36)
+  p.naviFontRow=self:SliderRow(navi.body,"채팅 글자 크기",-276,8,32,1,function() return NT:GetNaviChatFontSize() end,function(v) NT:SetNaviChatFontSize(v) end,function(v) return math.floor(v+.5).." px" end)
+  p.naviFontRow:ClearAllPoints(); p.naviFontRow:SetPoint("TOPLEFT",18,-272); p.naviFontRow:SetSize(420,34)
+  p.naviMove=self:Button(navi.body,"채팅 위치 이동",130,28,function() NT:SetNaviChatUnlocked(not NT:IsNaviChatUnlocked()); UI:RefreshVisiblePage() end); p.naviMove:SetPoint("TOPLEFT",474,-232)
   local naviTest=self:Button(navi.body,"채팅 테스트",112,28,function() NT:TestNaviChat() end); naviTest:SetPoint("LEFT",p.naviMove,"RIGHT",8,0)
   local naviReset=self:Button(navi.body,"위치 초기화",112,28,function() NT:ResetNaviChatPosition(); UI:RefreshVisiblePage() end); naviReset:SetPoint("LEFT",naviTest,"RIGHT",8,0)
-  local naviNote=self:Font(navi.body,8,"일반 채팅은 휴식/비전투에서 간헐 표시 · 이름/별명 호출은 항상 강조",C.muted); naviNote:SetPoint("TOPLEFT",474,-314); naviNote:SetPoint("RIGHT",-18,0)
+  local naviNote=self:Font(navi.body,8,"일반 채팅은 휴식/비전투에서 간헐 표시 · 이름/별명 호출은 항상 강조",C.muted); naviNote:SetPoint("TOPLEFT",474,-276); naviNote:SetPoint("RIGHT",-18,0)
 
   p.Refresh=function(self)
     local m=NT:GetMediaStatus()
@@ -3287,7 +3280,6 @@ function UI:BuildMedia()
     self.naviCursorRow:Refresh(); self.naviScaleRow:Refresh(); self.naviChatRow:Refresh(); self.naviFontRow:Refresh()
     local cursorOn=db.naviCursorEnabled~=false
     for _,row in ipairs(self.naviOptRows or {}) do row:Refresh(); setControlEnabled(row,cursorOn) end
-    if self.naviGlowRow then self.naviGlowRow:Refresh(); setControlEnabled(self.naviGlowRow,cursorOn) end
     local chatOn=db.naviChatEnabled~=false
     navi:SetEnabledState(cursorOn)
     navi:SetState(string.format("커서 %d%% · 채팅 %s",tonumber(db.naviCursorScale) or 100,chatOn and "ON" or "OFF"),cursorOn and "accent" or nil)

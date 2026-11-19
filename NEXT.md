@@ -12,8 +12,10 @@
   · BigWigs 가 이미 울린 킬은 건너뛰어 두 번 안 나게 · 켜고 끄는 스위치
 
 ## 2.8.15
-- 본섭: conjureitem 반짝임 틀 2배 (RETAIL_SPARK_SCALE) → 포에버 빛줄기 크기 · coreGlow 본섭에서 숨김 · 사용자 본섭 영상: 효과가 작게 머리에 뭉쳐 요정 모양 뭉갬 (2.8.14 밝기 슬라이더는 잘못 짚은 것) · 실게임 확인 필요
-- naviGlowAlpha 기본 100 (naviGlowAlphaV=2 로 60 → 100 한 번 되돌림)
+- 사용자: 시험판(효과 2배 · coreGlow 뺌 · 뒤 요정 겹) 폐기 → NaviCursor.lua · UI.lua 를 v2.8.13 으로 되돌림 (가운데 빛 슬라이더 제거)
+- 본섭만 conjureitem 틀 1.3배 (RETAIL_SPARK_SCALE) · 빛 모이는 가운데(모델 baseY) 기준으로 위치 보정
+  (사용자 뜻: 「요정 바깥 원 안으로 빛줄기가 모여 뱅그르 터지는 것」 크기만 조금 크게)
+- CHANGELOG_2.8.14.txt 가 v2.8.14 에 빠져 있었음 → 지금 추가
 
 ## 2.8.14
 - Navi 「가운데 빛」 밝기 슬라이더 (naviGlowAlpha 20~100 · 기본 60): background · orb · coreGlow 알파에 곱함 (11/19 본섭 영상: 파란 빛이 요정 모양 가림)
