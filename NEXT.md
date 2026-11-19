@@ -11,6 +11,14 @@
   · 인던 보스 모듈(LittleWigs)이 없어 BigWigs 가 안 울리면 → 니니툴 Camelot 전용으로 ENCOUNTER_END 성공 + 던전(party)일 때 재생
   · BigWigs 가 이미 울린 킬은 건너뛰어 두 번 안 나게 · 켜고 끄는 스위치
 
+## 2.8.13
+- v2.8.12 태그(1a5f2a2) 이후 고친 것들 (11/19)
+- 검토 반영 (11/19 다른 AI 검토): 보관함 전문화 연결(PersonalReminderSpecs) · 고른 칸 보관 · 복원 /
+  메모 전부 사라짐 = 덮어쓰기 (1개 프로필) / Navi 끌 때 꼬리 · 링 즉시 정리
+- Navi 꼬리 굵게 (NaviSpark 44px · 0.7초 · 간격 12 · 드리프트 · 40개)
+- Navi 가운데 반짝임 = spells/conjureitem.m2 (165816, 포에버 위크오라 Navi Glow Alive 11 과 같은 위치 · 크기) + CircleGlow 30 하늘색
+  (처음 만든 자작 별빛 · 모이는 고리는 사용자 영상 보고 이걸로 바꿈)
+
 ## 2.8.12
 - 홈 페이지(HomeUI.lua): 상태 카드(본섭 NSRT 메모 · 생존기 담당 · 골드 · 마지막 풀 부하 / 포에버 골드 · 던전 기록 · 전투 시간 · 매크로) · 빠른 실행 · 최근 기록 · 새 소식
 - 위치 편집: 붙이기 8px · 화살표 1px(Shift 10px) · Tab · Ctrl+Z 되돌리기 · 고른 표시 테두리 · 가운데 안내선 · 좌표
@@ -19,8 +27,6 @@
 - 포에버 던전 기록 (Modules/Combat/DungeonRun.lua · Camelot TOC 만)
 - 마우스 Navi: 꼬리 · 죽은 모습(모델 166351 · 분홍) · 시전 링 / 포에버 자동공격 링(CLEU) · 그림 NaviRing/NaviDot 자체 제작
   (11/19 사용자: 포에버 UntrueUI Navi 위크오라는 안 쓰고 이것만. 위크오라 코드 · Fairy/NaviTarget 그림 · 젤다 소리는 안 넣음)
-- 릴리스 전 검토 반영 (11/19 다른 AI 검토): 보관함 전문화 연결(PersonalReminderSpecs) · 고른 칸 보관 · 복원 /
-  메모 전부 사라짐 = 덮어쓰기 (1개 프로필) / Navi 끌 때 꼬리 · 링 즉시 정리
 - Navi 출처 표기 (11/19 사용자 제안): NaviCursor/NaviChat 머리 주석 · README_KO 「출처 · 고마운 분」 · 설정 Navi 미리보기 아래 한 줄
 - 포에버 UI 배율 자동 (Modules/Media/UIScale.lua · 768/세로 · 기본 꺼짐)
 - 목조르기 커버리지에 파열 추가는 안 하기로 (11/19 · 추적하는 오라가 늘수록 이름표 오라 훑기가 늘어 부하 · Naowh Dot Coverage 끄고 끊김 없어짐)
