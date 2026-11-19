@@ -263,6 +263,12 @@ function M:SummaryLines(n)
   return out
 end
 
+-- 2.8.12: 홈 카드용 마지막 풀 (없으면 nil)
+function M:LastPull()
+  local d = db()
+  return d.pulls[#d.pulls]
+end
+
 function M:Status()
   local d = db()
   NT:Print(string.format("애드온 부하 기록 %s · 측정 %s · 풀 %d개 · 채팅 알림 %s",

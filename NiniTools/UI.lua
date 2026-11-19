@@ -7,10 +7,11 @@ NT.UI = UI
 UI.pages = {}
 UI.navButtons = {}
 -- 2.3.0: five primary tabs only.  Maintenance lives behind the title-bar gear.
-UI.pageOrder = {"GOLD","KICK","NSRT","QOL","MEDIA","CAL"}
+UI.pageOrder = {"HOME","GOLD","KICK","NSRT","QOL","MEDIA","CAL"}
 -- 2.8.0: 포에버에는 차단 · NSRT · 달력 모듈이 없다.
-if NT.FOREVER then UI.pageOrder = {"GOLD","QOL","MEDIA"} end
+if NT.FOREVER then UI.pageOrder = {"HOME","GOLD","QOL","MEDIA"} end
 UI.pageNames = {
+  HOME="홈",
   KICK="차단 & 쐐기",
   GOLD="골드 내역",
   NSRT="NSRT 개인 메모",
@@ -20,6 +21,7 @@ UI.pageNames = {
   TOOLS="설정 & 진단",
 }
 UI.pageHints = {
+  HOME="지금 상태 한눈에 · 카드를 누르면 그 페이지로",
   KICK="차단 · 쐐기 자동화 · 중요몹 표시 · 생존기 · 전투 표시",
   GOLD="현재 보유 골드 · 기간별 수입/지출 · 최근 거래 내역",
   NSRT="Lorrgs 등에서 복사한 메모를 전문화별 NSRT 개인 메모로 전달",
@@ -1012,9 +1014,11 @@ function UI:PrepareAccordionPage(page)
 
   function page:LayoutAccordions()
     local y=-8
+    -- 2.8.12: 세부 탭(그룹)이 있으면 위에 탭 줄을 두고 고른 탭의 칸만 보인다.
+    if self.groups and self.LayoutGroupBar then y=self:LayoutGroupBar(y) end
     for _,section in ipairs(self.accordions) do
       section:ClearAllPoints()
-      if section.forceHidden then
+      if section.forceHidden or (self.groups and section.group~=self.currentGroup) then
         section:Hide()
       else
       section:Show()
@@ -1041,12 +1045,94 @@ function UI:PrepareAccordionPage(page)
       if section.id==id then target=section break end
     end
     if not target then return end
+    if self.groups and target.group and target.group~=self.currentGroup then
+      self.currentGroup=target.group
+      target.expanded=false
+    end
     local open=not target.expanded
     -- Classic accordion behavior: one detailed section at a time.
     for _,section in ipairs(self.accordions) do section.expanded=false end
     target.expanded=open
     self:LayoutAccordions()
   end
+end
+
+-- 2.8.12: 아코디언 페이지를 작은 세부 탭으로 나눈다. groups = { {id,"이름"}, ... }
+-- map[칸 id] = 탭 id (칸을 다 만든 뒤 부른다). 칸은 고른 탭에서만 보인다. 칸이 하나도 안 보이는 탭은 숨긴다.
+-- 고른 탭은 NT:GetDB().subTabs[dbKey] 에 기억한다.
+function UI:AccordionGroups(page,groups,dbKey,map)
+  self:PrepareAccordionPage(page)
+  for _,section in ipairs(page.accordions) do
+    if map and map[section.id] then section.group=map[section.id] end
+  end
+  page.groups=groups
+  local bar=CreateFrame("Frame",nil,page,"BackdropTemplate")
+  bar:SetHeight(34)
+  self:Backdrop(bar,C.sidebar,C.border)
+  bar:SetBackdropColor(C.sidebar[1],C.sidebar[2],C.sidebar[3],0.70)
+  bar:SetBackdropBorderColor(C.border[1],C.border[2],C.border[3],0.50)
+  page.groupBar=bar
+  page.groupButtons={}
+  local function saved()
+    local db=NT:GetDB()
+    db.subTabs=type(db.subTabs)=="table" and db.subTabs or {}
+    return db.subTabs
+  end
+  page.currentGroup=saved()[dbKey] or groups[1][1]
+  for _,g in ipairs(groups) do
+    local b=CreateFrame("Button",nil,bar)
+    b.id=g[1]
+    b.bg=b:CreateTexture(nil,"BACKGROUND"); b.bg:SetAllPoints()
+    b.label=self:Font(b,10,g[2],C.muted); b.label:SetPoint("CENTER",0,1)
+    b:SetSize(math.max(96,(b.label:GetStringWidth() or 60)+36),34)
+    b.line=b:CreateTexture(nil,"ARTWORK")
+    b.line:SetColorTexture(C.accent[1],C.accent[2],C.accent[3],1)
+    b.line:SetPoint("BOTTOMLEFT",10,0); b.line:SetPoint("BOTTOMRIGHT",-10,0); b.line:SetHeight(2)
+    b:SetScript("OnClick",function(self) page:ShowGroup(self.id) end)
+    b:SetScript("OnEnter",function(self) if page.currentGroup~=self.id then self.label:SetTextColor(C.text[1],C.text[2],C.text[3],1) end end)
+    b:SetScript("OnLeave",function() page:LayoutGroupBar() end)
+    page.groupButtons[#page.groupButtons+1]=b
+  end
+
+  local function hasVisible(id)
+    for _,section in ipairs(page.accordions) do
+      if section.group==id and not section.forceHidden then return true end
+    end
+    return false
+  end
+
+  function page:LayoutGroupBar(y)
+    y=y or -8
+    if not hasVisible(self.currentGroup) then
+      for _,g in ipairs(self.groups) do if hasVisible(g[1]) then self.currentGroup=g[1] break end end
+    end
+    local x=0
+    for _,b in ipairs(self.groupButtons) do
+      local show=hasVisible(b.id)
+      b:SetShown(show)
+      if show then
+        b:ClearAllPoints(); b:SetPoint("TOPLEFT",6+x,0); x=x+b:GetWidth()+2
+        local active=b.id==self.currentGroup
+        b.line:SetShown(active)
+        b.bg:SetColorTexture(C.accent[1],C.accent[2],C.accent[3],active and 0.08 or 0)
+        local c=active and C.accent or C.muted
+        b.label:SetTextColor(c[1],c[2],c[3],1)
+      end
+    end
+    self.groupBar:ClearAllPoints()
+    self.groupBar:SetPoint("TOPLEFT",16,y); self.groupBar:SetPoint("TOPRIGHT",-16,y)
+    return y-34-8
+  end
+
+  function page:ShowGroup(id)
+    if self.currentGroup==id then return end
+    self.currentGroup=id
+    saved()[dbKey]=id
+    self:LayoutAccordions()
+    if self.ScrollToTop then self.ScrollToTop() end
+    if UI.RefreshVisiblePage then UI:RefreshVisiblePage() end
+  end
+  page:LayoutAccordions()
 end
 
 function UI:AccordionSection(page,id,title,subtitle,bodyHeight,defaultOpen)
@@ -1252,7 +1338,7 @@ function UI:BuildFrame()
   navBar:SetBackdropBorderColor(C.border[1],C.border[2],C.border[3],0.55)
   self.navBar=navBar
 
-  local widths={GOLD=126,KICK=148,NSRT=150,QOL=132,MEDIA=146,CAL=120}
+  local widths={HOME=66,GOLD=112,KICK=130,NSRT=136,QOL=120,MEDIA=132,CAL=110}   -- 2.8.12: 홈 탭 자리 만들기
   local x=8
   for _,id in ipairs(self.pageOrder) do
     local b=CreateFrame("Button",nil,navBar)
@@ -1330,8 +1416,8 @@ function UI:BuildFrame()
       if f.EnableKeyboard then f:EnableKeyboard(true) end
       if f.SetPropagateKeyboardInput then f:SetPropagateKeyboardInput(true) end
     end
-    local page=db.lastPage or "GOLD"
-    if page=="TOOLS" then page="GOLD" end
+    local page=db.lastPage or "HOME"
+    if page=="TOOLS" then page="HOME" end
     UI:ShowPage(page)
   end)
   f:SetScript("OnHide",function()
@@ -1447,6 +1533,10 @@ function UI:GoToSearch(entry)
   self:ShowPage(entry.page)
   local p=self.pages[entry.page]
   if not (p and entry.frame) then return end
+  if p.groups and entry.frame.group and p.currentGroup~=entry.frame.group then
+    p.currentGroup=entry.frame.group
+    p:LayoutAccordions()
+  end
   if entry.accordion and p.SetAccordion and not entry.frame.expanded then p:SetAccordion(entry.accordion) end
   if p.ScrollTo and p.GetTop and entry.frame.GetTop then
     local top,frameTop=p:GetTop(),entry.frame:GetTop()
@@ -1606,6 +1696,7 @@ function UI:NewPage(id)
 end
 
 function UI:BuildPages()
+  if type(self.BuildHome)=="function" then self:BuildHome() end   -- 2.8.12 (HomeUI.lua)
   if not NT.FOREVER then self:BuildKick() end
   self:BuildGold()
   if not NT.FOREVER then self:BuildNSRT() end
@@ -3369,6 +3460,36 @@ function UI:BuildQOL()
     p.fmacStatus:SetPoint("LEFT",p.fmacMake,"RIGHT",12,0); p.fmacStatus:SetPoint("RIGHT",-22,0); p.fmacStatus:SetJustifyH("LEFT")
   end
 
+  -- 2.8.12: 포에버 던전 기록 (판마다 시간 · 골드 · XP · 보스 스플릿)
+  local DRM=NT.DungeonRun
+  local drun=self:AccordionSection(p,"drun","던전 기록","던전 한 판마다 걸린 시간 · 얻은 골드 · 경험치 · 보스 잡은 시각 · 화면 패널",318,false)
+  drun.forceHidden=not DRM
+  if DRM then
+    p.drunRow=self:Toggle(drun.body,"던전 기록 켜기","enabled",function() return DRM:GetDB() end,function(v) DRM:SetEnabled(v); UI:RefreshVisiblePage() end,-8)
+    p.drunPanelRow=self:Toggle(drun.body,"던전 안에서 화면 패널 보이기","panel",function() return DRM:GetDB() end,function(v) DRM:SetPanel(v); UI:RefreshVisiblePage() end,-46)
+    p.drunNew=self:Button(drun.body,"새 판 시작",100,26,function() DRM:NewRun(); UI:RefreshVisiblePage() end)
+    p.drunNew:SetPoint("TOPLEFT",22,-88)
+    p.drunMove=self:Button(drun.body,"패널 위치 이동",120,26,function() DRM:SetUnlocked(not DRM:IsUnlocked()); UI:RefreshVisiblePage() end)
+    p.drunMove:SetPoint("LEFT",p.drunNew,"RIGHT",8,0)
+    p.drunReset=self:Button(drun.body,"위치 초기화",96,26,function() DRM:ResetPosition() end)
+    p.drunReset:SetPoint("LEFT",p.drunMove,"RIGHT",8,0)
+    local armed=false
+    p.drunClear=self:Button(drun.body,"기록 지우기",96,26,function()
+      if not armed then
+        armed=true; p.drunClear.label:SetText("한 번 더 누르기")
+        C_Timer.After(3,function() armed=false; if p.drunClear.label then p.drunClear.label:SetText("기록 지우기") end end)
+        return
+      end
+      armed=false; p.drunClear.label:SetText("기록 지우기")
+      DRM:ClearHistory(); UI:RefreshVisiblePage()
+    end)
+    p.drunClear:SetPoint("LEFT",p.drunReset,"RIGHT",8,0)
+    p.drunText=self:Font(drun.body,9,"",C.text)
+    p.drunText:SetPoint("TOPLEFT",22,-126); p.drunText:SetPoint("RIGHT",-22,0)
+    p.drunText:SetJustifyH("LEFT"); p.drunText:SetJustifyV("TOP")
+    if p.drunText.SetSpacing then p.drunText:SetSpacing(3) end
+  end
+
   -- 3) Chat bubbles -------------------------------------------------------------------
   local bubble=self:AccordionSection(p,"bubble","채팅 말풍선","머리 위 채팅 말풍선 글자 크기를 8~20px 사이에서 조절",100,false)
   p.bubbleSlider=self:SliderRow(bubble.body,"말풍선 글자 크기",-16,8,20,1,function()
@@ -3439,6 +3560,16 @@ function UI:BuildQOL()
   p.windowReset:SetPoint("BOTTOMLEFT",22,14)
   p.windowSize=self:Font(window.body,9,"",C.muted); p.windowSize:SetPoint("LEFT",p.windowReset,"RIGHT",16,0)
 
+  -- 2.8.12: 칸이 많아 길던 페이지를 세부 탭으로 나눔 (칸이 없는 탭은 숨김)
+  self:AccordionGroups(p,{
+    {"screen","화면 표시"},{"combat","전투 & 던전"},{"party","파티 & 매크로"},{"nini","NiniTools 창"},
+  },"QOL",{
+    graphics="screen",waypoint="screen",bubble="screen",
+    ctimer="combat",drun="combat",
+    greet="party",fmacro="party",finder="party",
+    minimap="nini",window="nini",
+  })
+
   p.Refresh=function(self)
     local wdb=waypointDB()
     for _,row in ipairs(self.waypointRows) do if row and row.Refresh then row:Refresh() end end
@@ -3461,6 +3592,27 @@ function UI:BuildQOL()
       local on=FMM:GetDB().enabled~=false
       fmac:SetEnabledState(on)
       fmac:SetState(on and (FMM.MARKER_NAMES[FMM:GetDB().marker] or "ON") or "OFF",on and "accent" or "warn")
+    end
+    if DRM and self.drunRow then
+      self.drunRow:Refresh(); self.drunPanelRow:Refresh()
+      local ddb=DRM:GetDB()
+      local on=ddb.enabled~=false
+      drun:SetEnabledState(on)
+      if self.drunMove.label then self.drunMove.label:SetText(DRM:IsUnlocked() and "패널 위치 고정" or "패널 위치 이동") end
+      local lines={}
+      local cur=DRM:Current()
+      if cur then
+        lines[#lines+1]=UI:ColorText((cur.left and "잠시 나감 · " or "지금 · ")..DRM:Line(cur),C.accent)
+        if #(cur.bosses or {})>0 then lines[#lines+1]="   "..DRM:Splits(cur) end
+      end
+      for i=#ddb.runs,math.max(1,#ddb.runs-5),-1 do
+        local run=ddb.runs[i]
+        lines[#lines+1]=DRM:Line(run)
+        if #(run.bosses or {})>0 then lines[#lines+1]=UI:ColorText("   "..DRM:Splits(run),C.muted) end
+      end
+      if #lines==0 then lines[1]=UI:ColorText("아직 기록이 없어요. 파티 던전에 들어가면 자동으로 시작합니다.",C.muted) end
+      self.drunText:SetText(table.concat(lines,"\n"))
+      drun:SetState(cur and (cur.left and "잠시 나감" or "기록 중") or (#ddb.runs.."판"),cur and "good" or "accent")
     end
     if PGM and self.greetRow then
       self.greetRow:Refresh()
@@ -3525,7 +3677,7 @@ function UI:BuildTools()
 
   local actions=self:Section(p,"유지관리","자주 쓰는 공통 작업 · 명령어를 외우지 않아도 됩니다",-8,146); rightCol(actions,-8)
   local b1=self:Button(actions,"UI 다시 불러오기",150,32,function() ReloadUI() end); b1:SetPoint("TOPLEFT",16,-58)
-  local back=self:Button(actions,"메인 설정으로",150,32,function() UI:ShowPage(NT:GetDB().lastPage or "GOLD") end); back:SetPoint("LEFT",b1,"RIGHT",10,0)
+  local back=self:Button(actions,"메인 설정으로",150,32,function() UI:ShowPage(NT:GetDB().lastPage or "HOME") end); back:SetPoint("LEFT",b1,"RIGHT",10,0)
   local exb=self:Button(actions,"EXBoss 프로필",150,32,function() if NT.ExbossS2 then NT.ExbossS2:OpenDialog() end end); exb:SetPoint("LEFT",back,"RIGHT",10,0)
   local nui=self:Button(actions,"/nui install",150,32,function() if NT.NaowhUILink then NT.NaowhUILink:OpenInstaller() end end); nui:SetPoint("LEFT",exb,"RIGHT",10,0)
   if NT.FOREVER then exb:Hide(); nui:Hide() end   -- 2.8.0: 포에버에는 EXBoss · NaowhUI 연동 모듈이 없음
@@ -3676,7 +3828,7 @@ function UI:BuildTools()
 end
 
 function UI:ShowPage(id)
-  id=self.pages[id] and id or (self.pages.KICK and "KICK" or "GOLD")
+  id=self.pages[id] and id or (self.pages.HOME and "HOME" or "GOLD")
   local changed=(self.currentPage~=id)
   for pid,p in pairs(self.pages) do p.viewport:SetShown(pid==id) end
   self.currentPage=id
@@ -3707,8 +3859,8 @@ function NT:ToggleUI(page)
   local f=UI:BuildFrame()
   if f:IsShown() and not page then f:Hide(); return end
   f:Show()
-  local target=page or NT:GetDB().lastPage or "GOLD"
-  if target=="TOOLS" and not page then target="GOLD" end
+  local target=page or NT:GetDB().lastPage or "HOME"
+  if target=="TOOLS" and not page then target="HOME" end
   UI:ShowPage(target)
 end
 
@@ -3782,7 +3934,7 @@ SlashCmdList.NINITOOLS=function(msg)
     end
     return
   end
-  local map={kick="KICK",gold="GOLD",media="MEDIA",sound="MEDIA",qol="QOL",tools="TOOLS",home="KICK",nsrt="NSRT",cal="CAL",calendar="CAL",["달력"]="CAL"}
+  local map={kick="KICK",gold="GOLD",media="MEDIA",sound="MEDIA",qol="QOL",tools="TOOLS",home="HOME",["홈"]="HOME",nsrt="NSRT",cal="CAL",calendar="CAL",["달력"]="CAL"}
   NT:ToggleUI(map[msg] or nil)
 end
 

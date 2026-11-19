@@ -589,18 +589,28 @@ function M:SnapshotVault()
     end
   end
 
-  -- 이 프로필에 있던 메모가 없어짐 → 사용자가 지운 것
-  local gone = {}
+  -- 이 프로필에 있던 메모가 없어짐 → 보통은 사용자가 지운 것
+  local gone, seenCount = {}, 0
   for key in pairs(seenHere) do
+    seenCount = seenCount + 1
     local kind, name = splitKey(key)
     local src = kind and NSRT[VAULT_FIELD[kind]]
     if kind and (type(src) ~= "table" or src[name] == nil) then gone[#gone + 1] = key end
   end
-  for _, key in ipairs(gone) do
-    if vault[key] ~= nil then dropped = dropped + 1 end
-    vault[key] = nil
-    for _, t in pairs(seen) do if type(t) == "table" then t[key] = nil end end
-    for _, t in pairs(skipped) do if type(t) == "table" then t[key] = nil end end
+  -- 2.8.12: 한꺼번에 여럿이 사라지면 지운 게 아니라 프로필이 바뀐 것(같은 이름 프로필 덮어쓰기 · 나오 프로필 다시 받기)
+  -- → 보관함에서 빼지 않고 「이 프로필에서 본 적 있음」만 지운다. 다음 확인 때 「넣을지」 고르는 창에 다시 나온다.
+  -- 하나 둘만 사라진 것은 지금처럼 지운 것으로 본다 (NSRT 에서 직접 지운 메모가 계속 돌아오지 않게).
+  local bulk = #gone >= 3 or (#gone >= 2 and #gone * 2 >= seenCount)
+  if bulk then
+    for _, key in ipairs(gone) do seenHere[key] = nil end
+    self.lastBulkKept = { profile = prof, count = #gone }
+  else
+    for _, key in ipairs(gone) do
+      if vault[key] ~= nil then dropped = dropped + 1 end
+      vault[key] = nil
+      for _, t in pairs(seen) do if type(t) == "table" then t[key] = nil end end
+      for _, t in pairs(skipped) do if type(t) == "table" then t[key] = nil end end
+    end
   end
 
   -- [Nini] 개인 메모의 보스 · 난이도 연결이 빠졌으면 메모 머리글로 채운다 (이미 연결된 칸은 그대로).
@@ -685,6 +695,20 @@ function M:VaultCount()
     if key:sub(1, 2) == "s:" then sh = sh + 1 else p = p + 1 end
   end
   return p, sh, nsrtProfileName()
+end
+
+-- 2.8.12: 홈 카드용 한눈 상태. 반환 { loaded, profile, personal, vault, missing }
+function M:HomeStatus()
+  local out = { loaded = self:IsNSRTLoaded(), personal = 0, vault = 0, missing = 0 }
+  if not out.loaded then return out end
+  if type(NSRT.PersonalReminders) == "table" then
+    for _ in pairs(NSRT.PersonalReminders) do out.personal = out.personal + 1 end
+  end
+  local okV, p, sh, prof = pcall(self.VaultCount, self)
+  if okV then out.vault = (p or 0) + (sh or 0); out.profile = prof end
+  local okM, list = pcall(self.MissingNotes, self, false)
+  if okM and type(list) == "table" then out.missing = #list end
+  return out
 end
 
 function M:Apply(text)
@@ -983,8 +1007,13 @@ end
 local function syncVaultAndPointers(allowPrompt)
   if type(_G.NSRT) == "table" then
     local prof = nsrtProfileName()
+    M.lastBulkKept = nil
     pcall(M.SnapshotVault, M)
     lastVaultProfile = prof
+    if type(M.lastBulkKept) == "table" then
+      NT:Print(string.format("NSRT 프로필 「%s」에서 메모 %d개가 한꺼번에 사라져 보관함에 남겨 뒀어요 · NSRT 페이지 「메모 고르기」에서 넣을 수 있어요.",
+        tostring(M.lastBulkKept.profile), M.lastBulkKept.count))
+    end
     local ok, list = pcall(M.MissingNotes, M, false)
     if ok and #list > 0 and not dismissedThisSession[prof] then
       local inCombat = type(InCombatLockdown) == "function" and InCombatLockdown()

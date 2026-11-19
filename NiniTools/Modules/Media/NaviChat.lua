@@ -496,6 +496,13 @@ function NT:IsNaviChatUnlocked()
   return db and db.naviChatUnlocked==true or false
 end
 
+-- 2.8.12: 위치 편집 모드(붙이기 · 화살표 · 되돌리기)가 쓰는 손잡이 · 실제 틀 · 조용한 저장.
+function NT:NaviChatEditFrames()
+  return mover, root, function()
+    if SaveCurrentPosition() then ApplyPosition() end
+  end
+end
+
 function NT:ResetNaviChatPosition()
   local db=getDB()
   if not db then return false end
