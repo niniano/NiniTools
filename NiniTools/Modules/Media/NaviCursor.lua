@@ -35,6 +35,7 @@ local function getDB()
   db.naviCursorRingEnabled=true   -- 2.7.1: 링 · 반짝임은 항상 켬 (예전에 꺼 둔 값도 켬)
   db.naviCursorGlowEnabled=true
   if db.naviCursorScale==nil then db.naviCursorScale=100 end
+  if db.naviGlowAlpha==nil then db.naviGlowAlpha=60 end   -- 2.8.13: 가운데 파란 빛 밝기 (요정 모양이 묻히지 않게)
   if db.naviTrail==nil then db.naviTrail=true end
   if db.naviDeadForm==nil then db.naviDeadForm=true end
   if db.naviCastRing==nil then db.naviCastRing=true end
@@ -186,6 +187,11 @@ local pulseRegions = {background,orb,circle}
 local born = GetTime()
 local wasShown = false
 local lastScale = nil
+
+-- 2.8.13: 가운데 파란 빛(배경 · 구슬 · 하늘색 빛) 밝기 배율. 바깥 고리 · 요정 모델 · 반짝임은 그대로.
+local function GlowMul(db)
+  return clamp((db and tonumber(db.naviGlowAlpha)) or 60,20,100)/100
+end
 
 local function GetScale(db)
   return clamp((db and db.naviCursorScale) or 100,70,140)/100
@@ -466,16 +472,18 @@ local function CursorOnUpdate()
     circle:SetSize(circle.baseWidth*scale*f,circle.baseHeight*scale*f)
     modelRegion:SetSize(modelRegion.baseWidth*scale*f,modelRegion.baseHeight*scale*f)
 
-    coreGlow:SetAlpha(coreGlow.baseAlpha*p)
+    local gm=GlowMul(db)
+    coreGlow:SetAlpha(coreGlow.baseAlpha*p*gm)
     sparkRegion:SetAlpha(p)
     sparkRegion:SetSize(sparkRegion.baseWidth*scale*f,sparkRegion.baseHeight*scale*f)
-    background:SetAlpha(background.baseAlpha*p)
-    orb:SetAlpha(orb.baseAlpha*p)
+    background:SetAlpha(background.baseAlpha*p*gm)
+    orb:SetAlpha(orb.baseAlpha*p*gm)
     circle:SetAlpha(circle.baseAlpha*p)
     modelRegion:SetAlpha(modelRegion.baseAlpha*p)
   else
-    background:SetAlpha(background.baseAlpha)
-    orb:SetAlpha(orb.baseAlpha)
+    local gm=GlowMul(db)
+    background:SetAlpha(background.baseAlpha*gm)
+    orb:SetAlpha(orb.baseAlpha*gm)
     circle:SetAlpha(circle.baseAlpha)
     modelRegion:SetAlpha(modelRegion.baseAlpha)
     modelRegion:SetSize(modelRegion.baseWidth*scale,modelRegion.baseHeight*scale)
@@ -485,7 +493,7 @@ local function CursorOnUpdate()
     local factor=1+(((math.sin(angle)+1)/2)*0.05)
     for _,region in ipairs(pulseRegions) do ApplyPulse(region,factor,scale) end
 
-    coreGlow:SetAlpha(coreGlow.baseAlpha)
+    coreGlow:SetAlpha(coreGlow.baseAlpha*gm)
     ApplyPulse(coreGlow,factor,scale)
     sparkRegion:SetAlpha(1)
     sparkRegion:SetSize(sparkRegion.baseWidth*scale,sparkRegion.baseHeight*scale)
@@ -580,6 +588,18 @@ end
 function NT:GetNaviCursorScale()
   local db=getDB()
   return db and (tonumber(db.naviCursorScale) or 100) or 100
+end
+
+function NT:GetNaviGlowAlpha()
+  local db=getDB()
+  return db and math.floor(GlowMul(db)*100+0.5) or 60
+end
+
+function NT:SetNaviGlowAlpha(value)
+  local db=getDB()
+  if not db then return false end
+  db.naviGlowAlpha=math.floor(clamp(value,20,100)+0.5)
+  return true
 end
 
 function NT:SetNaviCursorScale(value)

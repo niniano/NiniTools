@@ -6,6 +6,11 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.14", cards = {
+    { title = "Navi 가운데 빛 밝기", lines = {
+      "가운데 파란 빛이 요정 모양을 덮어 잘 안 보이면 사운드 & Navi → Navi · 마우스 커서 → 「가운데 빛」을 낮추세요 (기본 60%).",
+    } },
+  } },
   { version = "2.8.13", cards = {
     { title = "Navi 가운데 반짝임 · 굵은 꼬리", lines = {
       "Navi 가운데로 빛 알갱이가 빨려 들며 반짝입니다 (포에버 Navi 위크오라와 같은 게임 주문 효과).",
