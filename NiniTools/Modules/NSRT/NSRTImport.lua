@@ -567,6 +567,79 @@ local function rememberInVault(db, kind, noteName, text)
   profTable(seen, nsrtProfileName())[key] = true
 end
 
+-- 2.8.12: NSRT 12.1.33 전문화 연결 · 고른 칸도 보관한다 (메모 본문만 넣으면 전문화 전용 메모가 일반 메모로 돌아옴).
+--   db.vaultSpec[키]   = PersonalReminderSpecs[이름] (전문화 ID, 없으면 nil)
+--   db.vaultActive[키] = { {캐릭터, 전문화(0 = 예전 칸), 보스}, ... } 이 메모를 고른 칸
+local function vaultMeta(db)
+  db.vaultSpec = type(db.vaultSpec) == "table" and db.vaultSpec or {}
+  db.vaultActive = type(db.vaultActive) == "table" and db.vaultActive or {}
+  return db.vaultSpec, db.vaultActive
+end
+
+-- 메모 이름 → 그 메모를 고른 칸 목록 (한 번 훑어서 만든다)
+local function activeSlotIndex()
+  local idx = {}
+  local function add(name, ck, spec, enc)
+    if type(name) ~= "string" then return end
+    idx[name] = idx[name] or {}
+    local t = idx[name]
+    t[#t + 1] = { ck, spec, enc }
+  end
+  if type(NSRT.ActivePersonalReminder) == "table" then
+    for ck, encs in pairs(NSRT.ActivePersonalReminder) do
+      if type(encs) == "table" then for enc, name in pairs(encs) do add(name, ck, 0, enc) end end
+    end
+  end
+  if type(NSRT.ActivePersonalReminderSpecs) == "table" then
+    for ck, specs in pairs(NSRT.ActivePersonalReminderSpecs) do
+      if type(specs) == "table" then
+        for spec, encs in pairs(specs) do
+          if type(encs) == "table" then for enc, name in pairs(encs) do add(name, ck, spec, enc) end end
+        end
+      end
+    end
+  end
+  return idx
+end
+
+-- 되살린 개인 메모에 전문화 연결 · 고른 칸을 다시 붙인다. 이미 있는 것은 절대 덮어쓰지 않는다.
+-- 반환: 전문화 연결을 못 붙인 이유 (같은 전문화 · 같은 보스에 다른 메모가 이미 연결됨) 또는 nil
+local function restoreMeta(db, key, name, text)
+  local specs, actives = vaultMeta(db)
+  local spec = specs[key]
+  local conflict
+  if spec and type(NSRT.PersonalReminderSpecs) == "table" and NSRT.PersonalReminderSpecs[name] == nil then
+    local enc = tonumber(tostring(text or ""):match("EncounterID:(%d+)"))
+    for other, otherSpec in pairs(NSRT.PersonalReminderSpecs) do
+      if other ~= name and otherSpec == spec and type(NSRT.PersonalReminders[other]) == "string"
+        and tonumber(NSRT.PersonalReminders[other]:match("EncounterID:(%d+)")) == enc then
+        conflict = other
+        break
+      end
+    end
+    if not conflict then NSRT.PersonalReminderSpecs[name] = spec end
+  end
+  local bound = type(NSRT.PersonalReminderSpecs) == "table" and NSRT.PersonalReminderSpecs[name] or nil
+  for _, slot in ipairs(type(actives[key]) == "table" and actives[key] or {}) do
+    local ck, sp, enc = slot[1], slot[2], slot[3]
+    if type(ck) == "string" and enc ~= nil then
+      if sp == 0 then
+        if not bound then
+          NSRT.ActivePersonalReminder = type(NSRT.ActivePersonalReminder) == "table" and NSRT.ActivePersonalReminder or {}
+          NSRT.ActivePersonalReminder[ck] = type(NSRT.ActivePersonalReminder[ck]) == "table" and NSRT.ActivePersonalReminder[ck] or {}
+          if NSRT.ActivePersonalReminder[ck][enc] == nil then NSRT.ActivePersonalReminder[ck][enc] = name end
+        end
+      elseif bound == sp and type(NSRT.ActivePersonalReminderSpecs) == "table" then
+        local byChar = NSRT.ActivePersonalReminderSpecs[ck]
+        if type(byChar) ~= "table" then byChar = {}; NSRT.ActivePersonalReminderSpecs[ck] = byChar end
+        if type(byChar[sp]) ~= "table" then byChar[sp] = {} end
+        if byChar[sp][enc] == nil then byChar[sp][enc] = name end
+      end
+    end
+  end
+  return conflict
+end
+
 -- 지금 프로필의 메모로 사본을 맞춘다. 반환: 사본 갱신 수, 보관함에서 뺀 수
 function M:SnapshotVault()
   if type(_G.NSRT) ~= "table" then return 0, 0 end
@@ -575,6 +648,9 @@ function M:SnapshotVault()
   local prof = nsrtProfileName()
   local seenHere = profTable(seen, prof)
   local saved, dropped = 0, 0
+  local metaSpec, metaActive = vaultMeta(db)
+  local slotIdx = activeSlotIndex()
+  local specMap = type(NSRT.PersonalReminderSpecs) == "table" and NSRT.PersonalReminderSpecs or {}
 
   for _, def in ipairs(VAULT_KINDS) do
     local src = NSRT[def.field]
@@ -584,6 +660,10 @@ function M:SnapshotVault()
           local key = def.kind .. ":" .. name
           if vault[key] ~= text then vault[key] = text; saved = saved + 1 end
           seenHere[key] = true
+          if def.kind == "p" then
+            metaSpec[key] = tonumber(specMap[name]) or nil
+            metaActive[key] = slotIdx[name]
+          end
         end
       end
     end
@@ -600,7 +680,8 @@ function M:SnapshotVault()
   -- 2.8.12: 한꺼번에 여럿이 사라지면 지운 게 아니라 프로필이 바뀐 것(같은 이름 프로필 덮어쓰기 · 나오 프로필 다시 받기)
   -- → 보관함에서 빼지 않고 「이 프로필에서 본 적 있음」만 지운다. 다음 확인 때 「넣을지」 고르는 창에 다시 나온다.
   -- 하나 둘만 사라진 것은 지금처럼 지운 것으로 본다 (NSRT 에서 직접 지운 메모가 계속 돌아오지 않게).
-  local bulk = #gone >= 3 or (#gone >= 2 and #gone * 2 >= seenCount)
+  -- 이 프로필에 보던 메모가 전부 사라진 것도 덮어쓰기로 본다 (메모 1개짜리 프로필을 덮어써도 보관함에 남게).
+  local bulk = #gone >= 3 or (#gone >= 2 and #gone * 2 >= seenCount) or (#gone >= 1 and #gone == seenCount)
   if bulk then
     for _, key in ipairs(gone) do seenHere[key] = nil end
     self.lastBulkKept = { profile = prof, count = #gone }
@@ -608,6 +689,7 @@ function M:SnapshotVault()
     for _, key in ipairs(gone) do
       if vault[key] ~= nil then dropped = dropped + 1 end
       vault[key] = nil
+      metaSpec[key], metaActive[key] = nil, nil
       for _, t in pairs(seen) do if type(t) == "table" then t[key] = nil end end
       for _, t in pairs(skipped) do if type(t) == "table" then t[key] = nil end end
     end
@@ -673,7 +755,15 @@ function M:RestoreNotes(chosen, listed)
         NSRT[field] = type(NSRT[field]) == "table" and NSRT[field] or {}
         if NSRT[field][name] == nil then
           NSRT[field][name] = vault[key]
-          if NSRT[field][name] == vault[key] then put = put + 1 end
+          if NSRT[field][name] == vault[key] then
+            put = put + 1
+            if kind == "p" then
+              local ok, conflict = pcall(restoreMeta, db, key, name, vault[key])
+              if ok and conflict then
+                NT:Print(string.format("「%s」: 같은 전문화 · 보스에 「%s」가 이미 연결돼 있어 전문화 연결 없이 넣었어요 (NSRT에서 고를 수 있어요).", name, conflict))
+              end
+            end
+          end
         end
         seenHere[key] = true
         skippedHere[key] = nil

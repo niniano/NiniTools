@@ -494,6 +494,7 @@ function NT:SetNaviCursorEnabled(enabled)
   else
     SetDriverActive(false)
     ApplyVisibility(false,db)
+    ClearTrail(); castRing:Stop(); swingRing:Stop()   -- 2.8.12: 끌 때 남은 꼬리 점 · 링도 바로 지움
     wasShown=false
   end
   return true
@@ -582,6 +583,7 @@ events:SetScript("OnEvent",function(_,event)
     wasShown=false
     SetDriverActive(false)
     ApplyVisibility(false,db)
+    ClearTrail(); castRing:Stop(); swingRing:Stop()
   end
 end)
 
