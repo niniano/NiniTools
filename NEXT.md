@@ -2,13 +2,7 @@
 
 배포 ZIP에는 안 들어가는 메모입니다 (`NiniTools/` 폴더 밖).
 
-## 다음 버전 (2.8.16) 예약
-- 홈 「애드온 부하 (마지막 보스)」 카드: 애드온 이름이 길면 ms 숫자가 잘림 (예: 「EllesmereUIUnitFrames 0.4」 · 11/20 사용자 스샷)
-  → 숫자를 먼저 쓰거나(「0.4ms · EllesmereUIUnitFrames」) 이름 줄이기(EllesmereUI → EUI) · 넘치면 글자 작게 / 말줄임은 이름 쪽에만
-  · 아래 「최근 보스 풀 부하」 줄도 같은 이름 줄이기 맞추기
-
 ## 대기 (버전 미정)
-- 본섭 Navi 반짝임: 2.8.15 (conjureitem 1.3배) 도 사용자 맘에 아직 안 듦 (11/19 「여기까지만」). 다시 할 때는 사용자 본섭 영상 먼저 받고 원하는 모습 확인 후
 - 포에버 UI 배율 자동 (2.8.12 · 기본 꺼짐): 사용자가 써 보고 없앨지 둘지 정하기로 함 (11/19). 없애면 UIScale.lua · Camelot TOC 줄 · QOL uiscale 칸 · News/CHANGELOG/README 한 줄씩
 - 대기: 사용자가 포에버에 LittleWigs 설치 + BigWigs 승리·초읽기 소리를 뜌미로 설정함 (11/9) → 다음 인던에서 소리 나면 이 항목은 안 함
 - 포에버 인던 네임드 킬 → 「뜌미 승리」 소리 (사용자 요청 · 2.8.4 의 「인던 관련」 한 가지가 이것)
@@ -16,6 +10,15 @@
   · 포에버 먼저 확인: BigWigs 옵션 승리 소리를 「뜌미 승리」로 고르면 되는지 (니니툴이 포에버에서도 등록함)
   · 인던 보스 모듈(LittleWigs)이 없어 BigWigs 가 안 울리면 → 니니툴 Camelot 전용으로 ENCOUNTER_END 성공 + 던전(party)일 때 재생
   · BigWigs 가 이미 울린 킬은 건너뛰어 두 번 안 나게 · 켜고 끄는 스위치
+
+## 2.8.16
+- 본섭 반짝임 100% (RETAIL_SPARK_SCALE=1) · 「가운데 반짝임 효과」 드롭다운 (본섭만 · db.naviSparkModel · NT.NAVI_SPARK_CHOICES)
+  후보 FileDataID 는 wowdev/wow-listfile community-listfile.csv 에서 찾음 (모델 위치 · 크기는 conjureitem 과 같게 시작 · 실게임에서 사용자가 골라 보고 알려 주기로)
+  165816 conjureitem · 1709417 cfx_mage_arcaneprecastgeneric_precasthand · 1710678 cfx_priest_holyprecastbluegeneric_precasthand ·
+  5054341 10gfx_arcane_precasthands · 3090068 cfx_kyrian_mage_arcane_precast · 794764 fill_arcane_precast_01 · 165817 conjureitemcast ·
+  6907664 11fx_arcanesparkles01 · 5876234 11fx_sparklysparkles01
+  (참고: Navi 요정 166890 = spells/slam_impact_chest.m2 · 죽은 모습 166351 = spells/holyprotection_chest.m2)
+- 홈 부하 카드 숫자 먼저 · EllesmereUI → EUI
 
 ## 2.8.15
 - 사용자: 시험판(효과 2배 · coreGlow 뺌 · 뒤 요정 겹) 폐기 → NaviCursor.lua · UI.lua 를 v2.8.13 으로 되돌림 (가운데 빛 슬라이더 제거)

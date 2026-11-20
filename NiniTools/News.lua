@@ -6,6 +6,17 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.16", flavor = "retail", cards = {
+    { title = "Navi 가운데 반짝임 효과 고르기", lines = {
+      "사운드 & Navi → Navi · 마우스 커서 → 「가운데 반짝임 효과」에서 본섭용 반짝임을 골라 볼 수 있습니다 (고르면 바로 바뀜).",
+      "크기는 포에버와 같은 100% 로 되돌렸습니다.",
+    } },
+  } },
+  { version = "2.8.16", cards = {
+    { title = "홈 부하 카드", lines = {
+      "「애드온 부하」 카드가 숫자를 먼저 보여 줍니다 (이름이 길어도 ms 가 잘리지 않음).",
+    } },
+  } },
   { version = "2.8.15", flavor = "retail", cards = {
     { title = "Navi 반짝임 조금 크게", lines = {
       "요정 바깥 원 안으로 빛줄기가 모여 뱅그르 터지는 효과를 조금 키웠습니다. 2.8.14 의 「가운데 빛」 슬라이더는 뺐습니다.",

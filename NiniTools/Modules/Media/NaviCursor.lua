@@ -159,8 +159,33 @@ sparkRegion:SetPoint("CENTER", mouseFrame, "CENTER", sparkRegion.baseX, sparkReg
 local sparkModel = CreateFrame("PlayerModel", nil, sparkRegion)
 sparkModel:SetAllPoints(sparkRegion)
 if sparkModel.SetKeepModelOnHide then pcall(sparkModel.SetKeepModelOnHide, sparkModel, true) end
+-- 2.8.16: 본섭은 같은 효과가 포에버와 다르게 보여 본섭용 효과를 게임 안에서 골라 본다 (사운드 & Navi → Navi).
+--   모두 게임에 들어 있는 주문 효과 모델 (FileDataID · wowdev 공개 파일 목록 기준). 위치 · 크기는 물건 창조와 같게 시작.
+--   포에버는 물건 창조 고정 (잘 나옴).
+NT.NAVI_SPARK_CHOICES = {
+  { id = 165816,  name = "물건 창조 (포에버와 같음)" },     -- spells/conjureitem.m2
+  { id = 1709417, name = "비전 시전 모으기" },               -- spells/cfx_mage_arcaneprecastgeneric_precasthand.m2
+  { id = 1710678, name = "푸른 신성 시전 모으기" },           -- spells/cfx_priest_holyprecastbluegeneric_precasthand.m2
+  { id = 5054341, name = "비전 양손 모으기" },               -- spells/10gfx_arcane_precasthands.m2
+  { id = 3090068, name = "키리안 비전 시전" },               -- spells/cfx_kyrian_mage_arcane_precast.m2
+  { id = 794764,  name = "비전 시전 채우기" },               -- spells/fill_arcane_precast_01.m2
+  { id = 165817,  name = "물건 창조 시전" },                 -- spells/conjureitemcast.m2
+  { id = 6907664, name = "비전 반짝이" },                    -- spells/11fx_arcanesparkles01.m2
+  { id = 5876234, name = "반짝반짝" },                       -- spells/11fx_sparklysparkles01.m2
+  { id = 0,       name = "끄기" },
+}
+local function SparkModelID()
+  if NT.FOREVER then return 165816 end
+  local db = getDB()
+  local id = db and tonumber(db.naviSparkModel)
+  return id or 165816
+end
+NT.NaviSparkModelID = SparkModelID
+
 local function ConfigureSpark()
-  pcall(sparkModel.SetModel, sparkModel, 165816)
+  local id = SparkModelID()
+  if id == 0 then return end
+  pcall(sparkModel.SetModel, sparkModel, id)
   if sparkModel.SetPortraitZoom then pcall(sparkModel.SetPortraitZoom, sparkModel, 0) end
   if sparkModel.ClearTransform then pcall(sparkModel.ClearTransform, sparkModel) end
   if sparkModel.SetPosition then pcall(sparkModel.SetPosition, sparkModel, -3.45, 0, -1.05) end
@@ -173,9 +198,8 @@ do
 end
 
 local coreGlow = CreateTextureRegion("Navi Glow Alive 19", 30, 30, 52, 41, "BonusChest-CircleGlow", {0,0.72156864404678,1,1}, 1)
--- 2.8.15: 본섭은 요정 바깥 원 안으로 빛줄기가 모여 뱅그르 터지는 크기가 작아 보임 → 본섭만 조금 크게 (1.3배).
---   틀을 키우면 효과 전체가 커진다. 빛이 모이는 가운데(요정 가운데)는 제자리에 있게 틀 위치를 아래로 조금 옮긴다.
-local RETAIL_SPARK_SCALE = 1.3
+-- 2.8.15: 본섭만 1.3배였음 → 2.8.16: 포에버와 같은 100% 로 (본섭용 효과는 위 목록에서 고르기)
+local RETAIL_SPARK_SCALE = 1
 if not NT.FOREVER then
   local pivotY = modelRegion.baseY
   sparkRegion.baseWidth = sparkRegion.baseWidth * RETAIL_SPARK_SCALE
@@ -239,7 +263,9 @@ local function ApplyVisibility(show,db)
   modelRegion:SetShown(show)
   orb:SetShown(show and glowOn)
   circle:SetShown(show and ringOn)
-  for _,r in ipairs(sparkleRegions) do r:SetShown(show and glowOn and not form.shift) end
+  for _,r in ipairs(sparkleRegions) do
+    r:SetShown(show and glowOn and not form.shift and not (r == sparkRegion and SparkModelID() == 0))
+  end
 end
 
 -- ---------------------------------------------------------------------------
@@ -617,6 +643,16 @@ end
 -- 진단용 (자가진단 · 시험): 남은 꼬리 점 수, 죽은 모습 여부, 시전 링 · 자동공격 링 보임
 function NT:NaviCursorState()
   return trailAlive, form == FORMS.dead, castRing:IsShown() and true or false, swingRing:IsShown() and true or false
+end
+
+-- 2.8.16: 본섭 가운데 반짝임 효과 고르기 (포에버는 무시)
+function NT:SetNaviSparkModel(id)
+  local db=getDB()
+  if not db then return false end
+  db.naviSparkModel=tonumber(id) or 165816
+  ConfigureSpark()
+  ApplyVisibility(wasShown,db)
+  return true
 end
 
 function NT:ResetNaviCursor()

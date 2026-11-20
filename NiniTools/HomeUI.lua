@@ -51,6 +51,13 @@ local function trackedTotal()
   return total, n
 end
 
+-- 2.8.16: 긴 애드온 이름 줄이기 (EllesmereUIUnitFrames → EUI UnitFrames)
+local function shortAddon(name)
+  name = tostring(name or "?")
+  name = name:gsub("^EllesmereUI_?(%u)", "EUI %1"):gsub("^EllesmereUI$", "EUI")
+  return name
+end
+
 local function tone(c, name)
   local col = C[name] or C.text
   c.value:SetTextColor(col[1], col[2], col[3], 1)
@@ -112,7 +119,8 @@ local CARDS = {
       local spikes = 0
       for _, r in ipairs(p.addons or {}) do spikes = spikes + (r.n50 or 0) end
       if top then
-        c.value:SetText(string.format("%s %.1fms", top.a, top.avg or 0))
+        -- 2.8.16: 숫자를 앞에 (이름이 길어도 ms 가 안 잘리게)
+        c.value:SetText(string.format("%.1fms · %s", top.avg or 0, shortAddon(top.a)))
         tone(c, spikes >= 5 and "warn" or "text")
       else
         c.value:SetText(p.error and "측정 불가" or "부하 없음"); tone(c, "muted")
@@ -270,7 +278,7 @@ function UI:BuildHome()
       local AP = NT.AddonPerf
       local ok, list = pcall(function() return AP and AP:SummaryLines(4) end)
       if ok and type(list) == "table" then
-        for i = #list, 2, -1 do lines[#lines + 1] = list[i] end   -- 1번 줄은 머리말
+        for i = #list, 2, -1 do lines[#lines + 1] = (tostring(list[i]):gsub("EllesmereUI_?(%u)", "EUI %1")) end   -- 1번 줄은 머리말
       end
       if #lines == 0 then lines[1] = UI:ColorText("아직 기록이 없어요. 보스 풀이 끝나면 채워져요.", C.muted) end
     end
