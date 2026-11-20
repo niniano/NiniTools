@@ -217,6 +217,22 @@ if not NT.FOREVER then
   sparkRegion:SetPoint("CENTER", mouseFrame, "CENTER", sparkRegion.baseX, sparkRegion.baseY)
 end
 local sparkleRegions = { sparkRegion, coreGlow }
+-- 2.8.16: 효과마다 위치가 조금씩 달라 창에서 직접 맞춘다 (픽셀 · 효과별 저장 db.naviSparkOffset[id] = {x=,y=})
+local SPARK_HOME_X, SPARK_HOME_Y = sparkRegion.baseX, sparkRegion.baseY
+local SPARK_OFFSET_DEFAULT = {}   -- 시험 뒤 맞는 값이 정해지면 여기 기본값으로
+local function SparkOffset(id)
+  local db = getDB()
+  local o = db and type(db.naviSparkOffset) == "table" and db.naviSparkOffset[id]
+  local d = SPARK_OFFSET_DEFAULT[id]
+  local x = (type(o) == "table" and tonumber(o.x)) or (d and d[1]) or 0
+  local y = (type(o) == "table" and tonumber(o.y)) or (d and d[2]) or 0
+  return x, y
+end
+local function ApplySparkOffset()
+  local x, y = SparkOffset(SparkModelID())
+  sparkRegion.baseX, sparkRegion.baseY = SPARK_HOME_X + x, SPARK_HOME_Y + y
+end
+ApplySparkOffset()
 
 background:SetFrameLevel(mouseFrame:GetFrameLevel()+1)
 modelRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+2)
@@ -658,7 +674,27 @@ function NT:SetNaviSparkModel(id)
   if not db then return false end
   db.naviSparkModel=tonumber(id) or 0
   ConfigureSpark()
+  ApplySparkOffset(); ApplyGeometry(db,true)
   ApplyVisibility(wasShown,db)
+  return true
+end
+
+-- 2.8.16: 지금 고른 반짝임 효과 위치 (axis "x" = 오른쪽 + · "y" = 위 +, 픽셀)
+function NT:GetNaviSparkOffset(axis)
+  local x, y = SparkOffset(SparkModelID())
+  return axis == "y" and y or x
+end
+function NT:SetNaviSparkOffset(axis, v)
+  local db=getDB()
+  if not db then return false end
+  local id=SparkModelID()
+  if id==0 then return false end
+  db.naviSparkOffset=type(db.naviSparkOffset)=="table" and db.naviSparkOffset or {}
+  local cx, cy = SparkOffset(id)
+  local o={x=cx,y=cy}
+  o[axis=="y" and "y" or "x"]=math.floor((tonumber(v) or 0)+.5)
+  db.naviSparkOffset[id]=o
+  ApplySparkOffset(); ApplyGeometry(db,true)
   return true
 end
 
