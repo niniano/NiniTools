@@ -174,8 +174,10 @@ for _, c in ipairs({
   { id = 0,       name = NT.FOREVER and "끄기" or "끄기 (기본)" },
   { id = 5876234, name = "반짝반짝" },                       -- spells/11fx_sparklysparkles01.m2
   { id = 5054341, name = "비전 양손 모으기" },               -- spells/10gfx_arcane_precasthands.m2
-  { id = 6907664, name = "비전 반짝이" },                    -- spells/11fx_arcanesparkles01.m2
-}) do NT.NAVI_SPARK_CHOICES[#NT.NAVI_SPARK_CHOICES + 1] = c end
+  { id = 6907664, name = "비전 반짝이", retailOnly = true }, -- spells/11fx_arcanesparkles01.m2 · 포에버는 텍스처가 없어 체크무늬 (11/20 영상)
+}) do
+  if not (NT.FOREVER and c.retailOnly) then NT.NAVI_SPARK_CHOICES[#NT.NAVI_SPARK_CHOICES + 1] = c end
+end
 local SPARK_OK = {}
 for _, c in ipairs(NT.NAVI_SPARK_CHOICES) do SPARK_OK[c.id] = true end
 local function SparkModelID()
