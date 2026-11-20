@@ -3154,7 +3154,7 @@ function UI:BuildMedia()
   p.naviOptRows={}
   for i,opt in ipairs({
     {"naviTrail","날아간 자리에 꼬리(궤적) 남기기"},
-    {"naviDeadForm","죽으면 Navi 모습 바뀜 (분홍 · 커서 가운데)"},
+    {"naviDeadForm","죽으면 Navi 모습 바뀜 (분홍)"},
     {"naviCastRing",NT.FOREVER and "Navi 둘레 시전바 · 자동공격 링" or "Navi 둘레 시전바 링"},
   }) do
     local row=self:Toggle(navi.body,opt[2],opt[1],mediaDB,function(v) if NT.SetNaviCursorOption then NT:SetNaviCursorOption(opt[1],v) end end,-84-(i-1)*36)
@@ -3214,7 +3214,9 @@ function UI:BuildMedia()
   pcall(pvModel.SetModel,pvModel,166890); if pvModel.SetPortraitZoom then pcall(pvModel.SetPortraitZoom,pvModel,0) end; if pvModel.ClearTransform then pcall(pvModel.ClearTransform,pvModel) end; if pvModel.SetPosition then pcall(pvModel.SetPosition,pvModel,-5.05,0,-1.9) end; if pvModel.SetFacing then pcall(pvModel.SetFacing,pvModel,0) end
   local pvOrb=makePreviewTexture("orb",60,60,53.602864837646,43.95361328125,"Artifacts-Anim-Orb",{0.462745,0.549020,1,.65},1)
   local pvCircle=makePreviewTexture("circle",55,55,53.602864837646,45.025573730469,"BonusChest-CircleGlow",{0,0.262745,1,1},1)
-  pvBackground:SetFrameLevel(center:GetFrameLevel()+1); pvModelRegion:SetFrameLevel(center:GetFrameLevel()+2); pvOrb:SetFrameLevel(center:GetFrameLevel()+3); pvCircle:SetFrameLevel(center:GetFrameLevel()+4)
+  -- 2.8.16: 실제 커서와 같게 요정 뒤 하늘색 빛 45% (NaviCursor.lua coreGlow)
+  local pvCore=makePreviewTexture("core",30,30,52,41,"BonusChest-CircleGlow",{0,0.72156864404678,1,1},.45)
+  pvBackground:SetFrameLevel(center:GetFrameLevel()+1); pvCore:SetFrameLevel(center:GetFrameLevel()+1); pvModelRegion:SetFrameLevel(center:GetFrameLevel()+2); pvOrb:SetFrameLevel(center:GetFrameLevel()+3); pvCircle:SetFrameLevel(center:GetFrameLevel()+4)
   -- 2.7.1: ✥ 는 게임 글꼴에 없어 □ 로 보였음 → 실제 마우스 커서 그림 (커서 끝이 가운데)
   local cursorHolder=CreateFrame("Frame",nil,preview); cursorHolder:SetAllPoints(preview); cursorHolder:SetFrameLevel(center:GetFrameLevel()+10)
   local cursorGlyph=cursorHolder:CreateTexture(nil,"OVERLAY"); cursorGlyph:SetTexture("Interface\\Cursor\\Point")
@@ -3234,9 +3236,9 @@ function UI:BuildMedia()
       region:ClearAllPoints()
       region:SetPoint("CENTER",center,"CENTER",region.baseX*scale,region.baseY*scale)
     end
-    pvBackground:SetShown(enabled and glow); pvOrb:SetShown(enabled and glow); pvCircle:SetShown(enabled and ring); pvModelRegion:SetShown(enabled); cursorGlyph:SetShown(enabled)
-    geometry(pvBackground,pulse); geometry(pvOrb,pulse); geometry(pvCircle,pulse); geometry(pvModelRegion,1)
-    pvBackground:SetAlpha(enabled and pvBackground.baseAlpha or .15); pvOrb:SetAlpha(enabled and 1 or .15); pvCircle:SetAlpha(enabled and 1 or .15); pvModelRegion:SetAlpha(enabled and pvModelRegion.baseAlpha or .15)
+    pvBackground:SetShown(enabled and glow); pvCore:SetShown(enabled and glow); pvOrb:SetShown(enabled and glow); pvCircle:SetShown(enabled and ring); pvModelRegion:SetShown(enabled); cursorGlyph:SetShown(enabled)
+    geometry(pvBackground,pulse); geometry(pvCore,pulse); geometry(pvOrb,pulse); geometry(pvCircle,pulse); geometry(pvModelRegion,1)
+    pvBackground:SetAlpha(enabled and pvBackground.baseAlpha or .15); pvCore:SetAlpha(enabled and pvCore.baseAlpha or .1); pvOrb:SetAlpha(enabled and 1 or .15); pvCircle:SetAlpha(enabled and 1 or .15); pvModelRegion:SetAlpha(enabled and pvModelRegion.baseAlpha or .15)
     cursorGlyph:SetAlpha(enabled and .88 or .18)
   end)
   local pvNote=self:Font(preview,8,"실제 Navi 오프셋 · 비율 · 알파를 그대로 축소 재현",C.muted); pvNote:SetPoint("BOTTOM",0,22)
