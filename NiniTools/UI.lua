@@ -3140,7 +3140,7 @@ function UI:BuildMedia()
   callNote3:SetPoint("TOPLEFT",22,-197); callNote3:SetPoint("RIGHT",-18,0)
 
   -- 4) Navi · 마우스 커서 -------------------------------------------------------------
-  local ND=38*3   -- 2.8.16: 「가운데 반짝임 효과」 고르기 + 효과 위치 ←→ · ↑↓ 줄만큼 아래로 (본섭 · 포에버)
+  local ND=38   -- 2.8.16: 「가운데 반짝임 효과」 고르기 줄만큼 아래로 (본섭 · 포에버)
   local navi=self:AccordionSection(p,"navi","Navi · 마우스 커서","커서 강조 효과 · 실시간 미리보기 · Navi 채팅",320+ND,false)
   p.naviCursorRow=self:Toggle(navi.body,"마우스 Navi 사용","naviCursorEnabled",mediaDB,function(v) NT:SetNaviCursorEnabled(v) end,-10)
   p.naviCursorRow:ClearAllPoints(); p.naviCursorRow:SetPoint("TOPLEFT",18,-8); p.naviCursorRow:SetSize(420,36)
@@ -3168,17 +3168,6 @@ function UI:BuildMedia()
       function() return NT.NaviSparkModelID and NT.NaviSparkModelID() or (NT.FOREVER and 165816 or 0) end,
       function(v) if NT.SetNaviSparkModel then NT:SetNaviSparkModel(v) end; if UI.RefreshVisiblePage then UI:RefreshVisiblePage() end end,200)
     p.naviSparkRow:ClearAllPoints(); p.naviSparkRow:SetPoint("TOPLEFT",18,-192); p.naviSparkRow:SetSize(420,34)
-    -- 2.8.16: 고른 효과 위치 맞추기 (효과마다 따로 저장 · 0 = 기본 자리)
-    p.naviSparkXRow=self:SliderRow(navi.body,"효과 위치 ← →",-230,-30,30,1,
-      function() return NT.GetNaviSparkOffset and NT:GetNaviSparkOffset("x") or 0 end,
-      function(v) if NT.SetNaviSparkOffset then NT:SetNaviSparkOffset("x",v) end end,
-      function(v) return string.format("%+d px",math.floor(v+.5)) end)
-    p.naviSparkXRow:ClearAllPoints(); p.naviSparkXRow:SetPoint("TOPLEFT",18,-230); p.naviSparkXRow:SetSize(420,34)
-    p.naviSparkYRow=self:SliderRow(navi.body,"효과 위치 ↓ ↑",-268,-30,30,1,
-      function() return NT.GetNaviSparkOffset and NT:GetNaviSparkOffset("y") or 0 end,
-      function(v) if NT.SetNaviSparkOffset then NT:SetNaviSparkOffset("y",v) end end,
-      function(v) return string.format("%+d px",math.floor(v+.5)) end)
-    p.naviSparkYRow:ClearAllPoints(); p.naviSparkYRow:SetPoint("TOPLEFT",18,-268); p.naviSparkYRow:SetSize(420,34)
   end
 
   -- Animated preview using the same geometry/offsets as NaviCursor.lua.
@@ -3303,8 +3292,6 @@ function UI:BuildMedia()
     local cursorOn=db.naviCursorEnabled~=false
     for _,row in ipairs(self.naviOptRows or {}) do row:Refresh(); setControlEnabled(row,cursorOn) end
     if self.naviSparkRow then self.naviSparkRow:Refresh(); setControlEnabled(self.naviSparkRow,cursorOn) end
-    local sparkOn=cursorOn and NT.NaviSparkModelID and NT.NaviSparkModelID()~=0
-    for _,r in ipairs({self.naviSparkXRow,self.naviSparkYRow}) do if r then r:Refresh(); setControlEnabled(r,sparkOn and true or false) end end
     local chatOn=db.naviChatEnabled~=false
     navi:SetEnabledState(cursorOn)
     navi:SetState(string.format("커서 %d%% · 채팅 %s",tonumber(db.naviCursorScale) or 100,chatOn and "ON" or "OFF"),cursorOn and "accent" or nil)
