@@ -20,6 +20,8 @@
   5054341 10gfx_arcane_precasthands · 3090068 cfx_kyrian_mage_arcane_precast · 794764 fill_arcane_precast_01 · 165817 conjureitemcast ·
   6907664 11fx_arcanesparkles01 · 5876234 11fx_sparklysparkles01
   (참고: Navi 요정 166890 = spells/slam_impact_chest.m2 · 죽은 모습 166351 = spells/holyprotection_chest.m2)
+- 사용자 시험 후 (11/20): 끄기 · 반짝반짝(5876234) · 비전 양손 모으기(5054341) · 비전 반짝이(6907664)만 남김 · 포에버에도 같은 드롭다운 + 빛줄기(165816, 포에버 기본)
+  예전 시험판에서 고른 값이 목록에 없으면 기본으로 (SPARK_OK) · 포에버 클라이언트에 없는 모델이면 아무것도 안 보임 → 포에버에서 확인 필요
 - 홈 부하 카드 숫자 먼저 · EllesmereUI → EUI
 
 ## 2.8.15

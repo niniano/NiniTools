@@ -160,26 +160,29 @@ sparkRegion:SetPoint("CENTER", mouseFrame, "CENTER", sparkRegion.baseX, sparkReg
 local sparkModel = CreateFrame("PlayerModel", nil, sparkRegion)
 sparkModel:SetAllPoints(sparkRegion)
 if sparkModel.SetKeepModelOnHide then pcall(sparkModel.SetKeepModelOnHide, sparkModel, true) end
--- 2.8.16: 본섭은 같은 효과가 포에버와 다르게 보여 본섭용 효과를 게임 안에서 골라 본다 (사운드 & Navi → Navi).
---   모두 게임에 들어 있는 주문 효과 모델 (FileDataID · wowdev 공개 파일 목록 기준). 위치 · 크기는 물건 창조와 같게 시작.
---   포에버는 물건 창조 고정 (잘 나옴).
-NT.NAVI_SPARK_CHOICES = {
-  { id = 0,       name = "끄기 (기본)" },
-  { id = 165816,  name = "물건 창조 (포에버와 같음)" },     -- spells/conjureitem.m2
-  { id = 1709417, name = "비전 시전 모으기" },               -- spells/cfx_mage_arcaneprecastgeneric_precasthand.m2
-  { id = 1710678, name = "푸른 신성 시전 모으기" },           -- spells/cfx_priest_holyprecastbluegeneric_precasthand.m2
-  { id = 5054341, name = "비전 양손 모으기" },               -- spells/10gfx_arcane_precasthands.m2
-  { id = 3090068, name = "키리안 비전 시전" },               -- spells/cfx_kyrian_mage_arcane_precast.m2
-  { id = 794764,  name = "비전 시전 채우기" },               -- spells/fill_arcane_precast_01.m2
-  { id = 165817,  name = "물건 창조 시전" },                 -- spells/conjureitemcast.m2
-  { id = 6907664, name = "비전 반짝이" },                    -- spells/11fx_arcanesparkles01.m2
+-- 2.8.16: 가운데 반짝임 효과를 게임 안에서 고른다 (사운드 & Navi → Navi). 본섭 · 포에버 모두.
+--   모두 게임에 들어 있는 주문 효과 모델 (FileDataID · wowdev 공개 파일 목록 기준). 위치 · 크기는 물건 창조와 같게.
+--   기본: 포에버 = 물건 창조 빛줄기 (잘 나옴) · 본섭 = 끄기 (2.8.12 모습).
+--   시험 뒤 남긴 것만: 끄기 · 반짝반짝 · 비전 양손 모으기 · 비전 반짝이 (+ 포에버 빛줄기)
+local SPARK_CONJURE = 165816   -- spells/conjureitem.m2
+local SPARK_DEFAULT = NT.FOREVER and SPARK_CONJURE or 0
+NT.NAVI_SPARK_CHOICES = {}
+if NT.FOREVER then
+  NT.NAVI_SPARK_CHOICES[#NT.NAVI_SPARK_CHOICES + 1] = { id = SPARK_CONJURE, name = "빛줄기 (기본)" }
+end
+for _, c in ipairs({
+  { id = 0,       name = NT.FOREVER and "끄기" or "끄기 (기본)" },
   { id = 5876234, name = "반짝반짝" },                       -- spells/11fx_sparklysparkles01.m2
-}
+  { id = 5054341, name = "비전 양손 모으기" },               -- spells/10gfx_arcane_precasthands.m2
+  { id = 6907664, name = "비전 반짝이" },                    -- spells/11fx_arcanesparkles01.m2
+}) do NT.NAVI_SPARK_CHOICES[#NT.NAVI_SPARK_CHOICES + 1] = c end
+local SPARK_OK = {}
+for _, c in ipairs(NT.NAVI_SPARK_CHOICES) do SPARK_OK[c.id] = true end
 local function SparkModelID()
-  if NT.FOREVER then return 165816 end
   local db = getDB()
   local id = db and tonumber(db.naviSparkModel)
-  return id or 0   -- 2.8.16: 본섭 기본은 끄기 (2.8.12 모습) · 효과는 골라서 시험
+  if id and SPARK_OK[id] then return id end
+  return SPARK_DEFAULT   -- 저장 없음 · 목록에서 빠진 예전 값 (2.8.16 시험판) → 기본으로
 end
 NT.NaviSparkModelID = SparkModelID
 
@@ -647,7 +650,7 @@ function NT:NaviCursorState()
   return trailAlive, form == FORMS.dead, castRing:IsShown() and true or false, swingRing:IsShown() and true or false
 end
 
--- 2.8.16: 본섭 가운데 반짝임 효과 고르기 (포에버는 무시)
+-- 2.8.16: 가운데 반짝임 효과 고르기 (본섭 · 포에버)
 function NT:SetNaviSparkModel(id)
   local db=getDB()
   if not db then return false end

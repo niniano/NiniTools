@@ -3140,7 +3140,7 @@ function UI:BuildMedia()
   callNote3:SetPoint("TOPLEFT",22,-197); callNote3:SetPoint("RIGHT",-18,0)
 
   -- 4) Navi · 마우스 커서 -------------------------------------------------------------
-  local ND=NT.FOREVER and 0 or 38   -- 2.8.16: 본섭은 「가운데 반짝임 효과」 고르기 줄만큼 아래로
+  local ND=38   -- 2.8.16: 「가운데 반짝임 효과」 고르기 줄만큼 아래로 (본섭 · 포에버)
   local navi=self:AccordionSection(p,"navi","Navi · 마우스 커서","커서 강조 효과 · 실시간 미리보기 · Navi 채팅",320+ND,false)
   p.naviCursorRow=self:Toggle(navi.body,"마우스 Navi 사용","naviCursorEnabled",mediaDB,function(v) NT:SetNaviCursorEnabled(v) end,-10)
   p.naviCursorRow:ClearAllPoints(); p.naviCursorRow:SetPoint("TOPLEFT",18,-8); p.naviCursorRow:SetSize(420,36)
@@ -3161,11 +3161,11 @@ function UI:BuildMedia()
     row:ClearAllPoints(); row:SetPoint("TOPLEFT",18,-84-(i-1)*36); row:SetSize(420,34)
     p.naviOptRows[i]=row
   end
-  if not NT.FOREVER and NT.NAVI_SPARK_CHOICES then
+  if NT.NAVI_SPARK_CHOICES then
     local sitems={}
     for _,c in ipairs(NT.NAVI_SPARK_CHOICES) do sitems[#sitems+1]={value=c.id,text=c.name} end
     p.naviSparkRow=self:DropdownRow(navi.body,"가운데 반짝임 효과",-192,sitems,
-      function() return NT.NaviSparkModelID and NT.NaviSparkModelID() or 0 end,
+      function() return NT.NaviSparkModelID and NT.NaviSparkModelID() or (NT.FOREVER and 165816 or 0) end,
       function(v) if NT.SetNaviSparkModel then NT:SetNaviSparkModel(v) end end,200)
     p.naviSparkRow:ClearAllPoints(); p.naviSparkRow:SetPoint("TOPLEFT",18,-192); p.naviSparkRow:SetSize(420,34)
   end
