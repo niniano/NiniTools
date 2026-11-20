@@ -13,6 +13,7 @@
 
 ## 2.8.16
 - coreGlow(가운데 하늘색 빛): 2.8.13 은 요정(+2) 위(+5) · 100% 라 요정 가운데를 파랗게 덮음 (11/20 사용자 스샷) → 요정 뒤(+1) · 45% (사용자: 「요정 뒤에 깔리게 약하게」)
+- 죽은 모습 shift=false (평소 자리 · 사용자 11/20) · 반짝임 숨김은 form.dead 로
 - 포에버 = 2.8.12 + conjureitem 100% · 본섭 기본 = 끄기(2.8.12 모습) · 「가운데 반짝임 효과」 드롭다운으로 시험 (db.naviSparkModel · NT.NAVI_SPARK_CHOICES)
   후보 FileDataID 는 wowdev/wow-listfile community-listfile.csv 에서 찾음 (모델 위치 · 크기는 conjureitem 과 같게 시작 · 실게임에서 사용자가 골라 보고 알려 주기로)
   165816 conjureitem · 1709417 cfx_mage_arcaneprecastgeneric_precasthand · 1710678 cfx_priest_holyprecastbluegeneric_precasthand ·

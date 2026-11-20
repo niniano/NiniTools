@@ -114,7 +114,8 @@ local FORMS = {
   alive = { model = 166890, pos = { -5.05, 0, -1.9 }, modelAlpha = 0.5, shift = false,
     orb = { 0.4627451300621, 0.54901963472366, 1, 0.65000000596046 }, circle = { 0, 0.26274511218071, 1, 1 },
     trail = { 0.04, 0.14, 1 } },
-  dead = { model = 166351, pos = { -10.9, 0, -2 }, modelAlpha = 1, shift = true,
+  -- 2.8.16: 죽은 모습도 평소 자리(커서 오른쪽 위)에 · 2.8.12~15 는 커서 한가운데로 옮겼음 (dead = 반짝임 숨김 표시)
+  dead = { model = 166351, pos = { -10.9, 0, -2 }, modelAlpha = 1, shift = false, dead = true,
     orb = { 1, 0.88235300779343, 0.89803928136826, 0.51 }, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
     trail = { 1, 0.55, 0.72 } },
 }
@@ -265,7 +266,7 @@ local function ApplyVisibility(show,db)
   orb:SetShown(show and glowOn)
   circle:SetShown(show and ringOn)
   for _,r in ipairs(sparkleRegions) do
-    r:SetShown(show and glowOn and not form.shift and not (r == sparkRegion and SparkModelID() == 0))   -- 하늘색 빛은 효과 끄기여도 보임
+    r:SetShown(show and glowOn and not form.dead and not (r == sparkRegion and SparkModelID() == 0))   -- 하늘색 빛은 효과 끄기여도 보임
   end
 end
 
