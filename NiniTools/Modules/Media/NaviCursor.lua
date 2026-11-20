@@ -203,8 +203,8 @@ do
   ConfigureModel = function() configureNavi(); ConfigureSpark() end
 end
 
--- 2.8.16: 요정 뒤에 약하게 (45%) · 2.8.13 은 요정 위에 100% 로 그려져 요정 가운데를 파랗게 덮었음
-local coreGlow = CreateTextureRegion("Navi Glow Alive 19", 30, 30, 52, 41, "BonusChest-CircleGlow", {0,0.72156864404678,1,1}, 0.45)
+-- 2.8.16: 요정 뒤에 아주 약하게 (10% · 사용자 11/20) · 2.8.13 은 요정 위에 100% 로 그려져 요정 가운데를 파랗게 덮었음
+local coreGlow = CreateTextureRegion("Navi Glow Alive 19", 30, 30, 52, 41, "BonusChest-CircleGlow", {0,0.72156864404678,1,1}, 0.10)
 -- 2.8.15: 본섭만 1.3배였음 → 2.8.16: 포에버와 같은 100% 로 (본섭용 효과는 위 목록에서 고르기)
 local RETAIL_SPARK_SCALE = 1
 if not NT.FOREVER then
