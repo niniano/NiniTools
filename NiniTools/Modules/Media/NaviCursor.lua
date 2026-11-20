@@ -197,7 +197,8 @@ do
   ConfigureModel = function() configureNavi(); ConfigureSpark() end
 end
 
-local coreGlow = CreateTextureRegion("Navi Glow Alive 19", 30, 30, 52, 41, "BonusChest-CircleGlow", {0,0.72156864404678,1,1}, 1)
+-- 2.8.16: 요정 뒤에 약하게 (45%) · 2.8.13 은 요정 위에 100% 로 그려져 요정 가운데를 파랗게 덮었음
+local coreGlow = CreateTextureRegion("Navi Glow Alive 19", 30, 30, 52, 41, "BonusChest-CircleGlow", {0,0.72156864404678,1,1}, 0.45)
 -- 2.8.15: 본섭만 1.3배였음 → 2.8.16: 포에버와 같은 100% 로 (본섭용 효과는 위 목록에서 고르기)
 local RETAIL_SPARK_SCALE = 1
 if not NT.FOREVER then
@@ -209,15 +210,13 @@ if not NT.FOREVER then
   sparkRegion:ClearAllPoints()
   sparkRegion:SetPoint("CENTER", mouseFrame, "CENTER", sparkRegion.baseX, sparkRegion.baseY)
 end
--- 2.8.16: 가운데 하늘색 빛(coreGlow)은 게임에서 요정 가운데를 파랗게 덮어 뺌 (설정 미리보기 · 2.8.12 와 같은 모습)
-local sparkleRegions = { sparkRegion }
+local sparkleRegions = { sparkRegion, coreGlow }
 
 background:SetFrameLevel(mouseFrame:GetFrameLevel()+1)
 modelRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+2)
 orb:SetFrameLevel(mouseFrame:GetFrameLevel()+3)
 circle:SetFrameLevel(mouseFrame:GetFrameLevel()+4)
-coreGlow:SetFrameLevel(mouseFrame:GetFrameLevel()+5)
-coreGlow:Hide()   -- 2.8.16: 안 씀 (위 설명)
+coreGlow:SetFrameLevel(mouseFrame:GetFrameLevel()+1)   -- 2.8.16: 요정(+2) 뒤
 sparkRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+6)
 
 local pulseRegions = {background,orb,circle}
@@ -266,7 +265,7 @@ local function ApplyVisibility(show,db)
   orb:SetShown(show and glowOn)
   circle:SetShown(show and ringOn)
   for _,r in ipairs(sparkleRegions) do
-    r:SetShown(show and glowOn and not form.shift and not (r == sparkRegion and SparkModelID() == 0))
+    r:SetShown(show and glowOn and not form.shift and not (r == sparkRegion and SparkModelID() == 0))   -- 하늘색 빛은 효과 끄기여도 보임
   end
 end
 
