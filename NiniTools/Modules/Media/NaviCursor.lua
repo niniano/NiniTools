@@ -163,6 +163,7 @@ if sparkModel.SetKeepModelOnHide then pcall(sparkModel.SetKeepModelOnHide, spark
 --   모두 게임에 들어 있는 주문 효과 모델 (FileDataID · wowdev 공개 파일 목록 기준). 위치 · 크기는 물건 창조와 같게 시작.
 --   포에버는 물건 창조 고정 (잘 나옴).
 NT.NAVI_SPARK_CHOICES = {
+  { id = 0,       name = "끄기 (기본)" },
   { id = 165816,  name = "물건 창조 (포에버와 같음)" },     -- spells/conjureitem.m2
   { id = 1709417, name = "비전 시전 모으기" },               -- spells/cfx_mage_arcaneprecastgeneric_precasthand.m2
   { id = 1710678, name = "푸른 신성 시전 모으기" },           -- spells/cfx_priest_holyprecastbluegeneric_precasthand.m2
@@ -172,13 +173,12 @@ NT.NAVI_SPARK_CHOICES = {
   { id = 165817,  name = "물건 창조 시전" },                 -- spells/conjureitemcast.m2
   { id = 6907664, name = "비전 반짝이" },                    -- spells/11fx_arcanesparkles01.m2
   { id = 5876234, name = "반짝반짝" },                       -- spells/11fx_sparklysparkles01.m2
-  { id = 0,       name = "끄기" },
 }
 local function SparkModelID()
   if NT.FOREVER then return 165816 end
   local db = getDB()
   local id = db and tonumber(db.naviSparkModel)
-  return id or 165816
+  return id or 0   -- 2.8.16: 본섭 기본은 끄기 (2.8.12 모습) · 효과는 골라서 시험
 end
 NT.NaviSparkModelID = SparkModelID
 
@@ -209,13 +209,15 @@ if not NT.FOREVER then
   sparkRegion:ClearAllPoints()
   sparkRegion:SetPoint("CENTER", mouseFrame, "CENTER", sparkRegion.baseX, sparkRegion.baseY)
 end
-local sparkleRegions = { sparkRegion, coreGlow }
+-- 2.8.16: 가운데 하늘색 빛(coreGlow)은 게임에서 요정 가운데를 파랗게 덮어 뺌 (설정 미리보기 · 2.8.12 와 같은 모습)
+local sparkleRegions = { sparkRegion }
 
 background:SetFrameLevel(mouseFrame:GetFrameLevel()+1)
 modelRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+2)
 orb:SetFrameLevel(mouseFrame:GetFrameLevel()+3)
 circle:SetFrameLevel(mouseFrame:GetFrameLevel()+4)
 coreGlow:SetFrameLevel(mouseFrame:GetFrameLevel()+5)
+coreGlow:Hide()   -- 2.8.16: 안 씀 (위 설명)
 sparkRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+6)
 
 local pulseRegions = {background,orb,circle}
@@ -649,7 +651,7 @@ end
 function NT:SetNaviSparkModel(id)
   local db=getDB()
   if not db then return false end
-  db.naviSparkModel=tonumber(id) or 165816
+  db.naviSparkModel=tonumber(id) or 0
   ConfigureSpark()
   ApplyVisibility(wasShown,db)
   return true

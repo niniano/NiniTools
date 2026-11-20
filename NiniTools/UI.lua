@@ -3165,7 +3165,7 @@ function UI:BuildMedia()
     local sitems={}
     for _,c in ipairs(NT.NAVI_SPARK_CHOICES) do sitems[#sitems+1]={value=c.id,text=c.name} end
     p.naviSparkRow=self:DropdownRow(navi.body,"가운데 반짝임 효과",-192,sitems,
-      function() return NT.NaviSparkModelID and NT.NaviSparkModelID() or 165816 end,
+      function() return NT.NaviSparkModelID and NT.NaviSparkModelID() or 0 end,
       function(v) if NT.SetNaviSparkModel then NT:SetNaviSparkModel(v) end end,200)
     p.naviSparkRow:ClearAllPoints(); p.naviSparkRow:SetPoint("TOPLEFT",18,-192); p.naviSparkRow:SetSize(420,34)
   end
