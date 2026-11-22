@@ -8,7 +8,7 @@ NT = NT or _G.NiniTools
 local NEWS = {
   { version = "2.8.19", cards = {
     { title = "죽었을 때 Navi", lines = {
-      "죽었을 때 가운데 하얀 빛이 너무 밝아서 뺐습니다. 죽으면 분홍 링과 꼬리가 나옵니다.",
+      "죽었을 때 가운데가 하얗게 번져 요정이 안 보이던 것을 고쳤습니다. 분홍 원이 가운데를 덮고, 링과 요정이 보입니다.",
     } },
   } },
   { version = "2.8.18", flavor = "forever", cards = {

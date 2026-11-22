@@ -9,7 +9,7 @@ if not NT then return end
 --         그림(NaviRing · NaviSpark)은 니니툴이 직접 만든 것. 다른 애드온 · 위크오라 코드나 그림은 쓰지 않음.
 --
 -- 출처 · 고마운 분:
---   Navi 커서의 모양 · 위치 · 색 · 모델 번호(살아 있을 때 166890 · 죽었을 때 166351 · 2.8.19 부터 죽은 모습은 모델 없이)와 둘레 링 아이디어는
+--   Navi 커서의 모양 · 위치 · 색 · 모델 번호(살아 있을 때 166890 · 죽었을 때 166351)와 둘레 링 아이디어는
 --   Untrue 님의 「UntrueUI - Navi Cursor」 위크오라를 참고했다 (포에버판 https://wago.io/p7q_rWVGh).
 --   꼬리(궤적)는 그 위크오라와 함께 쓰는 Lumen 애드온의 꼬리에서 아이디어만 얻었다.
 --   Navi 는 닌텐도 「젤다의 전설」 캐릭터 이름이다. 니니툴은 닌텐도 · Untrue · Lumen 과 관계없다.
@@ -115,19 +115,17 @@ local FORMS = {
     orb = { 0.4627451300621, 0.54901963472366, 1, 0.65000000596046 }, circle = { 0, 0.26274511218071, 1, 1 },
     trail = { 0.04, 0.14, 1 } },
   -- 2.8.16: 죽은 모습도 평소 자리(커서 오른쪽 위)에 · 2.8.12~15 는 커서 한가운데로 옮겼음 (dead = 반짝임 숨김 표시)
-  -- 2.8.19: 가운데 흰 빛이 너무 밝음 (사용자) → 45% 로 낮춰도 그대로 → 가운데 빛(신성 보호막 모델 · 가운데 공)을 아예 뺌
-  --   죽으면 분홍 링(deadRing · NaviRing.tga) · 분홍 둘레 원 · 분홍 꼬리 (model = nil)
-  dead = { model = nil, pos = { -10.9, 0, -2 }, modelAlpha = 0, shift = false, dead = true,
-    orb = { 1, 0.62, 0.78, 0 }, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
+  -- 2.8.19: 포에버 위크오라 죽은 모습을 다시 확인 (사용자 11/22) — 겹치는 순서가 달랐다.
+  --   위크오라: 신성 보호막 모델 → 흰 공(65) → 분홍 원(50 · BLEND = 덮는 색) → 요정 그림 → 분홍 가운데 빛(30)
+  --   분홍 원이 밝은 모델 · 공 위를 덮어 가운데가 안 하얘지고, 모델의 바깥쪽만 링처럼 보이고, 요정은 맨 위에 보인다.
+  --   니니툴은 요정 그림이 맨 아래 · 분홍 원이 ADD 라 가운데가 하얗게 번져 요정이 안 보였음.
+  dead = { model = 166351, pos = { -10.9, 0, -2 }, modelAlpha = 0.9, shift = false, dead = true,
+    orb = { 1, 0.88235300779343, 0.89803928136826, 0.51 }, orbSize = 65, circleSize = 50, circleBlend = "BLEND", fairyOnTop = true, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
     trail = { 1, 0.55, 0.72 } },
 }
 local form = FORMS.alive
 
 local function ConfigureModel()
-  if not form.model then
-    if model.ClearModel then pcall(model.ClearModel, model) end
-    return
-  end
   pcall(model.SetModel, model, form.model)
   if model.SetPortraitZoom then pcall(model.SetPortraitZoom, model, 0) end
   if model.ClearTransform then pcall(model.ClearTransform, model) end
@@ -210,6 +208,9 @@ do
 end
 
 -- 2.8.16: 요정 뒤에 아주 약하게 (10% · 사용자 11/20) · 2.8.13 은 요정 위에 100% 로 그려져 요정 가운데를 파랗게 덮었음
+-- 2.8.19: 죽은 모습 가운데 분홍 빛 (위크오라 「Navi Glow Dead 6」 · 요정 위)
+local deadCore = CreateTextureRegion("Navi Glow Dead 6", 30, 30, 53.602864837646, 45.025573730469, "BonusChest-CircleGlow", {1,0.78431379795074,0.8666667342186,0.65000000596046}, 1)
+deadCore:Hide()
 local coreGlow = CreateTextureRegion("Navi Glow Alive 19", 30, 30, 52, 41, "BonusChest-CircleGlow", {0,0.72156864404678,1,1}, 0.10)
 -- 2.8.15: 본섭만 1.3배였음 → 2.8.16: 포에버와 같은 100% 로 (본섭용 효과는 위 목록에서 고르기)
 local RETAIL_SPARK_SCALE = 1
@@ -233,6 +234,7 @@ modelRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+2)
 orb:SetFrameLevel(mouseFrame:GetFrameLevel()+3)
 circle:SetFrameLevel(mouseFrame:GetFrameLevel()+4)
 coreGlow:SetFrameLevel(mouseFrame:GetFrameLevel()+1)   -- 2.8.16: 요정(+2) 뒤
+deadCore:SetFrameLevel(mouseFrame:GetFrameLevel()+5)
 sparkRegion:SetFrameLevel(mouseFrame:GetFrameLevel()+6)
 
 local pulseRegions = {background,orb,circle}
@@ -264,6 +266,7 @@ local function ApplyGeometry(db, force)
   ApplyAnchor(orb,scale)
   ApplyAnchor(circle,scale)
   ApplyAnchor(modelRegion,scale)
+  ApplyAnchor(deadCore,scale)
   for _,r in ipairs(sparkleRegions) do ApplyAnchor(r,scale) end
   if NT.NaviRingsLayout then NT.NaviRingsLayout(scale) end
   return scale
@@ -280,6 +283,7 @@ local function ApplyVisibility(show,db)
   modelRegion:SetShown(show)
   orb:SetShown(show and glowOn)
   circle:SetShown(show and ringOn)
+  deadCore:SetShown(show and glowOn and form.dead and true or false)
   for _,r in ipairs(sparkleRegions) do
     r:SetShown(show and glowOn and not form.dead and not (r == sparkRegion and SparkModelID() == 0))   -- 하늘색 빛은 효과 끄기여도 보임
   end
@@ -402,24 +406,12 @@ end
 local castRing = MakeRing(50, 0, 0.6588, 1)
 local swingRing = MakeRing(62, 0, 1, 0.8118)
 
--- 2.8.19: 죽었을 때 분홍 링 (예전 신성 보호막 모델이 링처럼 보였음 · 가운데 흰 빛 없이 링만 직접 그림)
-local deadRing = CreateFrame("Frame", nil, mouseFrame)
-deadRing.baseSize = 46
-deadRing:SetSize(46, 46)
-deadRing:SetFrameLevel(mouseFrame:GetFrameLevel() + 4)
-deadRing.tex = deadRing:CreateTexture(nil, "ARTWORK")
-deadRing.tex:SetAllPoints()
-deadRing.tex:SetTexture(RING)
-deadRing.tex:SetVertexColor(1, 0.55, 0.72, 0.9)
-if deadRing.tex.SetBlendMode then deadRing.tex:SetBlendMode("ADD") end
-deadRing:Hide()
-NT.NaviDeadRingShown = function() return deadRing:IsShown() and true or false end
 local RANGED_COLOR = { 0.6078, 0.9216, 1 }
 
 NT.NaviRingsLayout = function(scale)
   scale = scale or 1
   local sx, sy = Shift()
-  for _, ring in ipairs({ castRing, swingRing, deadRing }) do
+  for _, ring in ipairs({ castRing, swingRing }) do
     ring:SetSize(ring.baseSize * scale, ring.baseSize * scale)
     ring:ClearAllPoints()
     ring:SetPoint("CENTER", mouseFrame, "CENTER", (modelRegion.baseX + sx) * scale, (modelRegion.baseY + sy) * scale + 4 * scale)
@@ -535,6 +527,7 @@ local function CursorOnUpdate()
     modelRegion:SetSize(modelRegion.baseWidth*scale*f,modelRegion.baseHeight*scale*f)
 
     coreGlow:SetAlpha(coreGlow.baseAlpha*p)
+    deadCore:SetAlpha(deadCore.baseAlpha*p)
     sparkRegion:SetAlpha(p)
     sparkRegion:SetSize(sparkRegion.baseWidth*scale*f,sparkRegion.baseHeight*scale*f)
     background:SetAlpha(background.baseAlpha*p)
@@ -555,6 +548,8 @@ local function CursorOnUpdate()
 
     coreGlow:SetAlpha(coreGlow.baseAlpha)
     ApplyPulse(coreGlow,factor,scale)
+    deadCore:SetAlpha(deadCore.baseAlpha)
+    ApplyPulse(deadCore,factor,scale)
     sparkRegion:SetAlpha(1)
     sparkRegion:SetSize(sparkRegion.baseWidth*scale,sparkRegion.baseHeight*scale)
   end
@@ -569,10 +564,16 @@ local function SetDriverActive(active)
 end
 
 -- 2.8.12: 죽음 · 부활에 따라 모습 바꾸기
+local ORB_SIZE, CIRCLE_SIZE = orb.baseWidth, circle.baseWidth
 local function ApplyFormColors()
   orb.texture:SetVertexColor(form.orb[1], form.orb[2], form.orb[3], form.orb[4])
   circle.texture:SetVertexColor(form.circle[1], form.circle[2], form.circle[3], form.circle[4])
   modelRegion.baseAlpha = form.modelAlpha
+  -- 2.8.19: 죽은 모습 겹치는 순서 · 크기 · 분홍 원 덮는 색 (위크오라와 같게)
+  orb.baseWidth, orb.baseHeight = form.orbSize or ORB_SIZE, form.orbSize or ORB_SIZE
+  circle.baseWidth, circle.baseHeight = form.circleSize or CIRCLE_SIZE, form.circleSize or CIRCLE_SIZE
+  circle.texture:SetBlendMode(form.circleBlend or "ADD")
+  background:SetFrameLevel(mouseFrame:GetFrameLevel() + (form.fairyOnTop and 5 or 1))
 end
 
 local function RefreshForm()
@@ -587,7 +588,6 @@ local function RefreshForm()
   form = want
   ApplyFormColors()
   ConfigureModel()
-  deadRing:SetShown(form.dead and true or false)
   ApplyGeometry(db, true)
   if wasShown then ApplyVisibility(true, db) end
   ClearTrail()
