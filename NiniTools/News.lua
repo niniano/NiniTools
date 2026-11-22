@@ -6,16 +6,16 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.20", flavor = "forever", cards = {
+    { title = "보호된 함수 오류", lines = {
+      "포에버에서 「보호된 함수 UNKNOWN() 호출」 오류가 계속 뜨던 것을 고쳤습니다.",
+      "포에버가 전투 정보를 막아서 근접 자동공격 링은 뺐습니다. 원거리 자동 사격 링은 그대로입니다.",
+    } },
+  } },
   { version = "2.8.19", cards = {
     { title = "죽었을 때 Navi", lines = {
       "죽었을 때 가운데가 하얗게 번져 요정이 안 보이던 것을 고쳤습니다. 분홍 원이 가운데를 덮고, 링과 요정이 보입니다.",
       "죽으면 요정이 커서 둘레를 8자로 날아다닙니다.",
-    } },
-  } },
-  { version = "2.8.19", flavor = "forever", cards = {
-    { title = "보호된 함수 오류", lines = {
-      "포에버에서 「보호된 함수 UNKNOWN() 호출」 오류가 계속 뜨던 것을 고쳤습니다.",
-      "포에버가 전투 정보를 막아서 근접 자동공격 링은 뺐습니다. 원거리 자동 사격 링은 그대로입니다.",
     } },
   } },
   { version = "2.8.18", flavor = "forever", cards = {

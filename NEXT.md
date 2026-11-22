@@ -2,6 +2,9 @@
 
 배포 ZIP에는 안 들어가는 메모입니다 (`NiniTools/` 폴더 밖).
 
+## 2.8.20
+- 포에버 ADDON_ACTION_FORBIDDEN (CLEU 등록 막힘 · 22x) → CLEU 안 씀 · test6 근접 링 공격 속도 주기 → UnitAttackSpeed 비밀 값(232x) → 포에버 근접 링 뺌 · plainNum 으로 시전/원거리만
+
 ## 2.8.19
 - 죽은 모습(166351) 가운데 너무 밝음 (사용자 스샷) → modelAlpha 1 → 0.45 · orb 흰 0.51 → 분홍 (1,0.62,0.78) 0.28 · 더 어둡게 원하면 modelAlpha 부터
   → test1(45%)도 하얗게 번짐 (모델이 빛을 겹쳐 그림) → 사용자: 「가운데 빛 아예 없애기」 → dead.model = nil (ClearModel) · orb 0

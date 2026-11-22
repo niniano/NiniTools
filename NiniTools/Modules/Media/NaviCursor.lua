@@ -434,7 +434,7 @@ local function ringsOn()
   return db and db.naviCursorEnabled ~= false and db.naviCastRing ~= false
 end
 
--- 2.8.19: 포에버도 전투 중 숫자가 「비밀 값」으로 옴 → 비교 · 계산하면 오류. 평범한 숫자만 씀
+-- 2.8.20: 포에버도 전투 중 숫자가 「비밀 값」으로 옴 → 비교 · 계산하면 오류. 평범한 숫자만 씀
 local function plainNum(v)
   if type(v) ~= "number" then return nil end
   if type(issecretvalue) == "function" then
@@ -474,7 +474,7 @@ castEvents:SetScript("OnEvent", function(_, _, unit)
 end)
 
 -- 자동공격 (포에버만 · 원거리만)
--- 2.8.19: 포에버도 전투 기록 등록이 막히고(ADDON_ACTION_FORBIDDEN) 공격 속도도 전투 중엔 비밀 값 → 근접 링은 뺌
+-- 2.8.20: 포에버도 전투 기록 등록이 막히고(ADDON_ACTION_FORBIDDEN) 공격 속도도 전투 중엔 비밀 값 → 근접 링은 뺌
 --   원거리: 자동 사격 · 마법봉 쏘기 시전 성공 때 원거리 속도 (비밀 값이면 그냥 안 그림)
 if NT.FOREVER then
   local swingEvents = CreateFrame("Frame")
