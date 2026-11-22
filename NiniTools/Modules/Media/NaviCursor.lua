@@ -434,16 +434,28 @@ local function ringsOn()
   return db and db.naviCursorEnabled ~= false and db.naviCastRing ~= false
 end
 
+-- 2.8.19: 포에버도 전투 중 숫자가 「비밀 값」으로 옴 → 비교 · 계산하면 오류. 평범한 숫자만 씀
+local function plainNum(v)
+  if type(v) ~= "number" then return nil end
+  if type(issecretvalue) == "function" then
+    local ok, secret = pcall(issecretvalue, v)
+    if not ok or secret then return nil end
+  end
+  return v
+end
+
 local function RefreshCast()
   if not ringsOn() then castRing:Stop(); return end
   local now = GetTime()
   local ok, name, _, _, startMS, endMS = pcall(UnitCastingInfo, "player")
-  if ok and name and type(startMS) == "number" and type(endMS) == "number" then
+  startMS, endMS = plainNum(startMS), plainNum(endMS)
+  if ok and name and startMS and endMS then
     castRing:Run(startMS / 1000, (endMS - startMS) / 1000, false)
     return
   end
   ok, name, _, _, startMS, endMS = pcall(UnitChannelInfo, "player")
-  if ok and name and type(startMS) == "number" and type(endMS) == "number" then
+  startMS, endMS = plainNum(startMS), plainNum(endMS)
+  if ok and name and startMS and endMS then
     castRing:Run(startMS / 1000, (endMS - startMS) / 1000, true)
     return
   end
@@ -461,45 +473,24 @@ castEvents:SetScript("OnEvent", function(_, _, unit)
   RefreshCast()
 end)
 
--- 자동공격 (포에버만)
--- 2.8.19: 포에버도 전투 기록(COMBAT_LOG_EVENT_UNFILTERED) 등록이 막힘 → ADDON_ACTION_FORBIDDEN (pcall 로도 안 막힘)
---   근접: 자동 공격 시작(PLAYER_ENTER_COMBAT)부터 공격 속도마다 링을 다시 돌림 (막기 · 속도 변화는 다음 바퀴부터 · 대략)
---   원거리: 자동 사격 · 마법봉 쏘기 시전 성공 그대로
+-- 자동공격 (포에버만 · 원거리만)
+-- 2.8.19: 포에버도 전투 기록 등록이 막히고(ADDON_ACTION_FORBIDDEN) 공격 속도도 전투 중엔 비밀 값 → 근접 링은 뺌
+--   원거리: 자동 사격 · 마법봉 쏘기 시전 성공 때 원거리 속도 (비밀 값이면 그냥 안 그림)
 if NT.FOREVER then
   local swingEvents = CreateFrame("Frame")
   local AUTO_SHOT = { [75] = true, [5019] = true }   -- 자동 사격 · 마법봉 쏘기
-  local meleeOn, nextSwing, rangedUntil = false, 0, 0
-  local function StopMelee() meleeOn = false; swingEvents:SetScript("OnUpdate", nil) end
-  local function MeleeTick()
-    if not meleeOn then return end
-    local now = GetTime()
-    if now < nextSwing then return end
-    local speed = UnitAttackSpeed and UnitAttackSpeed("player")
-    if type(speed) ~= "number" or speed <= 0 then return end
-    nextSwing = now + speed
-    if now < rangedUntil or not ringsOn() then return end
-    local c = swingRing.color
-    swingRing:Run(now, speed, true, c[1], c[2], c[3])
-  end
-  pcall(swingEvents.RegisterEvent, swingEvents, "PLAYER_ENTER_COMBAT")
-  pcall(swingEvents.RegisterEvent, swingEvents, "PLAYER_LEAVE_COMBAT")
   pcall(swingEvents.RegisterEvent, swingEvents, "PLAYER_REGEN_ENABLED")
   if swingEvents.RegisterUnitEvent then pcall(swingEvents.RegisterUnitEvent, swingEvents, "UNIT_SPELLCAST_SUCCEEDED", "player")
   else pcall(swingEvents.RegisterEvent, swingEvents, "UNIT_SPELLCAST_SUCCEEDED") end
   swingEvents:SetScript("OnEvent", function(_, event, ...)
-    if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_LEAVE_COMBAT" then StopMelee(); swingRing:Stop(); return end
-    if event == "PLAYER_ENTER_COMBAT" then
-      meleeOn, nextSwing = true, 0
-      swingEvents:SetScript("OnUpdate", MeleeTick)
-      MeleeTick()
-      return
-    end
+    if event == "PLAYER_REGEN_ENABLED" then swingRing:Stop(); return end
     if not ringsOn() then return end
     local unit, _, spellID = ...
-    if unit == "player" and AUTO_SHOT[spellID] and UnitRangedDamage then
-      local speed = UnitRangedDamage("player")
-      if type(speed) == "number" and speed > 0 then
-        rangedUntil = GetTime() + speed
+    spellID = plainNum(spellID)
+    if unit == "player" and spellID and AUTO_SHOT[spellID] and UnitRangedDamage then
+      local ok, speed = pcall(UnitRangedDamage, "player")
+      speed = ok and plainNum(speed)
+      if speed and speed > 0 then
         swingRing:Run(GetTime(), speed, true, RANGED_COLOR[1], RANGED_COLOR[2], RANGED_COLOR[3])
       end
     end
