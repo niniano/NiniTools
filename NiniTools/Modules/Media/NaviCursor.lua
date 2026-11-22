@@ -9,7 +9,7 @@ if not NT then return end
 --         그림(NaviRing · NaviSpark)은 니니툴이 직접 만든 것. 다른 애드온 · 위크오라 코드나 그림은 쓰지 않음.
 --
 -- 출처 · 고마운 분:
---   Navi 커서의 모양 · 위치 · 색 · 모델 번호(살아 있을 때 166890 · 죽었을 때 166351)와 둘레 링 아이디어는
+--   Navi 커서의 모양 · 위치 · 색 · 모델 번호(살아 있을 때 166890 · 죽었을 때 166351 · 2.8.19 부터 죽은 모습은 모델 없이)와 둘레 링 아이디어는
 --   Untrue 님의 「UntrueUI - Navi Cursor」 위크오라를 참고했다 (포에버판 https://wago.io/p7q_rWVGh).
 --   꼬리(궤적)는 그 위크오라와 함께 쓰는 Lumen 애드온의 꼬리에서 아이디어만 얻었다.
 --   Navi 는 닌텐도 「젤다의 전설」 캐릭터 이름이다. 니니툴은 닌텐도 · Untrue · Lumen 과 관계없다.
@@ -115,14 +115,19 @@ local FORMS = {
     orb = { 0.4627451300621, 0.54901963472366, 1, 0.65000000596046 }, circle = { 0, 0.26274511218071, 1, 1 },
     trail = { 0.04, 0.14, 1 } },
   -- 2.8.16: 죽은 모습도 평소 자리(커서 오른쪽 위)에 · 2.8.12~15 는 커서 한가운데로 옮겼음 (dead = 반짝임 숨김 표시)
-  -- 2.8.19: 가운데 흰 빛이 너무 밝아 요정이 안 보임 (사용자) → 모델 100% → 45% · 가운데 공 흰색 51% → 분홍 28%
-  dead = { model = 166351, pos = { -10.9, 0, -2 }, modelAlpha = 0.45, shift = false, dead = true,
-    orb = { 1, 0.62, 0.78, 0.28 }, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
+  -- 2.8.19: 가운데 흰 빛이 너무 밝음 (사용자) → 45% 로 낮춰도 그대로 → 가운데 빛(신성 보호막 모델 · 가운데 공)을 아예 뺌
+  --   죽으면 분홍 둘레 원 · 분홍 꼬리만 남는다 (model = nil)
+  dead = { model = nil, pos = { -10.9, 0, -2 }, modelAlpha = 0, shift = false, dead = true,
+    orb = { 1, 0.62, 0.78, 0 }, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
     trail = { 1, 0.55, 0.72 } },
 }
 local form = FORMS.alive
 
 local function ConfigureModel()
+  if not form.model then
+    if model.ClearModel then pcall(model.ClearModel, model) end
+    return
+  end
   pcall(model.SetModel, model, form.model)
   if model.SetPortraitZoom then pcall(model.SetPortraitZoom, model, 0) end
   if model.ClearTransform then pcall(model.ClearTransform, model) end
