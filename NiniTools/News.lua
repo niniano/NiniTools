@@ -6,6 +6,11 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.19", cards = {
+    { title = "죽었을 때 Navi", lines = {
+      "죽었을 때 분홍 모습의 가운데 빛이 너무 밝아 요정이 안 보이던 것을 어둡게 했습니다.",
+    } },
+  } },
   { version = "2.8.18", flavor = "forever", cards = {
     { title = "/rl · /기 로 리로드", lines = {
       "포에버에서도 /rl 이나 /기(한글 자판으로 /rl)로 UI를 다시 불러옵니다.",
