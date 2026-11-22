@@ -153,10 +153,65 @@ local function initDB()
   db.version = 2
 end
 
+-- 2.8.17: 포에버가 11/20 부터 접속 때 서버 이름을 빈 값("")으로 줘서 같은 캐릭터가 "-니니" 로 따로 쌓였다.
+--   빈 서버 이름은 없는 것으로 보고, 같은 이름의 캐릭터가 하나뿐이면 그 기록을 이어 쓴다.
+local function realmName()
+  local r = safeString(GetRealmName())
+  if r and r ~= "" then return r end
+  r = type(GetNormalizedRealmName) == "function" and safeString(GetNormalizedRealmName()) or nil
+  if r and r ~= "" then return r end
+  return nil
+end
+
+local function knownRealmFor(name)
+  if not (db and db.characters and name) then return nil end
+  local found
+  for key, rec in pairs(db.characters) do
+    local realm = type(rec) == "table" and safeString(rec.realm) or nil
+    if type(rec) == "table" and rec.name == name and realm and realm ~= "" and key == realm .. "-" .. name then
+      if found and found ~= realm then return nil end   -- 같은 이름이 여러 서버에 있으면 고르지 않음
+      found = realm
+    end
+  end
+  return found
+end
+
 local function currentCharacterKey()
   local name = safeString(UnitName("player")) or "Unknown"
-  local realm = safeString(GetRealmName()) or "Unknown"
+  local realm = realmName() or knownRealmFor(name) or "Unknown"
   return realm .. "-" .. name
+end
+
+-- 빈 서버 이름으로 생긴 "-이름" 기록을 진짜 키로 합친다 (거래 내역은 그대로 옮기고 지우지 않음).
+--   합친 원래 기록은 db.mergedKeys 에 남겨 둔다.
+local function mergeBlankRealm(name, intoKey)
+  if not (db and name and intoKey) or intoKey:sub(1, 1) == "-" or intoKey:match("^Unknown%-") then return end
+  local blank = "-" .. name
+  local old = db.characters[blank]
+  local moved = 0
+  for _, d in pairs(db.days or {}) do
+    for _, e in ipairs(type(d) == "table" and d.entries or {}) do
+      if e.char == blank then e.char = intoKey; moved = moved + 1 end
+    end
+  end
+  if type(old) ~= "table" and moved == 0 then return end
+  local cur = db.characters[intoKey] or {}
+  if type(old) == "table" and (tonumber(old.lastSeen) or 0) > (tonumber(cur.lastSeen) or 0) then
+    cur.gold, cur.goldVerified, cur.lastSeen = old.gold, old.goldVerified, old.lastSeen
+  end
+  cur.name = cur.name or name
+  db.characters[intoKey] = cur
+  db.characters[blank] = nil
+  db.mergedKeys = type(db.mergedKeys) == "table" and db.mergedKeys or {}
+  db.mergedKeys[blank] = { into = intoKey, at = nowTime(), entries = moved, record = old }
+  local NT = _G.NiniTools
+  local ndb = type(NT) == "table" and NT.GetDB and NT:GetDB()
+  if type(ndb) == "table" and type(ndb.goldBackup) == "table" and ndb.goldBackup[blank] then
+    ndb.goldBackupMerged = type(ndb.goldBackupMerged) == "table" and ndb.goldBackupMerged or {}
+    ndb.goldBackupMerged[blank] = ndb.goldBackup[blank]
+    ndb.goldBackup[blank] = nil
+  end
+  rebuildSummaries()
 end
 
 local function shortCharacterName(key)
@@ -170,7 +225,8 @@ local function ensureCharacter(captureMoney)
   charKey = charKey or currentCharacterKey()
   local rec = db.characters[charKey] or {}
   rec.name = safeString(UnitName("player")) or shortCharacterName(charKey)
-  rec.realm = safeString(GetRealmName()) or ""
+  rec.realm = realmName() or charKey:match("^(.-)%-[^-]+$") or rec.realm or ""
+  if rec.realm == "Unknown" then rec.realm = "" end
   rec.class = safeString(select(2, UnitClass("player")))
 
   if captureMoney ~= false then
@@ -662,6 +718,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
   elseif event == "PLAYER_LOGIN" then
     initDB()
     charKey = currentCharacterKey()
+    mergeBlankRealm(safeString(UnitName("player")), charKey)
     ready = false
     ensureCharacter(false)
 

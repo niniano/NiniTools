@@ -6,6 +6,11 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.17", flavor = "forever", cards = {
+    { title = "골드 내역: 같은 캐릭터가 두 줄로 나오던 것", lines = {
+      "포에버가 접속할 때 서버 이름을 비워 보내서 같은 캐릭터가 따로 쌓였습니다. 한 줄로 합쳤고 거래 내역도 그대로 옮겼습니다.",
+    } },
+  } },
   { version = "2.8.16", cards = {
     { title = "Navi 가운데 반짝임 효과 고르기", lines = {
       "요정 가운데를 파랗게 덮던 빛을 요정 뒤로 옮기고 약하게 해서 요정 모양이 또렷합니다.",
