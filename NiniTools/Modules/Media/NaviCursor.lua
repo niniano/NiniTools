@@ -116,7 +116,7 @@ local FORMS = {
     trail = { 0.04, 0.14, 1 } },
   -- 2.8.16: 죽은 모습도 평소 자리(커서 오른쪽 위)에 · 2.8.12~15 는 커서 한가운데로 옮겼음 (dead = 반짝임 숨김 표시)
   -- 2.8.19: 가운데 흰 빛이 너무 밝음 (사용자) → 45% 로 낮춰도 그대로 → 가운데 빛(신성 보호막 모델 · 가운데 공)을 아예 뺌
-  --   죽으면 분홍 둘레 원 · 분홍 꼬리만 남는다 (model = nil)
+  --   죽으면 분홍 링(deadRing · NaviRing.tga) · 분홍 둘레 원 · 분홍 꼬리 (model = nil)
   dead = { model = nil, pos = { -10.9, 0, -2 }, modelAlpha = 0, shift = false, dead = true,
     orb = { 1, 0.62, 0.78, 0 }, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
     trail = { 1, 0.55, 0.72 } },
@@ -401,12 +401,25 @@ end
 
 local castRing = MakeRing(50, 0, 0.6588, 1)
 local swingRing = MakeRing(62, 0, 1, 0.8118)
+
+-- 2.8.19: 죽었을 때 분홍 링 (예전 신성 보호막 모델이 링처럼 보였음 · 가운데 흰 빛 없이 링만 직접 그림)
+local deadRing = CreateFrame("Frame", nil, mouseFrame)
+deadRing.baseSize = 46
+deadRing:SetSize(46, 46)
+deadRing:SetFrameLevel(mouseFrame:GetFrameLevel() + 4)
+deadRing.tex = deadRing:CreateTexture(nil, "ARTWORK")
+deadRing.tex:SetAllPoints()
+deadRing.tex:SetTexture(RING)
+deadRing.tex:SetVertexColor(1, 0.55, 0.72, 0.9)
+if deadRing.tex.SetBlendMode then deadRing.tex:SetBlendMode("ADD") end
+deadRing:Hide()
+NT.NaviDeadRingShown = function() return deadRing:IsShown() and true or false end
 local RANGED_COLOR = { 0.6078, 0.9216, 1 }
 
 NT.NaviRingsLayout = function(scale)
   scale = scale or 1
   local sx, sy = Shift()
-  for _, ring in ipairs({ castRing, swingRing }) do
+  for _, ring in ipairs({ castRing, swingRing, deadRing }) do
     ring:SetSize(ring.baseSize * scale, ring.baseSize * scale)
     ring:ClearAllPoints()
     ring:SetPoint("CENTER", mouseFrame, "CENTER", (modelRegion.baseX + sx) * scale, (modelRegion.baseY + sy) * scale + 4 * scale)
@@ -574,6 +587,7 @@ local function RefreshForm()
   form = want
   ApplyFormColors()
   ConfigureModel()
+  deadRing:SetShown(form.dead and true or false)
   ApplyGeometry(db, true)
   if wasShown then ApplyVisibility(true, db) end
   ClearTrail()
