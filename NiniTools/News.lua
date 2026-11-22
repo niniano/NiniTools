@@ -6,6 +6,11 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.18", flavor = "forever", cards = {
+    { title = "/rl · /기 로 리로드", lines = {
+      "포에버에서도 /rl 이나 /기(한글 자판으로 /rl)로 UI를 다시 불러옵니다.",
+    } },
+  } },
   { version = "2.8.18", flavor = "retail", cards = {
     { title = "Navi 반짝임 자리", lines = {
       "본섭에서 가운데 반짝임 효과가 요정보다 아래로 내려가 보이던 것을 원래 자리로 돌렸습니다.",

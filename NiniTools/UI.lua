@@ -3912,6 +3912,33 @@ function NT:ToggleUI(page)
   UI:ShowPage(target)
 end
 
+-- 2.8.18: /rl · /기 (한글 자판으로 /rl 을 치면 /기) = UI 다시 불러오기.
+--   본섭은 다른 애드온이 이미 넣어 둔 경우가 많아, 아무도 안 쓰고 있을 때만 넣는다 (포에버에는 없었음).
+do
+  local function taken(cmd)
+    for key in pairs(SlashCmdList) do
+      local i=1
+      while true do
+        local v=_G["SLASH_"..key..i]
+        if not v then break end
+        if type(v)=="string" and v:lower()==cmd then return true end
+        i=i+1
+      end
+    end
+    return false
+  end
+  local function addReload()
+    local n=0
+    for _,cmd in ipairs({"/rl","/기"}) do
+      if not taken(cmd) then n=n+1; _G["SLASH_NINITOOLSRELOAD"..n]=cmd end
+    end
+    if n>0 then SlashCmdList.NINITOOLSRELOAD=function() ReloadUI() end end
+  end
+  local f=CreateFrame("Frame")
+  f:RegisterEvent("PLAYER_LOGIN")
+  f:SetScript("OnEvent",function(self) self:UnregisterAllEvents(); addReload() end)
+end
+
 SLASH_NINITOOLS1="/nini"
 SLASH_NINITOOLS2="/nt"
 SlashCmdList.NINITOOLS=function(msg)
