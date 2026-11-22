@@ -6,6 +6,11 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.18", flavor = "retail", cards = {
+    { title = "Navi 반짝임 자리", lines = {
+      "본섭에서 가운데 반짝임 효과가 요정보다 아래로 내려가 보이던 것을 원래 자리로 돌렸습니다.",
+    } },
+  } },
   { version = "2.8.17", flavor = "forever", cards = {
     { title = "골드 내역: 같은 캐릭터가 두 줄로 나오던 것", lines = {
       "포에버가 접속할 때 서버 이름을 비워 보내서 같은 캐릭터가 따로 쌓였습니다. 한 줄로 합쳤고 거래 내역도 그대로 옮겼습니다.",

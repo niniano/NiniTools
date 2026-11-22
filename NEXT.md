@@ -2,6 +2,9 @@
 
 배포 ZIP에는 안 들어가는 메모입니다 (`NiniTools/` 폴더 밖).
 
+## 2.8.18
+- Navi 반짝임 -6px 는 포에버만 (사용자: 본섭은 2.8.16 이전 자리가 맞았음 · 반짝반짝 · 비전 모으기)
+
 ## 2.8.17
 - 골드: 포에버 11/20 부터 GetRealmName() == "" → "-니니" 키로 따로 쌓임 (사용자 WTF: 171건 · 34g) → realmName() 빈 값 무시 · 같은 이름 하나면 기존 서버 키 이어 씀 · mergeBlankRealm (거래 char 옮김 · db.mergedKeys · goldBackupMerged)
   같은 이름 캐릭이 서버 여럿이면 고르지 않음 → "Unknown-이름" (포에버 서버 하나라 해당 없음)

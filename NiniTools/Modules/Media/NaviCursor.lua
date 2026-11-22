@@ -217,8 +217,9 @@ if not NT.FOREVER then
   sparkRegion:SetPoint("CENTER", mouseFrame, "CENTER", sparkRegion.baseX, sparkRegion.baseY)
 end
 local sparkleRegions = { sparkRegion, coreGlow }
--- 2.8.16: 반짝임 효과 자리 고정 = 기본 자리에서 아래로 6px (사용자가 창에서 맞춰 본 값 · 모든 효과 · 본섭 · 포에버)
-local SPARK_FIX_X, SPARK_FIX_Y = 0, -6
+-- 2.8.16: 반짝임 효과 자리 고정 = 기본 자리에서 아래로 6px (사용자가 포에버 창에서 맞춰 본 값)
+-- 2.8.18: 본섭은 원래 자리가 맞았음 (사용자) → 아래로 내리는 건 포에버만
+local SPARK_FIX_X, SPARK_FIX_Y = 0, (NT.FOREVER and -6 or 0)
 sparkRegion.baseX, sparkRegion.baseY = sparkRegion.baseX + SPARK_FIX_X, sparkRegion.baseY + SPARK_FIX_Y
 
 background:SetFrameLevel(mouseFrame:GetFrameLevel()+1)
