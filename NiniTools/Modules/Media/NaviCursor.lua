@@ -120,7 +120,7 @@ local FORMS = {
   --   분홍 원이 밝은 모델 · 공 위를 덮어 가운데가 안 하얘지고, 모델의 바깥쪽만 링처럼 보이고, 요정은 맨 위에 보인다.
   --   니니툴은 요정 그림이 맨 아래 · 분홍 원이 ADD 라 가운데가 하얗게 번져 요정이 안 보였음.
   dead = { model = 166351, pos = { -10.9, 0, -2 }, modelAlpha = 0.9, shift = false, dead = true,
-    orb = { 1, 0.88235300779343, 0.89803928136826, 0.51 }, orbSize = 65, circleSize = 50, circleBlend = "BLEND", fairyOnTop = true, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
+    orb = { 1, 0.88235300779343, 0.89803928136826, 0.51 }, orbSize = 65, circleSize = 50, circleBlend = "BLEND", fairyOnTop = true, spiral = true, circle = { 0.90196084976196, 0.54901963472366, 0.61960786581039, 1 },
     trail = { 1, 0.55, 0.72 } },
 }
 local form = FORMS.alive
@@ -246,9 +246,20 @@ local function GetScale(db)
   return clamp((db and db.naviCursorScale) or 100,70,140)/100
 end
 
+-- 2.8.19: 죽으면 요정이 커서 둘레를 8자로 날아다님 (위크오라 「Spiral」 애니메이션: 6초 한 바퀴 · 폭 100)
+local SPIRAL_SEC, SPIRAL_R = 6, 100
+local deadBorn = 0
+local function Spiral()
+  local p = ((GetTime() - deadBorn) % SPIRAL_SEC) / SPIRAL_SEC
+  local a = (p + 0.25) * 2 * math.pi
+  local c = math.cos(a)
+  return c * SPIRAL_R * math.cos(a * 2), math.abs(c) * SPIRAL_R * math.sin(a * 2)
+end
+
 -- 죽은 모습은 커서 한가운데 (살아 있을 때는 커서 오른쪽 위)
 local function Shift()
   if form.shift then return -modelRegion.baseX, -modelRegion.baseY end
+  if form.spiral then return Spiral() end
   return 0, 0
 end
 
@@ -506,7 +517,7 @@ local function CursorOnUpdate()
     born=GetTime()
   end
 
-  local scale=ApplyGeometry(db,false)
+  local scale=ApplyGeometry(db,form.spiral and true or false)   -- 2.8.19: 죽은 모습은 매 프레임 자리 옮김 (날아다님)
   local x,y=GetCursorPosition()
   local invScale=1/UIParent:GetEffectiveScale()
   mouseFrame:ClearAllPoints()
@@ -586,6 +597,7 @@ local function RefreshForm()
   local want = dead and FORMS.dead or FORMS.alive
   if want == form then return end
   form = want
+  if form.spiral then deadBorn = GetTime() end
   ApplyFormColors()
   ConfigureModel()
   ApplyGeometry(db, true)

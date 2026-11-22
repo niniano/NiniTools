@@ -9,6 +9,7 @@
   → 사용자가 위크오라 문자열 다시 줌 → 풀어 보니 죽은 모습 겹침 순서가 다름: 모델 → 공 65 → 분홍 원 50 BLEND → Aura87 요정 → 분홍 빛 30 ADD .65
     니니툴: 요정(background) 맨 아래(+1) · 분홍 원 ADD → 하얗게 번짐. → 죽을 때 요정 +5 · 원 BLEND 50 · 공 65 · deadCore 추가 · 모델 0.9 · deadRing 뺌
     (위크오라 죽은 모습은 커서 한가운데 · 니니툴은 2.8.16 부터 평소 자리 유지)
+  → 「원본은 죽으면 나비가 막 움직이지?」 → 위크오라 죽은 묶음 전부 preset spiralandpulse = 이동만 (6초 · x/y 100 · WeakAuras Prototypes.lua 의 식) → Shift() 에 Spiral() · 죽은 동안 매 프레임 ApplyGeometry
 
 ## 2.8.18
 - /rl · /기 리로드 (UI.lua · PLAYER_LOGIN 때 다른 애드온이 안 쓰는 것만) · 사용자: 본섭은 되는데 포에버는 안 됨
