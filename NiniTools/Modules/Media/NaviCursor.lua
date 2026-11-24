@@ -5,7 +5,7 @@ if not NT then return end
 -- No death state, no AFK test, no secure state driver.
 -- 2.3.0: ring/glow/scale settings used by the unified Sound & Navi UI.
 -- 2.8.12: 날아간 자리에 남는 꼬리(궤적) · 죽으면 다른 모습(분홍 요정 · 커서 가운데) ·
---         Navi 둘레 시전바 링 · (포에버) 자동공격 링. 모두 켜고 끄기 가능 · 기본 켬.
+--         Navi 둘레 시전바 링 · (포에버) 원거리 자동 사격 링. 모두 켜고 끄기 가능 · 기본 켬.
 --         그림(NaviRing · NaviSpark)은 니니툴이 직접 만든 것. 다른 애드온 · 위크오라 코드나 그림은 쓰지 않음.
 --
 -- 출처 · 고마운 분:
@@ -94,6 +94,75 @@ local background = CreateTextureRegion(
   {1,1,1,1},
   0.6
 )
+
+-- 2.8.21: 가운데 요정을 「내 직업 요정」으로 (사용자 11/23 · 요정은 그대로 · 날개 · 머리 · 꼬리 한 곳만 직업 옷)
+--   그림은 니니툴이 직접 그린 것 (Media/NaviClassCosplay/<직업>.tga · 128px 흰색 · 압축 안 함 · 컬러는 NaviClassColor)
+local FAIRY_TEX = "Interface\\AddOns\\NiniTools\\Media\\Aura87.tga"
+local CLASS_FAIRY = { WARRIOR=1, PALADIN=1, HUNTER=1, ROGUE=1, PRIEST=1, DEATHKNIGHT=1, SHAMAN=1, MAGE=1, WARLOCK=1, MONK=1, DRUID=1, DEMONHUNTER=1, EVOKER=1 }
+NT.NAVI_FAIRY_CHOICES = { { value = "fairy", text = "요정 (기본)" }, { value = "cosplay", text = "직업 요정 · 코스프레" }, { value = "color", text = "직업 요정 · 컬러" } }
+-- 예전 테스트 값(시안 8~11)은 코스프레로
+local OLD_STYLE = { class = "cosplay", class9 = "cosplay", class10 = "cosplay", class11 = "cosplay" }
+function NT.NaviFairyTexture(style)
+  local db = getDB()
+  style = style or (db and db.naviFairyStyle) or "fairy"
+  if db and OLD_STYLE[style] then style = OLD_STYLE[style]; db.naviFairyStyle = style end
+  if style == "cosplay" or style == "color" then
+    local cls = select(2, UnitClass("player"))
+    if db then db.naviFairyTestClass = nil end   -- 시험판에서 고른 직업은 지움 (정식판은 내 직업만)
+    if cls and CLASS_FAIRY[cls] then
+      local dir = (style == "color") and "NaviClassColor" or "NaviClassCosplay"
+      return "Interface\\AddOns\\NiniTools\\Media\\" .. dir .. "\\" .. cls .. ".tga"
+    end
+  end
+  return FAIRY_TEX
+end
+-- 컬러 코스프레: 색을 살리려고 BLEND · 불투명 · 크게 · 글로우 위 (흰 요정은 예전처럼 ADD · 0.6 · 30)
+--   직업별 보정: 그림마다 요정이 차지하는 넓이가 달라서 (도적이 가장 작음) 넓이 기준으로 맞춤
+local COLOR_CLASS_FIX = { ROGUE=1.18, MONK=1.08, DEMONHUNTER=1.06, EVOKER=1.06, DEATHKNIGHT=1.05, WARLOCK=1.05, PRIEST=0.94, PALADIN=0.96, DRUID=0.96 }
+-- 컬러 그림마다 요정 무게중심(128px 안) · 기본 요정(Aura87)과 같은 자리로 맞추려고 (사용자 11/24: 컬러는 오른쪽으로 치우침)
+local COLOR_CENTER = { WARRIOR={68.5,66.0}, PALADIN={67.1,69.6}, HUNTER={72.1,65.1}, ROGUE={77.0,65.6}, PRIEST={74.6,64.9}, DEATHKNIGHT={68.3,68.4}, SHAMAN={72.0,67.6}, MAGE={73.3,66.9}, WARLOCK={75.1,68.6}, MONK={77.0,67.8}, DRUID={67.4,69.6}, DEMONHUNTER={71.4,70.3}, EVOKER={63.1,69.4} }
+local FAIRY_X, FAIRY_Y = 56.817220306396, 48.241638183594        -- 기본 요정 자리
+local FAIRY_SEEN_X = FAIRY_X + (58.3 - 64) / 128 * 30             -- 기본 요정이 실제로 보이는 가운데
+local FAIRY_SEEN_Y = FAIRY_Y - (66.9 - 64) / 128 * 30
+-- 모든 요정: 3D 빛 덩어리와 파란 구슬은 끔 (요정 모양이 하얗게 날아감 · 인게임 11/24) · 요정은 그 위(+5) · 진하게
+function NT.NaviFairyLook(path, fairyOnTop)
+  local db = getDB()
+  path = path or NT.NaviFairyTexture()
+  local style = db and db.naviFairyStyle or "fairy"
+  if path == FAIRY_TEX or style == "fairy" then
+    -- 기본 요정도 가운데 빛 끔 (사용자 11/24: 「가운데 빛은 모두 끄기」 · 인게임에서 기본 요정도 하얗게 묻힘)
+    return { color = false, blend = "ADD", alpha = 0.9, size = 30, level = 5, dim = 0, x = FAIRY_X, y = FAIRY_Y }
+  end
+  if style ~= "color" then
+    return { color = false, blend = "ADD", alpha = 0.9, size = 30, level = 5, dim = 0, x = FAIRY_X, y = FAIRY_Y }
+  end
+  local cls = path:match("NaviClassColor\\(%u+)%.tga$")
+  local size = 30 * 1.4 * (COLOR_CLASS_FIX[cls] or 1)
+  local c = COLOR_CENTER[cls] or { 64, 64 }
+  return { color = true, blend = "BLEND", alpha = 1, size = size, level = 6, dim = 0,
+           x = FAIRY_SEEN_X - (c[1] - 64) / 128 * size, y = FAIRY_SEEN_Y + (c[2] - 64) / 128 * size }
+end
+
+local function ApplyFairyTexture()
+  local tex = background and background.texture
+  if not tex then return end
+  local path = NT.NaviFairyTexture()
+  local ok = pcall(tex.SetTexture, tex, path, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+  if not ok then pcall(tex.SetTexture, tex, path) end
+  local look = NT.NaviFairyLook(path, background.fairyOnTop)
+  background.colorMode = look.color
+  pcall(tex.SetBlendMode, tex, look.blend)
+  background.baseWidth, background.baseHeight = look.size, look.size
+  background.baseX, background.baseY = look.x, look.y
+  background.baseAlpha = look.alpha
+  background:SetAlpha(background.baseAlpha)
+  background:SetFrameLevel(mouseFrame:GetFrameLevel() + look.level)
+  background.dim = look.dim or 1
+  if NT.ApplyNaviCenterDim then NT.ApplyNaviCenterDim() end
+  if NT.NaviReanchor then NT.NaviReanchor() end
+end  -- 크기는 매 프레임 pulse 가 baseWidth 로 다시 잡음
+
+NT.ApplyNaviFairyTexture = function() ApplyFairyTexture() end
 
 local modelRegion = CreateFrame("Frame", nil, mouseFrame)
 modelRegion.baseWidth = 76.449096679688
@@ -249,11 +318,16 @@ end
 -- 2.8.19: 죽으면 요정이 커서 둘레를 8자로 날아다님 (위크오라 「Spiral」 애니메이션: 6초 한 바퀴 · 폭 100)
 local SPIRAL_SEC, SPIRAL_R = 6, 100
 local deadBorn = 0
-local function Spiral()
-  local p = ((GetTime() - deadBorn) % SPIRAL_SEC) / SPIRAL_SEC
-  local a = (p + 0.25) * 2 * math.pi
-  local c = math.cos(a)
-  return c * SPIRAL_R * math.cos(a * 2), math.abs(c) * SPIRAL_R * math.sin(a * 2)
+local spiralT, spiralX, spiralY = -1, 0, 0
+local function Spiral()   -- 2.8.21: 한 프레임에 한 번만 계산 (링 · 요정 · 공 · 모델이 같이 씀)
+  local now = GetTime()
+  if now ~= spiralT then
+    local p = ((now - deadBorn) % SPIRAL_SEC) / SPIRAL_SEC
+    local a = (p + 0.25) * 2 * math.pi
+    local c = math.cos(a)
+    spiralT, spiralX, spiralY = now, c * SPIRAL_R * math.cos(a * 2), math.abs(c) * SPIRAL_R * math.sin(a * 2)
+  end
+  return spiralX, spiralY
 end
 
 -- 죽은 모습은 커서 한가운데 (살아 있을 때는 커서 오른쪽 위)
@@ -282,6 +356,7 @@ local function ApplyGeometry(db, force)
   if NT.NaviRingsLayout then NT.NaviRingsLayout(scale) end
   return scale
 end
+NT.NaviReanchor = function() local db=getDB(); if db then ApplyGeometry(db,true) end end
 
 local function ApplyPulse(region, factor, scale)
   region:SetSize(region.baseWidth*scale*factor, region.baseHeight*scale*factor)
@@ -375,7 +450,7 @@ local function UpdateTrail(px, py, scale, on)
 end
 
 -- ---------------------------------------------------------------------------
--- 2.8.12: Navi 둘레 링. 안쪽 = 시전바 (채널은 줄어듦), 바깥쪽 = 자동공격 · 원거리 자동 사격 (포에버만).
+-- 2.8.12: Navi 둘레 링. 안쪽 = 시전바 (채널은 줄어듦), 바깥쪽 = 원거리 자동 사격 (포에버만 · 2.8.20 부터 근접 없음).
 -- 쿨다운 틀의 원형 채우기에 니니툴 링 그림을 씌운다. 끝나면 스스로 숨는다.
 -- ---------------------------------------------------------------------------
 local RING = "Interface\\AddOns\\NiniTools\\Media\\NaviRing.tga"
@@ -473,7 +548,7 @@ castEvents:SetScript("OnEvent", function(_, _, unit)
   RefreshCast()
 end)
 
--- 자동공격 (포에버만 · 원거리만)
+-- 원거리 자동 사격 (포에버만)
 -- 2.8.20: 포에버도 전투 기록 등록이 막히고(ADDON_ACTION_FORBIDDEN) 공격 속도도 전투 중엔 비밀 값 → 근접 링은 뺌
 --   원거리: 자동 사격 · 마법봉 쏘기 시전 성공 때 원거리 속도 (비밀 값이면 그냥 안 그림)
 if NT.FOREVER then
@@ -510,6 +585,7 @@ local function CursorOnUpdate()
   if not wasShown then
     wasShown=true
     ConfigureModel()
+    ApplyFairyTexture()
     ApplyVisibility(true,db)
     born=GetTime()
   end
@@ -517,11 +593,14 @@ local function CursorOnUpdate()
   local scale=ApplyGeometry(db,form.spiral and true or false)   -- 2.8.19: 죽은 모습은 매 프레임 자리 옮김 (날아다님)
   local x,y=GetCursorPosition()
   local invScale=1/UIParent:GetEffectiveScale()
+  local ax,ay=x*invScale,y*invScale
+  -- 2.8.21: 죽은 모습은 마우스를 따라가지 않고 화면 가운데(0,0) 자리에 고정해서 8자로 난다 (사용자 11/23)
+  if form.spiral then ax,ay=UIParent:GetWidth()/2,UIParent:GetHeight()/2 end
   mouseFrame:ClearAllPoints()
-  mouseFrame:SetPoint("CENTER",UIParent,"BOTTOMLEFT",x*invScale,y*invScale)
+  mouseFrame:SetPoint("CENTER",UIParent,"BOTTOMLEFT",ax,ay)
   if db.naviTrail~=false or trailAlive>0 then
     local sx,sy=Shift()
-    UpdateTrail(x*invScale+(modelRegion.baseX+sx)*scale,y*invScale+(modelRegion.baseY+sy)*scale,scale,db.naviTrail~=false)
+    UpdateTrail(ax+(modelRegion.baseX+sx)*scale,ay+(modelRegion.baseY+sy)*scale,scale,db.naviTrail~=false)
   end
 
   local age=GetTime()-born
@@ -576,12 +655,20 @@ local ORB_SIZE, CIRCLE_SIZE = orb.baseWidth, circle.baseWidth
 local function ApplyFormColors()
   orb.texture:SetVertexColor(form.orb[1], form.orb[2], form.orb[3], form.orb[4])
   circle.texture:SetVertexColor(form.circle[1], form.circle[2], form.circle[3], form.circle[4])
-  modelRegion.baseAlpha = form.modelAlpha
+  modelRegion.baseAlpha = form.modelAlpha * (background.dim or 1)
+  orb.baseAlpha = background.dim or 1
   -- 2.8.19: 죽은 모습 겹치는 순서 · 크기 · 분홍 원 덮는 색 (위크오라와 같게)
   orb.baseWidth, orb.baseHeight = form.orbSize or ORB_SIZE, form.orbSize or ORB_SIZE
   circle.baseWidth, circle.baseHeight = form.circleSize or CIRCLE_SIZE, form.circleSize or CIRCLE_SIZE
   circle.texture:SetBlendMode(form.circleBlend or "ADD")
-  background:SetFrameLevel(mouseFrame:GetFrameLevel() + (form.fairyOnTop and 5 or 1))
+  background.fairyOnTop = form.fairyOnTop and true or false
+  local lk = NT.NaviFairyLook and NT.NaviFairyLook(nil, form.fairyOnTop)
+  background:SetFrameLevel(mouseFrame:GetFrameLevel() + ((lk and lk.level) or (form.fairyOnTop and 5 or 1)))
+end
+NT.ApplyNaviCenterDim = function()
+  modelRegion.baseAlpha = form.modelAlpha * (background.dim or 1)
+  orb.baseAlpha = background.dim or 1
+  modelRegion:SetAlpha(modelRegion.baseAlpha); orb:SetAlpha(orb.baseAlpha)
 end
 
 local function RefreshForm()
@@ -616,6 +703,7 @@ function NT:SetNaviCursorEnabled(enabled)
   if db.naviCursorEnabled then
     born=GetTime()
     ConfigureModel()
+    ApplyFairyTexture()
     ApplyGeometry(db,true)
     ApplyVisibility(true,db)
     wasShown=true
@@ -680,7 +768,7 @@ function NT:SetNaviCursorOption(key, enabled)
   return true
 end
 
--- 진단용 (자가진단 · 시험): 남은 꼬리 점 수, 죽은 모습 여부, 시전 링 · 자동공격 링 보임
+-- 진단용 (자가진단 · 시험): 남은 꼬리 점 수, 죽은 모습 여부, 시전 링 · 원거리 자동 사격 링 보임
 function NT:NaviCursorState()
   return trailAlive, form == FORMS.dead, castRing:IsShown() and true or false, swingRing:IsShown() and true or false
 end
@@ -695,10 +783,20 @@ function NT:SetNaviSparkModel(id)
   return true
 end
 
+-- 2.8.21: 가운데 요정 = 요정 / 내 직업 요정
+function NT:SetNaviFairyStyle(v)
+  local db=getDB()
+  if not db then return false end
+  db.naviFairyStyle=(v=="cosplay" or v=="color") and v or "fairy"
+  ApplyFairyTexture()
+  return true
+end
+
 function NT:ResetNaviCursor()
   local db=getDB()
   born=GetTime()
   ConfigureModel()
+  ApplyFairyTexture()
   ApplyGeometry(db,true)
   ApplyVisibility(db and db.naviCursorEnabled~=false,db)
   return true
@@ -710,6 +808,7 @@ for _,ev in ipairs({"PLAYER_DEAD","PLAYER_ALIVE","PLAYER_UNGHOST"}) do pcall(eve
 events:SetScript("OnEvent",function(_,event)
   if event~="PLAYER_ENTERING_WORLD" then RefreshForm(); return end
   RefreshForm()
+  ApplyFairyTexture()   -- 2.8.21: /reload · 재접속 뒤에도 고른 요정 (wasShown=true 로 OnUpdate 첫 줄을 건너뛰므로)
   local db=getDB()
   if db and db.naviCursorEnabled~=false then
     ConfigureModel()

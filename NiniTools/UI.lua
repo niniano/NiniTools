@@ -1466,7 +1466,7 @@ local SEARCH_KEYWORDS={
   gtfo="바닥 경고음 GTFO BigWigs",
   effects="뜌미 승리 초읽기 점프 소리",
   callme="이름 호출 니니 별명",
-  navi="커서 마우스 Navi 채팅 꼬리 궤적 시전바 자동공격 스윙 링 죽음 반짝임 효과",
+  navi="커서 마우스 Navi 채팅 꼬리 궤적 시전바 원거리 자동 사격 링 죽음 반짝임 효과 요정 직업 코스프레 컬러",
   uiscale="UI 배율 스케일 해상도 픽셀 퍼펙트 FHD QHD",
   drun="던전 기록 런 스플릿 경험치 XP 골드",
   graphics="그래픽 CVar 최적화",
@@ -3140,7 +3140,7 @@ function UI:BuildMedia()
   callNote3:SetPoint("TOPLEFT",22,-197); callNote3:SetPoint("RIGHT",-18,0)
 
   -- 4) Navi · 마우스 커서 -------------------------------------------------------------
-  local ND=38   -- 2.8.16: 「가운데 반짝임 효과」 고르기 줄만큼 아래로 (본섭 · 포에버)
+  local ND=76   -- 2.8.16: 「가운데 반짝임 효과」 · 2.8.21: 「가운데 요정」 줄만큼 아래로 (본섭 · 포에버)
   local navi=self:AccordionSection(p,"navi","Navi · 마우스 커서","커서 강조 효과 · 실시간 미리보기 · Navi 채팅",320+ND,false)
   p.naviCursorRow=self:Toggle(navi.body,"마우스 Navi 사용","naviCursorEnabled",mediaDB,function(v) NT:SetNaviCursorEnabled(v) end,-10)
   p.naviCursorRow:ClearAllPoints(); p.naviCursorRow:SetPoint("TOPLEFT",18,-8); p.naviCursorRow:SetSize(420,36)
@@ -3155,7 +3155,7 @@ function UI:BuildMedia()
   for i,opt in ipairs({
     {"naviTrail","날아간 자리에 꼬리(궤적) 남기기"},
     {"naviDeadForm","죽으면 Navi 모습 바뀜 (분홍)"},
-    {"naviCastRing",NT.FOREVER and "Navi 둘레 시전바 · 자동공격 링" or "Navi 둘레 시전바 링"},
+    {"naviCastRing",NT.FOREVER and "Navi 둘레 시전바 · 원거리 자동 사격 링" or "Navi 둘레 시전바 링"},
   }) do
     local row=self:Toggle(navi.body,opt[2],opt[1],mediaDB,function(v) if NT.SetNaviCursorOption then NT:SetNaviCursorOption(opt[1],v) end end,-84-(i-1)*36)
     row:ClearAllPoints(); row:SetPoint("TOPLEFT",18,-84-(i-1)*36); row:SetSize(420,34)
@@ -3168,6 +3168,12 @@ function UI:BuildMedia()
       function() return NT.NaviSparkModelID and NT.NaviSparkModelID() or (NT.FOREVER and 165816 or 0) end,
       function(v) if NT.SetNaviSparkModel then NT:SetNaviSparkModel(v) end; if UI.RefreshVisiblePage then UI:RefreshVisiblePage() end end,200)
     p.naviSparkRow:ClearAllPoints(); p.naviSparkRow:SetPoint("TOPLEFT",18,-192); p.naviSparkRow:SetSize(420,34)
+  end
+  if NT.NAVI_FAIRY_CHOICES then   -- 2.8.21: 가운데 요정 = 요정 / 내 직업 요정
+    p.naviFairyRow=self:DropdownRow(navi.body,"가운데 요정",-230,NT.NAVI_FAIRY_CHOICES,
+      function() local d=mediaDB(); return (d and d.naviFairyStyle) or "fairy" end,
+      function(v) if NT.SetNaviFairyStyle then NT:SetNaviFairyStyle(v) end; if UI.RefreshVisiblePage then UI:RefreshVisiblePage() end end,200)
+    p.naviFairyRow:ClearAllPoints(); p.naviFairyRow:SetPoint("TOPLEFT",18,-230); p.naviFairyRow:SetSize(420,34)
   end
 
   -- Animated preview using the same geometry/offsets as NaviCursor.lua.
@@ -3205,6 +3211,8 @@ function UI:BuildMedia()
   end
 
   local pvBackground=makePreviewTexture("background",30,30,56.817220306396,48.241638183594,"Interface\\AddOns\\NiniTools\\Media\\Aura87.tga",{1,1,1,1},.6)
+  p.naviPvFairy=pvBackground.texture   -- 2.8.21: 미리보기도 고른 요정
+  p.naviPvBackground=pvBackground; p.naviPvCenter=center; p.naviPvScale=PREVIEW_SCALE
   local pvModelRegion=CreateFrame("Frame",nil,center)
   pvModelRegion.baseWidth=76.449096679688; pvModelRegion.baseHeight=79.665534973145; pvModelRegion.baseX=54.671766662597; pvModelRegion.baseY=40.196268919083; pvModelRegion.baseAlpha=.5
   pvModelRegion:SetSize(pvModelRegion.baseWidth*PREVIEW_SCALE,pvModelRegion.baseHeight*PREVIEW_SCALE)
@@ -3213,6 +3221,7 @@ function UI:BuildMedia()
   if pvModel.SetKeepModelOnHide then pcall(pvModel.SetKeepModelOnHide,pvModel,true) end
   pcall(pvModel.SetModel,pvModel,166890); if pvModel.SetPortraitZoom then pcall(pvModel.SetPortraitZoom,pvModel,0) end; if pvModel.ClearTransform then pcall(pvModel.ClearTransform,pvModel) end; if pvModel.SetPosition then pcall(pvModel.SetPosition,pvModel,-5.05,0,-1.9) end; if pvModel.SetFacing then pcall(pvModel.SetFacing,pvModel,0) end
   local pvOrb=makePreviewTexture("orb",60,60,53.602864837646,43.95361328125,"Artifacts-Anim-Orb",{0.462745,0.549020,1,.65},1)
+  p.naviPvOrb=pvOrb; p.naviPvModel=pvModelRegion
   local pvCircle=makePreviewTexture("circle",55,55,53.602864837646,45.025573730469,"BonusChest-CircleGlow",{0,0.262745,1,1},1)
   -- 2.8.16: 실제 커서와 같게 요정 뒤 하늘색 빛 10% (NaviCursor.lua coreGlow)
   local pvCore=makePreviewTexture("core",30,30,52,41,"BonusChest-CircleGlow",{0,0.72156864404678,1,1},.10)
@@ -3238,7 +3247,7 @@ function UI:BuildMedia()
     end
     pvBackground:SetShown(enabled and glow); pvCore:SetShown(enabled and glow); pvOrb:SetShown(enabled and glow); pvCircle:SetShown(enabled and ring); pvModelRegion:SetShown(enabled); cursorGlyph:SetShown(enabled)
     geometry(pvBackground,pulse); geometry(pvCore,pulse); geometry(pvOrb,pulse); geometry(pvCircle,pulse); geometry(pvModelRegion,1)
-    pvBackground:SetAlpha(enabled and pvBackground.baseAlpha or .15); pvCore:SetAlpha(enabled and pvCore.baseAlpha or .1); pvOrb:SetAlpha(enabled and 1 or .15); pvCircle:SetAlpha(enabled and 1 or .15); pvModelRegion:SetAlpha(enabled and pvModelRegion.baseAlpha or .15)
+    pvBackground:SetAlpha(enabled and pvBackground.baseAlpha or .15); pvCore:SetAlpha(enabled and pvCore.baseAlpha or .1); pvOrb:SetAlpha(enabled and (pvOrb.baseAlpha or 1) or .15); pvCircle:SetAlpha(enabled and 1 or .15); pvModelRegion:SetAlpha(enabled and pvModelRegion.baseAlpha or .15)
     cursorGlyph:SetAlpha(enabled and .88 or .18)
   end)
   local pvNote=self:Font(preview,8,"실제 Navi 오프셋 · 비율 · 알파를 그대로 축소 재현",C.muted); pvNote:SetPoint("BOTTOM",0,22)
@@ -3292,6 +3301,17 @@ function UI:BuildMedia()
     local cursorOn=db.naviCursorEnabled~=false
     for _,row in ipairs(self.naviOptRows or {}) do row:Refresh(); setControlEnabled(row,cursorOn) end
     if self.naviSparkRow then self.naviSparkRow:Refresh(); setControlEnabled(self.naviSparkRow,cursorOn) end
+    if self.naviFairyRow then self.naviFairyRow:Refresh(); setControlEnabled(self.naviFairyRow,cursorOn) end
+    if self.naviPvFairy and NT.NaviFairyTexture then pcall(self.naviPvFairy.SetTexture,self.naviPvFairy,NT.NaviFairyTexture()) end
+    if self.naviPvBackground and NT.NaviFairyLook then   -- 미리보기도 실제 커서와 같은 크기 · 투명도 · 겹침
+      local pv=self.naviPvBackground; local lk=NT.NaviFairyLook()
+      pcall(pv.texture.SetBlendMode,pv.texture,lk.blend); pv.baseWidth,pv.baseHeight,pv.baseAlpha=lk.size,lk.size,lk.alpha; if lk.x then pv.baseX,pv.baseY=lk.x,lk.y end
+      pv:SetSize(lk.size*(self.naviPvScale or 1),lk.size*(self.naviPvScale or 1)); pv:SetAlpha(lk.alpha)
+      if self.naviPvCenter then pv:SetFrameLevel(self.naviPvCenter:GetFrameLevel()+(lk.level or 1)) end
+      local dim=lk.dim or 1
+      if self.naviPvModel then self.naviPvModel.baseAlpha=.5*dim; self.naviPvModel:SetAlpha(.5*dim) end
+      if self.naviPvOrb then self.naviPvOrb.baseAlpha=dim; self.naviPvOrb:SetAlpha(dim) end
+    end
     local chatOn=db.naviChatEnabled~=false
     navi:SetEnabledState(cursorOn)
     navi:SetState(string.format("커서 %d%% · 채팅 %s",tonumber(db.naviCursorScale) or 100,chatOn and "ON" or "OFF"),cursorOn and "accent" or nil)

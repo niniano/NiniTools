@@ -6,6 +6,23 @@ local ADDON_NAME, NT = ...
 NT = NT or _G.NiniTools
 
 local NEWS = {
+  { version = "2.8.21", cards = {
+    { title = "Navi 가운데 요정 고르기", lines = {
+      "사운드 & Navi → Navi · 마우스 커서 → 「가운데 요정」에서 요정 · 직업 요정 코스프레 · 직업 요정 컬러 중에 고릅니다. 직업은 접속한 캐릭터를 따라갑니다.",
+      "가운데 하얀 빛 덩어리와 파란 구슬을 끄고 요정을 위에 진하게 그려서 모양이 또렷합니다.",
+      "죽었을 때 8자 비행은 마우스를 따라가지 않고 화면 가운데에서 날아다닙니다.",
+    } },
+  } },
+  { version = "2.8.21", flavor = "forever", cards = {
+    { title = "링 이름", lines = {
+      "「Navi 둘레 시전바 · 원거리 자동 사격 링」으로 이름을 바꿨습니다 (근접 자동공격 링은 2.8.20 부터 없음).",
+    } },
+  } },
+  { version = "2.8.21", flavor = "retail", cards = {
+    { title = "계정 달력 + NiniAnalyzer", lines = {
+      "NiniAnalyzer(공대 로그 분석기)와 같이 쓰면 계정 달력의 공대 초대를 구글 캘린더에 저장할 수 있습니다.",
+    } },
+  } },
   { version = "2.8.20", flavor = "forever", cards = {
     { title = "보호된 함수 오류", lines = {
       "포에버에서 「보호된 함수 UNKNOWN() 호출」 오류가 계속 뜨던 것을 고쳤습니다.",
