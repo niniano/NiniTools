@@ -8,6 +8,7 @@
   · 쐐기 안 SendChatMessage SAY = ADDON_ACTION_BLOCKED 7/7 → 나만 보기(채팅창 + RaidNotice 가운데) · 소리 없음 (사용자)
   · 말하기는 쐐기 밖 5인 던전만 선택 · 막히면 그 접속 동안 말하기 끔
   · 사용자 「따끔!! 위치이동 안돼」 → RaidWarningFrame 대신 자체 글씨 NiniToolsOuchFrame (위치 이동 · 편집 모드 · 초기화 · 1.4초 + 0.6초 사라짐)
+  · 사용자 「글자가 점점 커지네 · 크기조절」 → fontSize 14~60 (처음 26 · 34 → 26) · 설정 −/+ (누르면 바로 보여 줌)
 - 남은 것: 「가운데 반짝임」 미리보기(UI.lua pvModel)는 2.8.23 으로
 
 ## 2.8.21 Navi 직업 요정 (11/23~24 · 시험판 test1~9 · wow-personal navi-class-mockup)

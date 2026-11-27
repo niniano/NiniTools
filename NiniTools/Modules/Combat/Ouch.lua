@@ -17,7 +17,8 @@ local MESSAGE = "따끔!!"
 local THROTTLE = 3.0
 local IsSecret = issecretvalue or function() return false end
 local lastAt, sayBlocked = 0, false
-local DEFAULT_X, DEFAULT_Y, FONT_SIZE = 0, 220, 34
+local DEFAULT_X, DEFAULT_Y, FONT_SIZE = 0, 220, 26   -- 2.8.22: 글자 크기 조절 (14~60 · 사용자 「점점 커지네」)
+local FONT_MIN, FONT_MAX = 14, 60
 local HOLD, FADE = 1.4, 0.6
 
 function O:GetDB()
@@ -31,6 +32,7 @@ function O:GetDB()
   if type(db.message) ~= "string" or db.message == "" then db.message = MESSAGE end
   if type(db.x) ~= "number" then db.x = DEFAULT_X end
   if type(db.y) ~= "number" then db.y = DEFAULT_Y end
+  if type(db.fontSize) ~= "number" then db.fontSize = FONT_SIZE end
   return db
 end
 
@@ -63,7 +65,7 @@ local function ensureFrame()
   frame:Hide()
   text = frame:CreateFontString(nil, "OVERLAY")
   text:SetPoint("CENTER")
-  if not text:SetFont(bodyFont(), FONT_SIZE, "OUTLINE") then text:SetFont(STANDARD_TEXT_FONT, FONT_SIZE, "OUTLINE") end
+  O:ApplyFont()
   text:SetTextColor(1, 0.31, 0.31)
   moveBG = frame:CreateTexture(nil, "BACKGROUND")
   moveBG:SetAllPoints()
@@ -121,6 +123,23 @@ function O:SetUnlocked(on)
 end
 
 function O:IsUnlocked() return unlocked end
+
+function O:GetFontSize() return tonumber(self:GetDB().fontSize) or FONT_SIZE end
+
+function O:ApplyFont()
+  if not text then return end
+  local size = self:GetFontSize()
+  if not text:SetFont(bodyFont(), size, "OUTLINE") then text:SetFont(STANDARD_TEXT_FONT, size, "OUTLINE") end
+  if frame then frame:SetSize(math.max(120, size * 7), math.max(32, size + 22)) end
+end
+
+function O:AdjustFontSize(dir)
+  local db = self:GetDB()
+  db.fontSize = math.max(FONT_MIN, math.min(FONT_MAX, self:GetFontSize() + (dir > 0 and 2 or -2)))
+  ensureFrame()
+  self:ApplyFont()
+  if not unlocked then flash(db.message or MESSAGE) end   -- 바꾼 크기를 바로 보여 줌
+end
 function O:Frame() return ensureFrame() end
 
 function O:ResetPosition()
