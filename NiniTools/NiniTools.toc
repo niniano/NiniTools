@@ -2,7 +2,7 @@
 ## Title: |cffF4B23ANini|r|cffE9EDF2Tools|r
 ## Notes: NiniTools - interrupts, gold, media and quality-of-life tools
 ## Author: Nini
-## Version: 2.8.21
+## Version: 2.8.22
 ## OptionalDeps: BigWigs, GTFO, EXBoss, NorthernSkyRaidTools, NaowhSmartReminders
 ## SavedVariables: NiniToolsDB
 ## IconTexture: Interface\AddOns\NiniTools\Media\NiniTools.tga
@@ -31,6 +31,7 @@ Modules\Kick\Core.lua
 Modules\Kick\ImportantCast.lua
 Modules\Kick\Briefing.lua
 Modules\Combat\EnemyCount.lua
+Modules\Combat\Ouch.lua
 
 Modules\Gold\Gold.lua
 Modules\Gold\Warband.lua

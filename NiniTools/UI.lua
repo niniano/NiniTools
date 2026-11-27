@@ -2566,6 +2566,21 @@ function UI:BuildKick()
     UI:RefreshVisiblePage()
   end); p.enemyTestButton:SetPoint("LEFT",p.enemyResetButton,"RIGHT",8,0)
 
+  -- 6) 2.8.22 따끔 (쐐기 · 5인 던전 · 딜러/힐러가 어그로 먹고 맞으면) --------------------------
+  local function ouchDB()
+    if NT.Ouch and NT.Ouch.GetDB then return NT.Ouch:GetDB() end
+    local main=NT:GetDB(); main.modules=main.modules or {}
+    main.modules.ouch=main.modules.ouch or {enabled=true,center=true,say=false}
+    return main.modules.ouch
+  end
+  local ouch=self:AccordionSection(p,"ouch","따끔","쐐기 · 5인 던전에서 딜러·힐러가 어그로를 먹고 맞으면 「따끔!!」 (소리 없음)",178,false)
+  p.ouchRow=self:Toggle(ouch.body,"따끔 켜기 (탱커는 안 울림 · 3초에 한 번)","enabled",ouchDB,nil,-8)
+  p.ouchCenterRow=self:Toggle(ouch.body,"화면 가운데 글씨도 (끄면 내 채팅창에만)","center",ouchDB,nil,-48)
+  p.ouchSayRow=self:Toggle(ouch.body,"말하기(/s)로도 — 쐐기 밖 5인 던전만 (쐐기 안은 애드온 말하기가 막힘)","say",ouchDB,nil,-88)
+  p.ouchTestButton=self:Button(ouch.body,"따끔 미리보기",120,26,function() if NT.Ouch and NT.Ouch.Test then NT.Ouch:Test() end end)
+  p.ouchTestButton:SetPoint("BOTTOMLEFT",22,12)
+  p.ouchSection=ouch
+
   p.Refresh=function(self)
     for _,r in ipairs(self.kickRows) do if r and r.Refresh then r:Refresh() end end
     self.markerRow:Refresh(); self.rotaSizeRow:Refresh(); self.rotaOrderRow:Refresh()
@@ -2619,6 +2634,11 @@ function UI:BuildKick()
     end
     local enemy=enemyDB()
     combat:SetState("시간 "..(k.combatTimerEnabled~=false and "ON" or "OFF").." · 적 "..(enemy.enabled~=false and "ON" or "OFF"),"accent")
+    if self.ouchRow then
+      self.ouchRow:Refresh(); self.ouchCenterRow:Refresh(); self.ouchSayRow:Refresh()
+      local od=ouchDB()
+      ouch:SetState(od.enabled~=false and ("ON"..(od.center~=false and " · 가운데" or " · 채팅창")..(od.say and " · 말하기" or "")) or "OFF",od.enabled~=false and "accent" or "warn")
+    end
 
     if self.importantPreview then self.importantPreview:Refresh() end
     if self.timerPosButton and self.timerPosButton.label then self.timerPosButton.label:SetText(k.combatTimerUnlocked and "전투시간 위치 고정" or "전투시간 위치 이동") end
