@@ -194,7 +194,7 @@ end
 local function buildPanel()
   if panel then return panel end
   panel = CreateFrame("Frame", "NiniToolsDungeonRunPanel", UIParent, "BackdropTemplate")
-  panel:SetSize(230, 74)
+  panel:SetSize(260, 84)   -- 2.8.22: 글씨 2pt 키움 (사용자)
   panel:SetFrameStrata("MEDIUM")
   panel:SetClampedToScreen(true)
   panel:SetMovable(true)
@@ -214,17 +214,17 @@ local function buildPanel()
     t:SetJustifyH("LEFT")
     return t
   end
-  panel.title = fs(11, accent())
-  panel.title:SetPoint("TOPLEFT", 9, -7); panel.title:SetPoint("RIGHT", -64, 0)
+  panel.title = fs(13, accent())
+  panel.title:SetPoint("TOPLEFT", 9, -7); panel.title:SetPoint("RIGHT", -74, 0)
   if panel.title.SetWordWrap then panel.title:SetWordWrap(false) end
   panel.clock = panel:CreateFontString(nil, "OVERLAY")
-  panel.clock:SetFont(font, 14, "OUTLINE")
+  panel.clock:SetFont(font, 16, "OUTLINE")
   panel.clock:SetTextColor(1, 1, 1, 1)
   panel.clock:SetPoint("TOPRIGHT", -9, -6)
-  panel.stats = fs(10, .9, .93, .96)
-  panel.stats:SetPoint("TOPLEFT", 9, -26); panel.stats:SetPoint("RIGHT", -9, 0)
-  panel.splits = fs(10, .62, .7, .78)
-  panel.splits:SetPoint("TOPLEFT", 9, -42); panel.splits:SetPoint("RIGHT", -9, 0)
+  panel.stats = fs(12, .9, .93, .96)
+  panel.stats:SetPoint("TOPLEFT", 9, -29); panel.stats:SetPoint("RIGHT", -9, 0)
+  panel.splits = fs(12, .62, .7, .78)
+  panel.splits:SetPoint("TOPLEFT", 9, -48); panel.splits:SetPoint("RIGHT", -9, 0)
   panel:SetScript("OnDragStart", function(self) if unlocked then self:StartMoving() end end)
   panel:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
@@ -272,7 +272,7 @@ function DR:PaintPanel()
   for i = from, #list do lines[#lines + 1] = string.format("%d. %s  %s", i, list[i].name, DR.Clock(list[i].t)) end
   if #lines == 0 then lines[1] = "보스 아직 없음" end
   panel.splits:SetText(table.concat(lines, "\n"))
-  panel:SetHeight(48 + #lines * 13)
+  panel:SetHeight(56 + #lines * 15)
 end
 
 function DR:RefreshPanel()
