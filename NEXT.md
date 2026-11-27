@@ -7,6 +7,7 @@
 - test3(송곳니의 제단 +12 · 11/27): UnitThreatSituation 비밀 아님 · 어그로 판단 정확(18:52 26초 몹에게 맞을 때만) · 적 이름표 대상은 전부 비밀
   · 쐐기 안 SendChatMessage SAY = ADDON_ACTION_BLOCKED 7/7 → 나만 보기(채팅창 + RaidNotice 가운데) · 소리 없음 (사용자)
   · 말하기는 쐐기 밖 5인 던전만 선택 · 막히면 그 접속 동안 말하기 끔
+  · 사용자 「따끔!! 위치이동 안돼」 → RaidWarningFrame 대신 자체 글씨 NiniToolsOuchFrame (위치 이동 · 편집 모드 · 초기화 · 1.4초 + 0.6초 사라짐)
 - 남은 것: 「가운데 반짝임」 미리보기(UI.lua pvModel)는 2.8.23 으로
 
 ## 2.8.21 Navi 직업 요정 (11/23~24 · 시험판 test1~9 · wow-personal navi-class-mockup)

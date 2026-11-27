@@ -45,6 +45,11 @@ EM.items = {
     set = function(on) NT.DungeonRun:SetUnlocked(on) end,
     get = function() return NT.DungeonRun:IsUnlocked() end,
     frames = function() return NT.DungeonRun:PanelFrame() end },
+  { name = "따끔",   -- 2.8.22
+    available = function() return not NT.FOREVER and NT.Ouch and NT.Ouch.SetUnlocked and NT.Ouch:GetDB().enabled ~= false and NT.Ouch:GetDB().center ~= false end,
+    set = function(on) NT.Ouch:SetUnlocked(on) end,
+    get = function() return NT.Ouch:IsUnlocked() and true or false end,
+    frames = function() return NT.Ouch:Frame() end },
   { name = "Navi 채팅",
     available = function() return NT.SetNaviChatUnlocked and NT.IsNaviChatEnabled and NT:IsNaviChatEnabled() end,
     set = function(on) NT:SetNaviChatUnlocked(on) end,

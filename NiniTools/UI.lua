@@ -2575,10 +2575,16 @@ function UI:BuildKick()
   end
   local ouch=self:AccordionSection(p,"ouch","따끔","쐐기 · 5인 던전에서 딜러·힐러가 어그로를 먹고 맞으면 「따끔!!」 (소리 없음)",178,false)
   p.ouchRow=self:Toggle(ouch.body,"따끔 켜기 (탱커는 안 울림 · 3초에 한 번)","enabled",ouchDB,nil,-8)
-  p.ouchCenterRow=self:Toggle(ouch.body,"화면 가운데 글씨도 (끄면 내 채팅창에만)","center",ouchDB,nil,-48)
+  p.ouchCenterRow=self:Toggle(ouch.body,"화면 글씨도 (끄면 내 채팅창에만 · 위치 이동 가능)","center",ouchDB,nil,-48)
   p.ouchSayRow=self:Toggle(ouch.body,"말하기(/s)로도 — 쐐기 밖 5인 던전만 (쐐기 안은 애드온 말하기가 막힘)","say",ouchDB,nil,-88)
   p.ouchTestButton=self:Button(ouch.body,"따끔 미리보기",120,26,function() if NT.Ouch and NT.Ouch.Test then NT.Ouch:Test() end end)
   p.ouchTestButton:SetPoint("BOTTOMLEFT",22,12)
+  p.ouchMoveButton=self:Button(ouch.body,"위치 이동",94,26,function()
+    if NT.Ouch and NT.Ouch.SetUnlocked then NT.Ouch:SetUnlocked(not NT.Ouch:IsUnlocked()) end; UI:RefreshVisiblePage()
+  end); p.ouchMoveButton:SetPoint("LEFT",p.ouchTestButton,"RIGHT",8,0)
+  p.ouchResetButton=self:Button(ouch.body,"초기화",78,26,function()
+    if NT.Ouch and NT.Ouch.ResetPosition then NT.Ouch:ResetPosition() end; UI:RefreshVisiblePage()
+  end); p.ouchResetButton:SetPoint("LEFT",p.ouchMoveButton,"RIGHT",8,0)
   p.ouchSection=ouch
 
   p.Refresh=function(self)
@@ -2636,8 +2642,11 @@ function UI:BuildKick()
     combat:SetState("시간 "..(k.combatTimerEnabled~=false and "ON" or "OFF").." · 적 "..(enemy.enabled~=false and "ON" or "OFF"),"accent")
     if self.ouchRow then
       self.ouchRow:Refresh(); self.ouchCenterRow:Refresh(); self.ouchSayRow:Refresh()
+      if self.ouchMoveButton and self.ouchMoveButton.label then
+        self.ouchMoveButton.label:SetText(NT.Ouch and NT.Ouch.IsUnlocked and NT.Ouch:IsUnlocked() and "위치 고정" or "위치 이동")
+      end
       local od=ouchDB()
-      ouch:SetState(od.enabled~=false and ("ON"..(od.center~=false and " · 가운데" or " · 채팅창")..(od.say and " · 말하기" or "")) or "OFF",od.enabled~=false and "accent" or "warn")
+      ouch:SetState(od.enabled~=false and ("ON"..(od.center~=false and " · 화면" or " · 채팅창")..(od.say and " · 말하기" or "")) or "OFF",od.enabled~=false and "accent" or "warn")
     end
 
     if self.importantPreview then self.importantPreview:Refresh() end
